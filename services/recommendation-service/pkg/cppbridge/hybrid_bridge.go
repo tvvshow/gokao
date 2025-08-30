@@ -1,3 +1,5 @@
+// +build cgo
+
 package cppbridge
 
 /*
@@ -180,16 +182,16 @@ type HybridStats struct {
 	CacheMaxSize          int     `json:"cache_max_size"`
 }
 
-// HybridRecommendationBridge C++混合推荐引擎的Go桥接器
-type HybridRecommendationBridge struct {
+// CppHybridRecommendationBridge C++混合推荐引擎的Go桥接器
+type CppHybridRecommendationBridge struct {
 	engine            unsafe.Pointer
 	traditionalMatcher unsafe.Pointer
 	aiEngine          unsafe.Pointer
 }
 
 // NewHybridRecommendationBridge 创建新的混合推荐桥接器
-func NewHybridRecommendationBridge(configPath string) (*HybridRecommendationBridge, error) {
-	bridge := &HybridRecommendationBridge{}
+func NewHybridRecommendationBridge(configPath string) (HybridRecommendationBridge, error) {
+	bridge := &CppHybridRecommendationBridge{}
 	
 	// 创建C++对象
 	bridge.engine = C.CreateHybridRecommendationEngine()

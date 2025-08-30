@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +15,10 @@ type AnalyticsService interface {
 	GetSystemMetrics() (*SystemMetrics, error)
 	GetUserBehaviorAnalysis(userID string) (*UserBehaviorAnalysis, error)
 	GetAlgorithmPerformance() (*AlgorithmPerformance, error)
+	GetPerformanceMetrics(ctx context.Context) (map[string]interface{}, error)
+	GetFusionStatistics(ctx context.Context) (map[string]interface{}, error)
+	GenerateQualityReport(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error)
+	GetRecommendationTrends(ctx context.Context, timeRange string) (map[string]interface{}, error)
 }
 
 // RecommendationStats 推荐统计数据
@@ -54,15 +58,15 @@ type UserBehaviorAnalysis struct {
 
 // AlgorithmPerformance 算法性能分析
 type AlgorithmPerformance struct {
-	TraditionalAlgorithm PerformanceMetrics `json:"traditional_algorithm"`
-	AIAlgorithm         PerformanceMetrics `json:"ai_algorithm"`
-	HybridAlgorithm     PerformanceMetrics `json:"hybrid_algorithm"`
+	TraditionalAlgorithm AnalyticsPerformanceMetrics `json:"traditional_algorithm"`
+	AIAlgorithm         AnalyticsPerformanceMetrics `json:"ai_algorithm"`
+	HybridAlgorithm     AnalyticsPerformanceMetrics `json:"hybrid_algorithm"`
 	ComparisonMetrics   ComparisonMetrics  `json:"comparison_metrics"`
 	LastUpdated         time.Time          `json:"last_updated"`
 }
 
-// PerformanceMetrics 性能指标
-type PerformanceMetrics struct {
+// AnalyticsPerformanceMetrics 分析性能指标
+type AnalyticsPerformanceMetrics struct {
 	AvgResponseTime   float64 `json:"avg_response_time_ms"`
 	SuccessRate       float64 `json:"success_rate"`
 	Accuracy          float64 `json:"accuracy"`
@@ -446,4 +450,120 @@ func (h *AnalyticsHandler) ExportAnalyticsReport(c *gin.Context) {
 			Message: "不支持的导出格式",
 		})
 	}
+}
+
+// GetPerformanceMetrics 获取性能指标
+// @Summary 获取系统性能指标
+// @Description 获取系统性能相关指标
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /analytics/performance [get]
+func (h *AnalyticsHandler) GetPerformanceMetrics(c *gin.Context) {
+	metrics, err := h.analyticsService.GetPerformanceMetrics(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "metrics_error",
+			Message: "获取性能指标失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, metrics)
+}
+
+// GetFusionStatistics 获取融合统计数据
+// @Summary 获取算法融合统计
+// @Description 获取传统算法、AI算法和混合算法的统计对比
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /analytics/fusion-stats [get]
+func (h *AnalyticsHandler) GetFusionStatistics(c *gin.Context) {
+	stats, err := h.analyticsService.GetFusionStatistics(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "stats_error",
+			Message: "获取融合统计失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// GenerateQualityReport 生成质量报告
+// @Summary 生成推荐质量报告
+// @Description 生成指定时间范围内的推荐质量分析报告
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "报告参数"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /analytics/quality-report [post]
+func (h *AnalyticsHandler) GenerateQualityReport(c *gin.Context) {
+	var params map[string]interface{}
+	if err := c.ShouldBindJSON(&params); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "invalid_params",
+			Message: "请求参数格式错误",
+		})
+		return
+	}
+
+	report, err := h.analyticsService.GenerateQualityReport(c.Request.Context(), params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "report_error",
+			Message: "生成质量报告失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
+// GetRecommendationTrends 获取推荐趋势
+// @Summary 获取推荐趋势数据
+// @Description 获取指定时间范围内的推荐趋势分析
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Param time_range query string false "时间范围 (1h|24h|7d|30d)" default(24h)
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /analytics/trends [get]
+func (h *AnalyticsHandler) GetRecommendationTrends(c *gin.Context) {
+	timeRange := c.DefaultQuery("time_range", "24h")
+	
+	// 验证时间范围参数
+	validRanges := map[string]bool{
+		"1h": true, "24h": true, "7d": true, "30d": true,
+	}
+	
+	if !validRanges[timeRange] {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "invalid_time_range",
+			Message: "时间范围必须是: 1h, 24h, 7d, 30d 中的一个",
+		})
+		return
+	}
+
+	trends, err := h.analyticsService.GetRecommendationTrends(c.Request.Context(), timeRange)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "trends_error",
+			Message: "获取推荐趋势失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, trends)
 }

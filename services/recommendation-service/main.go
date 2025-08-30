@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gaokao/recommendation-service/internal/config"
-	"github.com/gaokao/recommendation-service/internal/handlers"
-	"github.com/gaokao/recommendation-service/pkg/cppbridge"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/config"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/handlers"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/services"
+	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
 )
 
 // @title 高考志愿填报推荐服务 API
@@ -69,10 +70,13 @@ func main() {
 	// API路由组
 	v1 := router.Group("/api/v1")
 	{
+		// 创建服务
+		analyticsService := services.NewAnalyticsService(bridge)
+		
 		// 创建处理器
-		recommendationHandler := handlers.NewRecommendationHandler(bridge)
-		hybridHandler := handlers.NewHybridHandler(bridge)
-		analyticsHandler := handlers.NewAnalyticsHandler(bridge)
+		recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge)
+		hybridHandler := handlers.NewSimpleHybridHandler(bridge)
+		analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 		// 推荐相关路由
 		recommendations := v1.Group("/recommendations")
