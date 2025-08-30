@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  drone-server:
+    image: drone/drone:2
+    container_name: drone-server
+    restart: always
+    environment:
+      # 服务器配置
+      - DRONE_SERVER_HOST=166.108.233.220
+      - DRONE_SERVER_PROTO=http
+
+      # GitHub 配置
+      - DRONE_GITHUB_SERVER=https://github.com
+      - DRONE_GITHUB_CLIENT_ID=Ov23liNLo3pLvkuJvaol
+      - DRONE_GITHUB_CLIENT_SECRET=6c4d06082f4fa957dd23740816661b29fe058711
+
+      # RPC密钥
+      - DRONE_RPC_SECRET=e7ede4ea4a6a3093b06281d8bcd0a494
+
+      # 其他推荐配置
+      - DRONE_LOGS_PRETTY=true
+      - DRONE_LOGS_COLOR=true
+      - DRONE_USER_CREATE=username:pestxo,admin:true
+
+    volumes:
+      - drone-data:/data
+    ports:
+      - "80:80"
+
+  drone-runner:
+    image: drone/drone-runner-docker:1
+    container_name: drone-runner
+    restart: always
+    depends_on:
+      - drone-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_RPC_HOST=drone-server
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_SECRET=e7ede4ea4a6a3093b06281d8bcd0a494
+      - DRONE_RUNNER_NAME=my-runner
+      - DRONE_RUNNER_CAPACITY=2
+
+volumes:
+  drone-data:

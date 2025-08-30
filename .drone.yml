@@ -1,10 +1,364 @@
+kind: pipeline
+type: docker
+name: gaokaohub-ci
+
+# 触发条件
+trigger:
+  branch:
+    - master
+    - develop
+    - feature/*
+  event:
+    - push
+    - pull_request
+    - tag
+
+# 全局环境变量
+environment:
+  GO_VERSION: "1.21"
+  DOCKER_BUILDKIT: "1"
+
+# 构建步骤
 steps:
-  - name: deploy
-    image: docker:cli
+  # 代码检出和缓存
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    volumes:
+      - name: cache
+        path: /cache
+    settings:
+      restore: true
+      mount:
+        - ./go/pkg/mod
+        - ./node_modules
+        - ./.cache
+
+  # Go依赖下载和代码检查
+  - name: go-deps
+    image: golang:${GO_VERSION}-alpine
+    environment:
+      GOPROXY: https://goproxy.cn,direct
+      GOSUMDB: sum.golang.google.cn
     commands:
-      - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - apk add --no-cache git gcc musl-dev
+      - cd services/api-gateway && go mod download
+      - cd ../user-service && go mod download  
+      - cd ../data-service && go mod download
+      - cd ../recommendation-service && go mod download
+      - cd ../payment-service && go mod download
+      - echo "Go dependencies downloaded successfully"
+
+  # 代码质量检查
+  - name: code-quality
+    image: golang:${GO_VERSION}-alpine
+    commands:
+      - apk add --no-cache git gcc musl-dev
+      - go install honnef.co/go/tools/cmd/staticcheck@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - |
+        for service in api-gateway user-service data-service recommendation-service payment-service; do
+          echo "Linting $service..."
+          cd services/$service
+          golangci-lint run --timeout=10m || true
+          staticcheck ./... || true
+          cd ../..
+        done
+
+  # Go单元测试
+  - name: go-test
+    image: golang:${GO_VERSION}-alpine
+    environment:
+      CGO_ENABLED: "1"
+    commands:
+      - apk add --no-cache git gcc musl-dev sqlite-dev
+      - |
+        for service in api-gateway user-service data-service recommendation-service payment-service; do
+          echo "Testing $service..."
+          cd services/$service
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out -o coverage.html || true
+          cd ../..
+        done
+
+  # C++构建和测试
+  - name: cpp-build
+    image: gcc:latest
+    commands:
+      - apt-get update && apt-get install -y cmake libssl-dev libsqlite3-dev libjsoncpp-dev pkg-config
+      - |
+        for module in device-fingerprint license volunteer-matcher; do
+          if [ -d "cpp-modules/$module" ]; then
+            echo "Building C++ module: $module"
+            cd cpp-modules/$module
+            mkdir -p build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+            make -j$(nproc)
+            # 运行测试（如果存在）
+            if [ -f "test_$module" ]; then
+              ./test_$module || true
+            fi
+            cd ../../..
+          fi
+        done
+
+  # 安全扫描
+  - name: security-scan
+    image: securecodewarrior/docker-gosec
+    commands:
+      - |
+        for service in api-gateway user-service data-service recommendation-service payment-service; do
+          echo "Security scanning $service..."
+          cd services/$service
+          gosec -fmt json -out gosec-report.json ./... || true
+          cd ../..
+        done
+    when:
+      event: [push, pull_request]
+
+  # Docker镜像构建
+  - name: build-images
+    image: docker:dind
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
     environment:
       DOCKER_USERNAME:
         from_secret: docker_username
       DOCKER_PASSWORD:
         from_secret: docker_password
+    commands:
+      - docker version
+      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+      - |
+        services="api-gateway user-service data-service recommendation-service payment-service"
+        for service in $services; do
+          echo "Building Docker image for $service..."
+          cd services/$service
+          docker build -t gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} .
+          docker tag gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} gaokaohub/$service:latest
+          
+          # 只在master分支推送到registry
+          if [ "$DRONE_BRANCH" = "master" ]; then
+            docker push gaokaohub/$service:${DRONE_COMMIT_SHA:0:8}
+            docker push gaokaohub/$service:latest
+          fi
+          cd ../..
+        done
+    when:
+      event: [push]
+
+  # 镜像安全扫描
+  - name: image-security-scan
+    image: aquasec/trivy
+    commands:
+      - |
+        services="api-gateway user-service data-service recommendation-service payment-service"
+        for service in $services; do
+          echo "Scanning Docker image: gaokaohub/$service:latest"
+          trivy image --exit-code 0 --severity HIGH,CRITICAL gaokaohub/$service:latest || true
+        done
+    when:
+      event: [push]
+      branch: [master]
+
+  # 部署到测试环境
+  - name: deploy-staging
+    image: docker/compose:latest
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    environment:
+      DEPLOY_HOST:
+        from_secret: staging_host
+      DEPLOY_USER:
+        from_secret: staging_user
+      DEPLOY_KEY:
+        from_secret: staging_key
+    commands:
+      - apk add --no-cache openssh-client
+      - mkdir -p ~/.ssh
+      - echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+      - chmod 600 ~/.ssh/id_rsa
+      - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+      - |
+        echo "Deploying to staging environment..."
+        scp docker-compose.yml $DEPLOY_USER@$DEPLOY_HOST:/opt/gaokaohub/
+        ssh $DEPLOY_USER@$DEPLOY_HOST "cd /opt/gaokaohub && docker-compose pull && docker-compose up -d --remove-orphans"
+    when:
+      event: [push]
+      branch: [develop]
+
+  # 部署到生产环境
+  - name: deploy-production
+    image: docker/compose:latest
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    environment:
+      PROD_HOST:
+        from_secret: production_host
+      PROD_USER:
+        from_secret: production_user
+      PROD_KEY:
+        from_secret: production_key
+    commands:
+      - apk add --no-cache openssh-client
+      - mkdir -p ~/.ssh
+      - echo "$PROD_KEY" > ~/.ssh/id_rsa
+      - chmod 600 ~/.ssh/id_rsa
+      - ssh-keyscan -H $PROD_HOST >> ~/.ssh/known_hosts
+      - |
+        echo "Deploying to production environment..."
+        scp docker-compose.prod.yml $PROD_USER@$PROD_HOST:/opt/gaokaohub/docker-compose.yml
+        ssh $PROD_USER@$PROD_HOST "cd /opt/gaokaohub && docker-compose pull && docker-compose up -d --remove-orphans"
+        echo "Production deployment completed"
+    when:
+      event: [tag]
+      ref: refs/tags/v*
+
+  # 清理和通知
+  - name: cleanup-and-notify
+    image: alpine:latest
+    environment:
+      SLACK_WEBHOOK:
+        from_secret: slack_webhook
+      DINGTALK_WEBHOOK:
+        from_secret: dingtalk_webhook
+    commands:
+      - apk add --no-cache curl
+      - |
+        # 清理旧的Docker镜像
+        docker image prune -f || true
+        
+        # 发送通知
+        if [ "$DRONE_BUILD_STATUS" = "success" ]; then
+          echo "Build successful, sending notifications..."
+          # Slack通知
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"✅ GaoKaoHub CI/CD: Build #${DRONE_BUILD_NUMBER} succeeded for ${DRONE_BRANCH}\"}" \
+              $SLACK_WEBHOOK || true
+          fi
+          
+          # 钉钉通知
+          if [ -n "$DINGTALK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-Type: application/json' \
+              --data "{\"msgtype\":\"text\",\"text\":{\"content\":\"✅ 高考志愿填报助手 CI/CD: 构建 #${DRONE_BUILD_NUMBER} 成功 - 分支: ${DRONE_BRANCH}\"}}" \
+              $DINGTALK_WEBHOOK || true
+          fi
+        else
+          echo "Build failed, sending failure notifications..."
+          # 失败通知
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"❌ GaoKaoHub CI/CD: Build #${DRONE_BUILD_NUMBER} failed for ${DRONE_BRANCH}\"}" \
+              $SLACK_WEBHOOK || true
+          fi
+        fi
+    when:
+      status: [success, failure]
+
+  # 缓存保存
+  - name: rebuild-cache
+    image: drillster/drone-volume-cache
+    volumes:
+      - name: cache
+        path: /cache
+    settings:
+      rebuild: true
+      mount:
+        - ./go/pkg/mod
+        - ./node_modules
+        - ./.cache
+    when:
+      event: [push]
+
+# 数据卷配置
+volumes:
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
+  - name: cache
+    host:
+      path: /tmp/drone-cache
+
+# 服务配置（用于集成测试）
+services:
+  - name: postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: gaokaohub_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test123
+    ports:
+      - 5432
+
+  - name: redis
+    image: redis:7-alpine
+    ports:
+      - 6379
+
+---
+# 通知管道
+kind: pipeline
+type: docker
+name: notify
+
+steps:
+  - name: notify-success
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: ci-cd
+      username: drone
+      template: |
+        🎉 **构建成功** 
+        仓库: {{repo.name}}
+        分支: {{build.branch}}
+        提交: {{build.commit}}
+        作者: {{build.author}}
+        构建时间: {{since build.started}}
+    when:
+      status: [success]
+
+trigger:
+  status: [success, failure]
+
+depends_on:
+  - gaokaohub-ci
+
+---
+# 定期安全扫描管道
+kind: pipeline
+type: docker
+name: security-audit
+
+trigger:
+  cron: [daily-security-scan]
+
+steps:
+  - name: dependency-check
+    image: golang:1.21-alpine
+    commands:
+      - apk add --no-cache git
+      - go install github.com/sonatypeiq/nancy@latest
+      - |
+        for service in api-gateway user-service data-service recommendation-service payment-service; do
+          echo "Checking dependencies for $service..."
+          cd services/$service
+          go list -json -deps ./... | nancy sleuth || true
+          cd ../..
+        done
+
+  - name: license-check
+    image: fossas/fossa-cli
+    environment:
+      FOSSA_API_KEY:
+        from_secret: fossa_api_key
+    commands:
+      - fossa analyze || true
+      - fossa test || true
+    when:
+      event: [cron]
