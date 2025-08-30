@@ -1,0 +1,116 @@
+# syntax=docker/dockerfile:1
+# 生产环境 User Service Dockerfile
+# 优化性能和安全性
+
+FROM golang:1.21-alpine AS builder
+
+# 安装构建依赖
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    build-base \
+    postgresql-client
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+
+# 复制依赖文件
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download && go mod verify
+
+# 复制源代码
+COPY . .
+
+# 运行测试和安全检查
+RUN go vet ./...
+RUN go test -race -short ./...
+
+# 安装数据库迁移工具
+RUN go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# 生产环境构建（优化编译）
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=$(date +%Y%m%d%H%M%S)" \
+    -a -installsuffix cgo \
+    -o user-service .
+
+# 安全扫描阶段
+FROM aquasec/trivy:latest AS security-scan
+COPY --from=builder /app/user-service /tmp/user-service
+RUN trivy filesystem --exit-code 0 --no-progress /tmp/
+
+# 运行阶段 - 轻量级镜像
+FROM alpine:3.18
+
+# 安装运行时依赖
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    postgresql-client \
+    curl \
+    && addgroup -g 1001 -S appgroup \
+    && adduser -u 1001 -S appuser -G appgroup
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制应用和工具
+COPY --from=builder /app/user-service ./
+COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
+COPY --from=builder /app/init.sql ./migrations/
+
+# 创建数据库连接等待脚本
+RUN echo '#!/bin/sh' > wait-for-db.sh && \
+    echo 'until nc -z $DB_HOST $DB_PORT; do' >> wait-for-db.sh && \
+    echo '  echo "Waiting for database at $DB_HOST:$DB_PORT..."' >> wait-for-db.sh && \
+    echo '  sleep 2' >> wait-for-db.sh && \
+    echo 'done' >> wait-for-db.sh && \
+    echo 'echo "Database is ready!"' >> wait-for-db.sh && \
+    chmod +x wait-for-db.sh
+
+# 设置权限
+RUN chown -R appuser:appgroup /app
+
+# 环境变量
+ENV PORT=8081 \
+    GIN_MODE=release \
+    DEBUG=false \
+    LOG_LEVEL=info \
+    DB_HOST=postgres \
+    DB_PORT=5432 \
+    DB_USER=gaokao_user \
+    DB_PASSWORD=gaokao_pass \
+    DB_NAME=gaokao_prod \
+    REDIS_HOST=redis \
+    REDIS_PORT=6379
+
+# 暴露端口
+EXPOSE 8081
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# 切换用户
+USER appuser
+
+# 入口点脚本
+RUN echo '#!/bin/sh' > entrypoint.sh && \
+    echo 'set -e' >> entrypoint.sh && \
+    echo './wait-for-db.sh' >> entrypoint.sh && \
+    echo 'echo "Starting user service..."' >> entrypoint.sh && \
+    echo 'exec ./user-service "$@"' >> entrypoint.sh && \
+    chmod +x entrypoint.sh
+
+# 生产模式入口点
+ENTRYPOINT ["./entrypoint.sh"]

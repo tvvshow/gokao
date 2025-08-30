@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - name: Verify Swagger docs up-to-date
+        env:
+          GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+        run: |
+          cd services/api-gateway
+          go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Swagger docs are out-of-date. Please run 'go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal' and commit the changes."
+            git diff -- docs/ | sed -n '1,200p'
+            exit 1
+          fi
+      - name: Build and Test (api-gateway)
+        env:
+          GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+        run: |
+          cd services/api-gateway
+          go mod tidy
+          go build ./...
+          go test ./... -coverprofile=coverage.out
+          # Coverage gate: fail if below 60%
+          total=$(go tool cover -func=coverage.out | awk '/total:/ {print substr($3, 1, length($3)-1)}')
+          echo "Total coverage: ${total}%"
+          awk -v t="$total" 'BEGIN{ if (t+0 < 60) { print "Coverage below 60%"; exit 1 } }'
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: services/api-gateway
+          args: --timeout=5m
+      - name: Docker Build (api-gateway)
+        run: |
+          docker build -t gaokao/api-gateway:ci -f services/api-gateway/Dockerfile services/api-gateway
+      - name: Upload coverage (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: services/api-gateway/coverage.out
+          if-no-files-found: ignore
+
+  # Production guard: enforce ENABLE_SWAGGER=0 for production builds
+  prod-guard:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify prod compose disables Swagger
+        run: |
+          test -f docker-compose.prod.yml
+          if ! grep -q "ENABLE_SWAGGER=0" docker-compose.prod.yml; then
+            echo "Expected ENABLE_SWAGGER=0 in docker-compose.prod.yml for production."; exit 1; fi
+      - name: Verify main.go has startup warning
+        run: |
+          if ! grep -q "Swagger UI is enabled in release mode" services/api-gateway/main.go; then
+            echo "Expected startup warning for Swagger in release mode in main.go"; exit 1; fi

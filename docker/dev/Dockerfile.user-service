@@ -1,0 +1,124 @@
+# syntax=docker/dockerfile:1
+# 开发环境 User Service Dockerfile
+# 支持热重载和数据库迁移
+
+FROM golang:1.21-alpine AS builder
+
+# 安装开发工具和依赖
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    build-base \
+    gdb \
+    delve \
+    postgresql-client
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+
+# 复制依赖文件
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 安装开发工具
+RUN go install github.com/cosmtrek/air@latest && \
+    go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# 复制源代码
+COPY . .
+
+# 开发环境构建（包含调试信息）
+RUN CGO_ENABLED=1 GOOS=linux go build -gcflags="all=-N -l" -o /app/user-service
+
+# 运行阶段 - 开发环境保留构建环境
+FROM golang:1.21-alpine
+
+# 安装运行时依赖和工具
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    jq \
+    bash \
+    gdb \
+    delve \
+    postgresql-client \
+    netcat-openbsd
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+
+# 创建应用用户
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制应用和工具
+COPY --from=builder /app/user-service ./
+COPY --from=builder /go/bin/air /usr/local/bin/air
+COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
+
+# 复制源代码（用于热重载）
+COPY . .
+
+# 复制数据库初始化脚本
+COPY init.sql ./migrations/
+
+# 创建等待数据库脚本
+RUN echo '#!/bin/bash' > wait-for-db.sh && \
+    echo 'until nc -z postgres 5432; do' >> wait-for-db.sh && \
+    echo '  echo "Waiting for PostgreSQL..."' >> wait-for-db.sh && \
+    echo '  sleep 2' >> wait-for-db.sh && \
+    echo 'done' >> wait-for-db.sh && \
+    echo 'echo "PostgreSQL is ready!"' >> wait-for-db.sh && \
+    chmod +x wait-for-db.sh
+
+# 设置权限
+RUN chown -R appuser:appgroup /app
+
+# 创建air配置文件
+RUN echo 'root = "."' > .air.toml && \
+    echo 'testdata_dir = "testdata"' >> .air.toml && \
+    echo '[build]' >> .air.toml && \
+    echo '  cmd = "go build -o ./tmp/main ."' >> .air.toml && \
+    echo '  bin = "tmp/main"' >> .air.toml && \
+    echo '  full_bin = "./tmp/main"' >> .air.toml && \
+    echo '  include_ext = ["go", "tpl", "tmpl", "html"]' >> .air.toml && \
+    echo '  exclude_dir = ["assets", "tmp", "vendor", "testdata"]' >> .air.toml && \
+    echo '  include_dir = []' >> .air.toml && \
+    echo '  exclude_file = []' >> .air.toml
+
+# 环境变量
+ENV PORT=8081 \
+    GIN_MODE=debug \
+    DEBUG=true \
+    LOG_LEVEL=debug \
+    DB_HOST=postgres \
+    DB_PORT=5432 \
+    DB_USER=gaokao_user \
+    DB_PASSWORD=gaokao_pass \
+    DB_NAME=gaokao_dev \
+    REDIS_HOST=redis \
+    REDIS_PORT=6379 \
+    REDIS_PASSWORD=""
+
+# 暴露端口
+EXPOSE 8081 2345
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# 切换用户
+USER appuser
+
+# 开发模式入口点（等待数据库后启动）
+CMD ["sh", "-c", "./wait-for-db.sh && air -c .air.toml"]

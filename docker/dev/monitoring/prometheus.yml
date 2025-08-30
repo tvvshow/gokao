@@ -1,0 +1,58 @@
+# Prometheus 开发环境配置
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# 告警规则文件
+rule_files:
+  # - "alert_rules.yml"
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway 监控
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # User Service 监控
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # PostgreSQL 监控
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+
+  # Redis 监控
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
+
+  # 节点监控（如果安装了 node_exporter）
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 30s
+
+# 远程写入配置（可选）
+# remote_write:
+#   - url: "http://remote-storage:9090/api/v1/write"
+
+# 远程读取配置（可选）
+# remote_read:
+#   - url: "http://remote-storage:9090/api/v1/read"

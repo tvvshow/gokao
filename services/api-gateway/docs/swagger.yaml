@@ -1,0 +1,65 @@
+basePath: /
+definitions:
+  main.ErrorResponse:
+    properties:
+      error:
+        example: too many requests
+        type: string
+    type: object
+  main.PingResponse:
+    properties:
+      message:
+        example: pong
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API gateway for GaokaoHub providing health, readiness, metrics, and
+    v1 endpoints.
+  title: Gaokao API Gateway
+  version: 0.1.0
+paths:
+  /api/v1/ping:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.PingResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Ping
+      tags:
+      - API v1
+  /healthz:
+    get:
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Liveness probe
+      tags:
+      - System
+  /readyz:
+    get:
+      responses:
+        "200":
+          description: ready
+          schema:
+            type: string
+      summary: Readiness probe
+      tags:
+      - System
+schemes:
+- http
+swagger: "2.0"
+tags:
+- description: System endpoints for health, readiness, and root.
+  name: System
+- description: Version 1 public API.
+  name: API v1
