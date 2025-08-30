@@ -1,0 +1,252 @@
+package middleware
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/time/rate"
+	"github.com/gaokaohub/payment-service/internal/config"
+)
+
+// CORS 跨域中间件
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		origin := c.Request.Header.Get("Origin")
+
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+			c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-ID")
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type")
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequestID 请求ID中间件
+func RequestID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.Request.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+		c.Header("X-Request-ID", requestID)
+		c.Set("request_id", requestID)
+		c.Next()
+	}
+}
+
+// RateLimit 限流中间件
+func RateLimit(cfg config.RateLimitConfig) gin.HandlerFunc {
+	if !cfg.Enable {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+
+	limiter := rate.NewLimiter(rate.Limit(cfg.RPS), cfg.Burst)
+
+	return func(c *gin.Context) {
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "rate limit exceeded",
+				"code":  "RATE_LIMIT_EXCEEDED",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// JWTClaims JWT声明
+type JWTClaims struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// Auth JWT认证中间件
+func Auth(cfg config.JWTConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "missing authorization header",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		// 检查Bearer前缀
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid authorization header format",
+				"code":  "INVALID_TOKEN_FORMAT",
+			})
+			c.Abort()
+			return
+		}
+
+		// 解析JWT token
+		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(cfg.Secret), nil
+		})
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid token",
+				"code":  "INVALID_TOKEN",
+			})
+			c.Abort()
+			return
+		}
+
+		if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+			// 检查token是否过期
+			if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "token expired",
+					"code":  "TOKEN_EXPIRED",
+				})
+				c.Abort()
+				return
+			}
+
+			// 将用户信息设置到上下文
+			c.Set("user_id", claims.UserID)
+			c.Set("username", claims.Username)
+			c.Set("role", claims.Role)
+			c.Next()
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid token claims",
+				"code":  "INVALID_TOKEN_CLAIMS",
+			})
+			c.Abort()
+			return
+		}
+	}
+}
+
+// AdminOnly 管理员权限中间件
+func AdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "admin access required",
+				"code":  "INSUFFICIENT_PRIVILEGES",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// VIPOnly VIP权限中间件
+func VIPOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "authentication required",
+				"code":  "AUTHENTICATION_REQUIRED",
+			})
+			c.Abort()
+			return
+		}
+
+		// 允许admin和vip用户访问
+		if role != "admin" && role != "vip" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "VIP membership required",
+				"code":  "VIP_REQUIRED",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// GetUserID 从上下文获取用户ID
+func GetUserID(c *gin.Context) string {
+	if userID, exists := c.Get("user_id"); exists {
+		return userID.(string)
+	}
+	return ""
+}
+
+// GetUsername 从上下文获取用户名
+func GetUsername(c *gin.Context) string {
+	if username, exists := c.Get("username"); exists {
+		return username.(string)
+	}
+	return ""
+}
+
+// GetRole 从上下文获取用户角色
+func GetRole(c *gin.Context) string {
+	if role, exists := c.Get("role"); exists {
+		return role.(string)
+	}
+	return ""
+}
+
+// GetRequestID 从上下文获取请求ID
+func GetRequestID(c *gin.Context) string {
+	if requestID, exists := c.Get("request_id"); exists {
+		return requestID.(string)
+	}
+	return ""
+}
+
+// SecurityHeaders 安全头中间件
+func SecurityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Header("Content-Security-Policy", "default-src 'self'")
+		c.Next()
+	}
+}
+
+// Logging 日志中间件
+func Logging() gin.HandlerFunc {
+	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC3339),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	})
+}
