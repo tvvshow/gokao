@@ -1,3 +1,6 @@
+//go:build cgo && !windows
+// +build cgo,!windows
+
 package cpp
 
 /*
@@ -20,16 +23,16 @@ import (
 type ErrorCode int
 
 const (
-	Success                ErrorCode = 0
-	ErrorInitFailed        ErrorCode = 1001
-	ErrorInvalidParam      ErrorCode = 1002
-	ErrorMemoryAlloc       ErrorCode = 1003
-	ErrorHardwareAccess    ErrorCode = 1004
-	ErrorSystemInfo        ErrorCode = 1005
-	ErrorEncryption        ErrorCode = 1006
-	ErrorPermissionDenied  ErrorCode = 1007
+	Success                  ErrorCode = 0
+	ErrorInitFailed          ErrorCode = 1001
+	ErrorInvalidParam        ErrorCode = 1002
+	ErrorMemoryAlloc         ErrorCode = 1003
+	ErrorHardwareAccess      ErrorCode = 1004
+	ErrorSystemInfo          ErrorCode = 1005
+	ErrorEncryption          ErrorCode = 1006
+	ErrorPermissionDenied    ErrorCode = 1007
 	ErrorPlatformUnsupported ErrorCode = 1008
-	ErrorUnknown           ErrorCode = 9999
+	ErrorUnknown             ErrorCode = 9999
 )
 
 // DeviceType 设备类型枚举
@@ -46,22 +49,22 @@ const (
 
 // DeviceFingerprint Go版本的设备指纹结构体
 type DeviceFingerprint struct {
-	DeviceID          string    `json:"device_id"`
+	DeviceID          string     `json:"device_id"`
 	DeviceType        DeviceType `json:"device_type"`
-	CPUID             string    `json:"cpu_id"`
-	CPUModel          string    `json:"cpu_model"`
-	CPUCores          uint32    `json:"cpu_cores"`
-	TotalMemory       uint64    `json:"total_memory"`
-	MotherboardSerial string    `json:"motherboard_serial"`
-	OSType            string    `json:"os_type"`
-	OSVersion         string    `json:"os_version"`
-	Hostname          string    `json:"hostname"`
-	Username          string    `json:"username"`
-	ScreenResolution  string    `json:"screen_resolution"`
-	FingerprintHash   string    `json:"fingerprint_hash"`
-	ConfidenceScore   uint32    `json:"confidence_score"`
-	ErrorMessage      string    `json:"error_message,omitempty"`
-	CollectedAt       time.Time `json:"collected_at"`
+	CPUID             string     `json:"cpu_id"`
+	CPUModel          string     `json:"cpu_model"`
+	CPUCores          uint32     `json:"cpu_cores"`
+	TotalMemory       uint64     `json:"total_memory"`
+	MotherboardSerial string     `json:"motherboard_serial"`
+	OSType            string     `json:"os_type"`
+	OSVersion         string     `json:"os_version"`
+	Hostname          string     `json:"hostname"`
+	Username          string     `json:"username"`
+	ScreenResolution  string     `json:"screen_resolution"`
+	FingerprintHash   string     `json:"fingerprint_hash"`
+	ConfidenceScore   uint32     `json:"confidence_score"`
+	ErrorMessage      string     `json:"error_message,omitempty"`
+	CollectedAt       time.Time  `json:"collected_at"`
 }
 
 // Configuration Go版本的配置结构体
@@ -109,17 +112,17 @@ func (d *DeviceFingerprintCollector) Initialize(configPath string) error {
 		cConfigPath = C.CString(configPath)
 		defer C.free(unsafe.Pointer(cConfigPath))
 	}
-	
+
 	result := C.DeviceFingerprint_Initialize(cConfigPath)
 	if result != C.C_SUCCESS {
 		return d.convertError(result)
 	}
-	
+
 	d.initialized = true
-	
+
 	// 设置终结器确保资源释放
 	runtime.SetFinalizer(d, (*DeviceFingerprintCollector).finalize)
-	
+
 	return nil
 }
 
@@ -147,10 +150,10 @@ func (d *DeviceFingerprintCollector) CollectFingerprint() (*DeviceFingerprint, e
 	if !d.initialized {
 		return nil, errors.New("collector not initialized")
 	}
-	
+
 	var cFingerprint C.CDeviceFingerprint
 	result := C.DeviceFingerprint_Collect(&cFingerprint)
-	
+
 	if result != C.C_SUCCESS {
 		errorMsg := C.GoString(&cFingerprint.error_message[0])
 		if errorMsg == "" {
@@ -158,7 +161,7 @@ func (d *DeviceFingerprintCollector) CollectFingerprint() (*DeviceFingerprint, e
 		}
 		return nil, errors.New(errorMsg)
 	}
-	
+
 	return d.convertCFingerprint(&cFingerprint), nil
 }
 
@@ -166,7 +169,7 @@ func (d *DeviceFingerprintCollector) CollectFingerprint() (*DeviceFingerprint, e
 func QuickCollectFingerprint() (*DeviceFingerprint, error) {
 	var cFingerprint C.CDeviceFingerprint
 	result := C.DeviceFingerprint_QuickCollect(&cFingerprint)
-	
+
 	if result != C.C_SUCCESS {
 		errorMsg := C.GoString(&cFingerprint.error_message[0])
 		if errorMsg == "" {
@@ -174,7 +177,7 @@ func QuickCollectFingerprint() (*DeviceFingerprint, error) {
 		}
 		return nil, errors.New(errorMsg)
 	}
-	
+
 	collector := &DeviceFingerprintCollector{}
 	return collector.convertCFingerprint(&cFingerprint), nil
 }
@@ -184,14 +187,14 @@ func (d *DeviceFingerprintCollector) SetConfiguration(config *Configuration) err
 	if !d.initialized {
 		return errors.New("collector not initialized")
 	}
-	
+
 	cConfig := d.convertGoConfig(config)
 	result := C.DeviceFingerprint_SetConfiguration(&cConfig)
-	
+
 	if result != C.C_SUCCESS {
 		return d.convertError(result)
 	}
-	
+
 	return nil
 }
 
@@ -200,14 +203,14 @@ func (d *DeviceFingerprintCollector) GetConfiguration() (*Configuration, error) 
 	if !d.initialized {
 		return nil, errors.New("collector not initialized")
 	}
-	
+
 	var cConfig C.CConfiguration
 	result := C.DeviceFingerprint_GetConfiguration(&cConfig)
-	
+
 	if result != C.C_SUCCESS {
 		return nil, d.convertError(result)
 	}
-	
+
 	return d.convertCConfig(&cConfig), nil
 }
 
@@ -216,18 +219,18 @@ func (d *DeviceFingerprintCollector) GenerateHash(fingerprint *DeviceFingerprint
 	if !d.initialized {
 		return "", errors.New("collector not initialized")
 	}
-	
+
 	cFingerprint := d.convertGoFingerprint(fingerprint)
 	hashBuffer := make([]byte, 128)
-	
-	result := C.DeviceFingerprint_GenerateHash(&cFingerprint, 
-		(*C.char)(unsafe.Pointer(&hashBuffer[0])), 
+
+	result := C.DeviceFingerprint_GenerateHash(&cFingerprint,
+		(*C.char)(unsafe.Pointer(&hashBuffer[0])),
 		C.size_t(len(hashBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return "", d.convertError(result)
 	}
-	
+
 	return C.GoString((*C.char)(unsafe.Pointer(&hashBuffer[0]))), nil
 }
 
@@ -236,19 +239,19 @@ func (d *DeviceFingerprintCollector) CompareFingerprints(fp1, fp2 *DeviceFingerp
 	if !d.initialized {
 		return nil, errors.New("collector not initialized")
 	}
-	
+
 	cFp1 := d.convertGoFingerprint(fp1)
 	cFp2 := d.convertGoFingerprint(fp2)
-	
+
 	var similarityScore C.double
 	var isSameDevice C.int
-	
+
 	result := C.DeviceFingerprint_Compare(&cFp1, &cFp2, &similarityScore, &isSameDevice)
-	
+
 	if result != C.C_SUCCESS {
 		return nil, d.convertError(result)
 	}
-	
+
 	return &ComparisonResult{
 		SimilarityScore: float64(similarityScore),
 		IsSameDevice:    isSameDevice != 0,
@@ -261,18 +264,18 @@ func (d *DeviceFingerprintCollector) ValidateFingerprint(fingerprint *DeviceFing
 	if !d.initialized {
 		return false, errors.New("collector not initialized")
 	}
-	
+
 	cFingerprint := d.convertGoFingerprint(fingerprint)
 	cReferenceHash := C.CString(referenceHash)
 	defer C.free(unsafe.Pointer(cReferenceHash))
-	
+
 	var isValid C.int
 	result := C.DeviceFingerprint_Validate(&cFingerprint, cReferenceHash, &isValid)
-	
+
 	if result != C.C_SUCCESS {
 		return false, d.convertError(result)
 	}
-	
+
 	return isValid != 0, nil
 }
 
@@ -281,18 +284,18 @@ func (d *DeviceFingerprintCollector) SerializeToJSON(fingerprint *DeviceFingerpr
 	if !d.initialized {
 		return "", errors.New("collector not initialized")
 	}
-	
+
 	cFingerprint := d.convertGoFingerprint(fingerprint)
 	jsonBuffer := make([]byte, 4096)
-	
+
 	result := C.DeviceFingerprint_SerializeToJson(&cFingerprint,
 		(*C.char)(unsafe.Pointer(&jsonBuffer[0])),
 		C.size_t(len(jsonBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return "", d.convertError(result)
 	}
-	
+
 	return C.GoString((*C.char)(unsafe.Pointer(&jsonBuffer[0]))), nil
 }
 
@@ -301,17 +304,17 @@ func (d *DeviceFingerprintCollector) DeserializeFromJSON(jsonData string) (*Devi
 	if !d.initialized {
 		return nil, errors.New("collector not initialized")
 	}
-	
+
 	cJsonData := C.CString(jsonData)
 	defer C.free(unsafe.Pointer(cJsonData))
-	
+
 	var cFingerprint C.CDeviceFingerprint
 	result := C.DeviceFingerprint_DeserializeFromJson(cJsonData, &cFingerprint)
-	
+
 	if result != C.C_SUCCESS {
 		return nil, d.convertError(result)
 	}
-	
+
 	return d.convertCFingerprint(&cFingerprint), nil
 }
 
@@ -320,14 +323,14 @@ func (d *DeviceFingerprintCollector) IsDebuggerPresent() (bool, error) {
 	if !d.initialized {
 		return false, errors.New("collector not initialized")
 	}
-	
+
 	var isPresent C.int
 	result := C.DeviceFingerprint_IsDebuggerPresent(&isPresent)
-	
+
 	if result != C.C_SUCCESS {
 		return false, d.convertError(result)
 	}
-	
+
 	return isPresent != 0, nil
 }
 
@@ -336,14 +339,14 @@ func (d *DeviceFingerprintCollector) IsVirtualMachine() (bool, error) {
 	if !d.initialized {
 		return false, errors.New("collector not initialized")
 	}
-	
+
 	var isVM C.int
 	result := C.DeviceFingerprint_IsVirtualMachine(&isVM)
-	
+
 	if result != C.C_SUCCESS {
 		return false, d.convertError(result)
 	}
-	
+
 	return isVM != 0, nil
 }
 
@@ -352,18 +355,18 @@ func (d *DeviceFingerprintCollector) CheckSecurity() (int, string, error) {
 	if !d.initialized {
 		return 0, "", errors.New("collector not initialized")
 	}
-	
+
 	var securityLevel C.int
 	riskFactorsBuffer := make([]byte, 1024)
-	
+
 	result := C.DeviceFingerprint_CheckSecurity(&securityLevel,
 		(*C.char)(unsafe.Pointer(&riskFactorsBuffer[0])),
 		C.size_t(len(riskFactorsBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return 0, "", d.convertError(result)
 	}
-	
+
 	riskFactors := C.GoString((*C.char)(unsafe.Pointer(&riskFactorsBuffer[0])))
 	return int(securityLevel), riskFactors, nil
 }
@@ -373,14 +376,14 @@ func (d *DeviceFingerprintCollector) GetPerformanceStats() (*PerformanceStats, e
 	if !d.initialized {
 		return nil, errors.New("collector not initialized")
 	}
-	
+
 	var cStats C.CPerformanceStats
 	result := C.DeviceFingerprint_GetPerformanceStats(&cStats)
-	
+
 	if result != C.C_SUCCESS {
 		return nil, d.convertError(result)
 	}
-	
+
 	return &PerformanceStats{
 		CollectTimeUs:    uint64(cStats.collect_time_us),
 		HashTimeUs:       uint64(cStats.hash_time_us),
@@ -396,12 +399,12 @@ func (d *DeviceFingerprintCollector) ResetPerformanceStats() error {
 	if !d.initialized {
 		return errors.New("collector not initialized")
 	}
-	
+
 	result := C.DeviceFingerprint_ResetPerformanceStats()
 	if result != C.C_SUCCESS {
 		return d.convertError(result)
 	}
-	
+
 	return nil
 }
 
@@ -410,19 +413,19 @@ func (d *DeviceFingerprintCollector) SetPerformanceMonitoring(enable bool) error
 	if !d.initialized {
 		return errors.New("collector not initialized")
 	}
-	
+
 	var cEnable C.int
 	if enable {
 		cEnable = 1
 	} else {
 		cEnable = 0
 	}
-	
+
 	result := C.DeviceFingerprint_SetPerformanceMonitoring(cEnable)
 	if result != C.C_SUCCESS {
 		return d.convertError(result)
 	}
-	
+
 	return nil
 }
 
@@ -432,11 +435,11 @@ func GetVersion() (string, error) {
 	result := C.DeviceFingerprint_GetVersion(
 		(*C.char)(unsafe.Pointer(&versionBuffer[0])),
 		C.size_t(len(versionBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return "", errors.New("failed to get version")
 	}
-	
+
 	return C.GoString((*C.char)(unsafe.Pointer(&versionBuffer[0]))), nil
 }
 
@@ -446,22 +449,22 @@ func GetSupportedPlatforms() ([]string, error) {
 	result := C.DeviceFingerprint_GetSupportedPlatforms(
 		(*C.char)(unsafe.Pointer(&platformsBuffer[0])),
 		C.size_t(len(platformsBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return nil, errors.New("failed to get supported platforms")
 	}
-	
+
 	platformsStr := C.GoString((*C.char)(unsafe.Pointer(&platformsBuffer[0])))
 	if platformsStr == "" {
 		return []string{}, nil
 	}
-	
+
 	var platforms []string
 	if err := json.Unmarshal([]byte(platformsStr), &platforms); err != nil {
 		// 如果不是JSON格式，按逗号分割
 		return []string{platformsStr}, nil
 	}
-	
+
 	return platforms, nil
 }
 
@@ -483,11 +486,11 @@ func getErrorDescription(cError C.CErrorCode) string {
 	result := C.DeviceFingerprint_GetErrorDescription(cError,
 		(*C.char)(unsafe.Pointer(&errorBuffer[0])),
 		C.size_t(len(errorBuffer)))
-	
+
 	if result != C.C_SUCCESS {
 		return "Unknown error"
 	}
-	
+
 	return C.GoString((*C.char)(unsafe.Pointer(&errorBuffer[0])))
 }
 
@@ -516,7 +519,7 @@ func (d *DeviceFingerprintCollector) convertCFingerprint(cFp *C.CDeviceFingerpri
 // convertGoFingerprint 转换Go结构体为C结构体
 func (d *DeviceFingerprintCollector) convertGoFingerprint(goFp *DeviceFingerprint) C.CDeviceFingerprint {
 	var cFp C.CDeviceFingerprint
-	
+
 	// 安全复制字符串到C结构体
 	d.safeStrCopy(cFp.device_id[:], goFp.DeviceID)
 	d.safeStrCopy(cFp.device_type[:], string(goFp.DeviceType))
@@ -529,18 +532,18 @@ func (d *DeviceFingerprintCollector) convertGoFingerprint(goFp *DeviceFingerprin
 	d.safeStrCopy(cFp.username[:], goFp.Username)
 	d.safeStrCopy(cFp.screen_resolution[:], goFp.ScreenResolution)
 	d.safeStrCopy(cFp.fingerprint_hash[:], goFp.FingerprintHash)
-	
+
 	cFp.cpu_cores = C.uint(goFp.CPUCores)
 	cFp.total_memory = C.ulonglong(goFp.TotalMemory)
 	cFp.confidence_score = C.uint(goFp.ConfidenceScore)
-	
+
 	return cFp
 }
 
 // convertGoConfig 转换Go配置为C配置
 func (d *DeviceFingerprintCollector) convertGoConfig(goConfig *Configuration) C.CConfiguration {
 	var cConfig C.CConfiguration
-	
+
 	if goConfig.CollectSensitiveInfo {
 		cConfig.collect_sensitive_info = 1
 	}
@@ -550,10 +553,10 @@ func (d *DeviceFingerprintCollector) convertGoConfig(goConfig *Configuration) C.
 	if goConfig.EnableSignature {
 		cConfig.enable_signature = 1
 	}
-	
+
 	d.safeStrCopy(cConfig.encryption_key[:], goConfig.EncryptionKey)
 	cConfig.timeout_seconds = C.int(goConfig.TimeoutSeconds)
-	
+
 	return cConfig
 }
 
@@ -572,17 +575,17 @@ func (d *DeviceFingerprintCollector) convertCConfig(cConfig *C.CConfiguration) *
 func (d *DeviceFingerprintCollector) safeStrCopy(dest []C.char, src string) {
 	srcBytes := []byte(src)
 	maxLen := len(dest) - 1 // 保留一个字节用于null终止符
-	
+
 	copyLen := len(srcBytes)
 	if copyLen > maxLen {
 		copyLen = maxLen
 	}
-	
+
 	// 清空目标数组
 	for i := range dest {
 		dest[i] = 0
 	}
-	
+
 	// 复制数据
 	for i := 0; i < copyLen; i++ {
 		dest[i] = C.char(srcBytes[i])

@@ -210,8 +210,8 @@ func (s *PerformanceService) GetMetrics() *PerformanceMetrics {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	
-	// 更新系统指标
-	s.UpdateSystemMetrics()
+	// 不在这里更新系统指标，避免性能问题
+	// 系统指标由定时任务定期更新
 	
 	// 深拷贝指标数据
 	metrics := &PerformanceMetrics{

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"data-service/internal/database"
 	"data-service/internal/services"
 	"net/http"
 
@@ -12,14 +13,16 @@ import (
 type PerformanceHandler struct {
 	performanceService *services.PerformanceService
 	cacheService       *services.CacheService
+	database          *database.DB
 	logger             *logrus.Logger
 }
 
 // NewPerformanceHandler 创建性能监控处理器实例
-func NewPerformanceHandler(performanceService *services.PerformanceService, cacheService *services.CacheService, logger *logrus.Logger) *PerformanceHandler {
+func NewPerformanceHandler(performanceService *services.PerformanceService, cacheService *services.CacheService, database *database.DB, logger *logrus.Logger) *PerformanceHandler {
 	return &PerformanceHandler{
 		performanceService: performanceService,
 		cacheService:       cacheService,
+		database:          database,
 		logger:             logger,
 	}
 }
@@ -168,4 +171,23 @@ func (h *PerformanceHandler) WarmupCache(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, NewSuccessResponse("缓存预热已启动"))
+}
+
+// GetDBPoolStats 获取数据库连接池统计
+// @Summary 获取数据库连接池统计
+// @Description 获取PostgreSQL数据库连接池的详细统计信息
+// @Tags Performance
+// @Accept json
+// @Produce json
+// @Success 200 {object} APIResponse{data=map[string]interface{}} "成功"
+// @Failure 500 {object} APIResponse "服务器错误"
+// @Router /api/v1/performance/db-pool-stats [get]
+func (h *PerformanceHandler) GetDBPoolStats(c *gin.Context) {
+	if h.database == nil {
+		c.JSON(http.StatusInternalServerError, NewErrorResponse("数据库未初始化"))
+		return
+	}
+
+	stats := h.database.GetConnectionPoolStats()
+	c.JSON(http.StatusOK, NewSuccessResponse(stats))
 }

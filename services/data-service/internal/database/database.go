@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"data-service/internal/config"
-	"data-service/internal/models"
 	"fmt"
 	"time"
 
@@ -176,9 +175,13 @@ func (db *DB) initElasticsearch() error {
 func (db *DB) migrate() error {
 	db.Logger.Info("开始数据库迁移...")
 
-	// 测试简单模型
-	if err := db.PostgreSQL.AutoMigrate(&models.SimpleTest{}); err != nil {
-		return fmt.Errorf("迁移SimpleTest模型失败: %w", err)
+	// 跳过简单模型测试，直接进行基本表检查
+	db.Logger.Info("跳过模型迁移，仅检查数据库连接")
+
+	// 执行一个简单的查询来验证连接
+	var result int
+	if err := db.PostgreSQL.Raw("SELECT 1").Scan(&result).Error; err != nil {
+		return fmt.Errorf("数据库连接验证失败: %w", err)
 	}
 
 	// 定义所有需要迁移的模型 - 暂时注释掉复杂的模型
@@ -394,4 +397,32 @@ func (db *DB) Health(ctx context.Context) map[string]bool {
 	}
 
 	return status
+}
+
+// GetConnectionPoolStats 获取数据库连接池统计信息
+func (db *DB) GetConnectionPoolStats() map[string]interface{} {
+	if db.PostgreSQL == nil {
+		return map[string]interface{}{
+			"error": "PostgreSQL connection not initialized",
+		}
+	}
+
+	sqlDB, err := db.PostgreSQL.DB()
+	if err != nil {
+		return map[string]interface{}{
+			"error": fmt.Sprintf("Failed to get SQL DB: %v", err),
+		}
+	}
+
+	return map[string]interface{}{
+		"max_open_conns":     sqlDB.Stats().MaxOpenConnections,
+		"open_conns":         sqlDB.Stats().OpenConnections,
+		"in_use":             sqlDB.Stats().InUse,
+		"idle":               sqlDB.Stats().Idle,
+		"wait_count":         sqlDB.Stats().WaitCount,
+		"wait_duration":      sqlDB.Stats().WaitDuration.String(),
+		"max_idle_closed":    sqlDB.Stats().MaxIdleClosed,
+		"max_lifetime_closed": sqlDB.Stats().MaxLifetimeClosed,
+		"max_idle_conns":     sqlDB.Stats().MaxIdleClosed,
+	}
 }

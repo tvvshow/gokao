@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gaokaohub/payment-service/internal/models"
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // MembershipService 会员服务
@@ -73,7 +74,11 @@ func (s *MembershipService) Subscribe(ctx context.Context, userID, orderNo strin
 	}
 
 	// 检查订单是否属于该用户
-	if order.UserID != userID {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+	if order.UserID != userUUID {
 		return fmt.Errorf("order does not belong to user")
 	}
 
@@ -202,7 +207,7 @@ func (s *MembershipService) RenewMembership(ctx context.Context, userID, planCod
 	}
 
 	// 生成续费订单号
-	orderNo := generateOrderNo()
+	orderNo := fmt.Sprintf("RN%d", time.Now().Unix())
 
 	// 计算续费开始时间
 	var startTime time.Time
@@ -336,7 +341,7 @@ func (s *MembershipService) ConsumeQuery(ctx context.Context, userID string) err
 
 	// 更新使用次数
 	query := `
-		UPDATE user_memberships 
+		UPDATE user_memberships
 		SET used_queries = used_queries + 1, updated_at = $1
 		WHERE user_id = $2 AND status = $3
 	`
@@ -344,6 +349,61 @@ func (s *MembershipService) ConsumeQuery(ctx context.Context, userID string) err
 	_, err = s.db.ExecContext(ctx, query, time.Now(), userID, models.MembershipStatusActive)
 	if err != nil {
 		return fmt.Errorf("failed to consume query: %w", err)
+	}
+
+	// 清除缓存
+	s.clearMembershipCache(ctx, userID)
+
+	return nil
+}
+
+// CheckMembershipPermission 检查会员权限
+func (s *MembershipService) CheckMembershipPermission(ctx context.Context, userID string, feature string) (bool, error) {
+	status, err := s.GetMembershipStatus(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+
+	// 非VIP用户只能使用基础功能
+	if !status.IsVIP {
+		basicFeatures := map[string]bool{
+			"basic_query":      true,
+			"basic_university": true,
+		}
+		return basicFeatures[feature], nil
+	}
+
+	// VIP用户检查具体功能权限
+	features := status.Features
+	if enabled, exists := features[feature]; exists {
+		if enabledBool, ok := enabled.(bool); ok {
+			return enabledBool, nil
+		}
+	}
+
+	return false, nil
+}
+
+// UpdateAutoRenew 更新自动续费设置
+func (s *MembershipService) UpdateAutoRenew(ctx context.Context, userID string, autoRenew bool) error {
+	query := `
+		UPDATE user_memberships
+		SET auto_renew = $1, updated_at = $2
+		WHERE user_id = $3 AND status = $4
+	`
+
+	result, err := s.db.ExecContext(ctx, query, autoRenew, time.Now(), userID, models.MembershipStatusActive)
+	if err != nil {
+		return fmt.Errorf("failed to update auto renew: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no active membership found for user")
 	}
 
 	// 清除缓存
@@ -400,8 +460,8 @@ func (s *MembershipService) getPaymentOrder(ctx context.Context, orderNo string)
 	err := s.db.QueryRowContext(ctx, query, orderNo).Scan(
 		&order.ID, &order.OrderNo, &order.UserID, &order.Amount,
 		&order.Currency, &order.Subject, &order.Description, &order.Status,
-		&order.PaymentChannel, &order.ChannelTradeNo, &order.ClientIP,
-		&order.NotifyURL, &order.ReturnURL, &order.ExpireTime,
+		&order.Channel, &order.ChannelTradeNo, &order.ClientIP,
+		&order.NotifyURL, &order.ReturnURL, &order.ExpiredAt,
 		&order.PaidAt, &order.CreatedAt, &order.UpdatedAt, &order.Metadata,
 	)
 

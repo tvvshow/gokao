@@ -9,16 +9,19 @@ import (
 
 // PaymentRequest 支付请求参数
 type PaymentRequest struct {
-	OrderNo     string          `json:"order_no"`
-	Amount      decimal.Decimal `json:"amount"`
-	Subject     string          `json:"subject"`
-	Description string          `json:"description"`
-	NotifyURL   string          `json:"notify_url"`
-	ReturnURL   string          `json:"return_url"`
-	UserID      string          `json:"user_id"`
-	ClientIP    string          `json:"client_ip"`
-	ExpireTime  time.Duration   `json:"expire_time"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	OrderNo       string                 `json:"order_no"`
+	OutTradeNo    string                 `json:"out_trade_no"`
+	Amount        decimal.Decimal        `json:"amount"`
+	Subject       string                 `json:"subject"`
+	Description   string                 `json:"description"`
+	NotifyURL     string                 `json:"notify_url"`
+	ReturnURL     string                 `json:"return_url"`
+	UserID        string                 `json:"user_id"`
+	ClientIP      string                 `json:"client_ip"`
+	PaymentMethod string                 `json:"payment_method"`
+	OpenID        string                 `json:"open_id"`
+	ExpireTime    time.Duration          `json:"expire_time"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 // PaymentResponse 支付响应
@@ -49,17 +52,19 @@ type RefundRequest struct {
 	RefundNo       string          `json:"refund_no"`
 	ChannelTradeNo string          `json:"channel_trade_no"`
 	Amount         decimal.Decimal `json:"amount"`
+	RefundAmount   decimal.Decimal `json:"refund_amount"`
+	TotalAmount    decimal.Decimal `json:"total_amount"`
 	Reason         string          `json:"reason"`
 	NotifyURL      string          `json:"notify_url"`
 }
 
 // RefundResponse 退款响应
 type RefundResponse struct {
-	RefundNo       string          `json:"refund_no"`
-	ChannelRefundNo string         `json:"channel_refund_no"`
-	Amount         decimal.Decimal `json:"amount"`
-	Status         string          `json:"status"`
-	RefundedAt     time.Time       `json:"refunded_at"`
+	RefundNo        string          `json:"refund_no"`
+	ChannelRefundNo string          `json:"channel_refund_no"`
+	Amount          decimal.Decimal `json:"amount"`
+	Status          string          `json:"status"`
+	RefundedAt      time.Time       `json:"refunded_at"`
 }
 
 // QueryRequest 查询请求
@@ -110,12 +115,25 @@ type PaymentAdapterFactory interface {
 // AdapterConfig 适配器配置
 type AdapterConfig struct {
 	AppID      string `json:"app_id"`
+	MchID      string `json:"mch_id"`
+	APIKey     string `json:"api_key"`
 	PrivateKey string `json:"private_key"`
 	PublicKey  string `json:"public_key"`
 	NotifyURL  string `json:"notify_url"`
 	ReturnURL  string `json:"return_url"`
 	SignType   string `json:"sign_type"`
+	IsProd     bool   `json:"is_prod"`
 	Sandbox    bool   `json:"sandbox"`
+	Debug      bool   `json:"debug"`
+}
+
+// NotifyResponse 异步通知响应
+type NotifyResponse struct {
+	Success   bool      `json:"success"`
+	OrderNo   string    `json:"order_no"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // PaymentError 支付错误

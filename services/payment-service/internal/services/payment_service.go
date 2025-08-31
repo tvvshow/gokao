@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 	"github.com/gaokaohub/payment-service/internal/adapters"
 	"github.com/gaokaohub/payment-service/internal/models"
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // PaymentService 支付服务
@@ -39,22 +38,26 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *adapters.Paymen
 	}
 
 	// 创建支付订单记录
+	userUUID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	expireTime := time.Now().Add(req.ExpireTime)
 	order := &models.PaymentOrder{
-		OrderNo:        req.OrderNo,
-		UserID:         req.UserID,
-		Amount:         req.Amount,
-		Currency:       "CNY",
-		Subject:        req.Subject,
-		Description:    req.Description,
-		Status:         models.PaymentStatusPending,
-		PaymentChannel: req.Metadata["channel"].(string),
-		ClientIP:       req.ClientIP,
-		NotifyURL:      req.NotifyURL,
-		ReturnURL:      req.ReturnURL,
-		ExpireTime:     timePtr(time.Now().Add(req.ExpireTime)),
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-		Metadata:       models.JSONB(req.Metadata),
+		OrderNo:     req.OrderNo,
+		UserID:      userUUID,
+		Amount:      req.Amount,
+		Currency:    "CNY",
+		Subject:     req.Subject,
+		Description: req.Description,
+		Status:      models.PaymentStatusPending,
+		Channel:     req.PaymentMethod,
+		ClientIP:    req.ClientIP,
+		NotifyURL:   req.NotifyURL,
+		ReturnURL:   req.ReturnURL,
+		ExpiredAt:   &expireTime,
+		Metadata:    models.PaymentJSONB(req.Metadata),
 	}
 
 	// 保存订单到数据库
@@ -125,7 +128,7 @@ func (s *PaymentService) QueryPayment(ctx context.Context, orderNo string) (*ada
 	}
 
 	// 获取支付适配器
-	adapter, err := s.adapterFactory.GetAdapter(order.PaymentChannel)
+	adapter, err := s.adapterFactory.GetAdapter(order.Channel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get payment adapter: %w", err)
 	}
@@ -162,20 +165,21 @@ func (s *PaymentService) CreateRefund(ctx context.Context, req *adapters.RefundR
 	}
 
 	// 获取支付适配器
-	adapter, err := s.adapterFactory.GetAdapter(order.PaymentChannel)
+	adapter, err := s.adapterFactory.GetAdapter(order.Channel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get payment adapter: %w", err)
 	}
 
 	// 创建退款记录
-	refund := &models.RefundRecord{
-		RefundNo:  req.RefundNo,
-		OrderNo:   req.OrderNo,
-		Amount:    req.Amount,
-		Reason:    req.Reason,
-		Status:    models.RefundStatusPending,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	refund := &models.PaymentRefund{
+		RefundNo:     req.RefundNo,
+		OrderID:      order.ID,
+		OrderNo:      req.OrderNo,
+		Amount:       order.Amount,
+		RefundAmount: req.RefundAmount,
+		Reason:       req.Reason,
+		Status:       models.RefundStatusProcessing,
+		Channel:      order.Channel,
 	}
 
 	if err := s.saveRefundRecord(ctx, refund); err != nil {
@@ -212,7 +216,7 @@ func (s *PaymentService) CloseOrder(ctx context.Context, orderNo string) error {
 	}
 
 	// 获取支付适配器
-	adapter, err := s.adapterFactory.GetAdapter(order.PaymentChannel)
+	adapter, err := s.adapterFactory.GetAdapter(order.Channel)
 	if err != nil {
 		return fmt.Errorf("failed to get payment adapter: %w", err)
 	}
@@ -229,9 +233,10 @@ func (s *PaymentService) CloseOrder(ctx context.Context, orderNo string) error {
 // GetSupportedChannels 获取支持的支付渠道
 func (s *PaymentService) GetSupportedChannels() []string {
 	return []string{
-		models.PaymentChannelAlipay,
-		models.PaymentChannelWechat,
-		models.PaymentChannelUnionPay,
+		models.ChannelAlipay,
+		models.ChannelWechat,
+		models.ChannelUnionpay,
+		models.ChannelQQ,
 	}
 }
 
@@ -247,8 +252,8 @@ func (s *PaymentService) savePaymentOrder(ctx context.Context, order *models.Pay
 
 	_, err := s.db.ExecContext(ctx, query,
 		order.OrderNo, order.UserID, order.Amount, order.Currency,
-		order.Subject, order.Description, order.Status, order.PaymentChannel,
-		order.ClientIP, order.NotifyURL, order.ReturnURL, order.ExpireTime,
+		order.Subject, order.Description, order.Status, order.Channel,
+		order.ClientIP, order.NotifyURL, order.ReturnURL, order.ExpiredAt,
 		order.CreatedAt, order.UpdatedAt, order.Metadata,
 	)
 
@@ -269,8 +274,8 @@ func (s *PaymentService) getPaymentOrder(ctx context.Context, orderNo string) (*
 	err := s.db.QueryRowContext(ctx, query, orderNo).Scan(
 		&order.ID, &order.OrderNo, &order.UserID, &order.Amount,
 		&order.Currency, &order.Subject, &order.Description, &order.Status,
-		&order.PaymentChannel, &order.ChannelTradeNo, &order.ClientIP,
-		&order.NotifyURL, &order.ReturnURL, &order.ExpireTime,
+		&order.Channel, &order.ChannelTradeNo, &order.ClientIP,
+		&order.NotifyURL, &order.ReturnURL, &order.ExpiredAt,
 		&order.PaidAt, &order.CreatedAt, &order.UpdatedAt, &order.Metadata,
 	)
 
@@ -294,7 +299,7 @@ func (s *PaymentService) updateOrderStatus(ctx context.Context, orderNo, status 
 }
 
 // saveRefundRecord 保存退款记录
-func (s *PaymentService) saveRefundRecord(ctx context.Context, refund *models.RefundRecord) error {
+func (s *PaymentService) saveRefundRecord(ctx context.Context, refund *models.PaymentRefund) error {
 	query := `
 		INSERT INTO refund_records (
 			refund_no, order_no, amount, reason, status, created_at, updated_at

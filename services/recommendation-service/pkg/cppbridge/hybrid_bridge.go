@@ -182,6 +182,15 @@ type HybridStats struct {
 	CacheMaxSize          int     `json:"cache_max_size"`
 }
 
+// HybridRecommendationBridge 混合推荐引擎接口
+type HybridRecommendationBridge interface {
+	Close()
+	GenerateHybridPlan(student *Student, maxVolunteers int) (*VolunteerPlan, error)
+	SetFusionWeights(traditionalWeight, aiWeight float64) error
+	GetHybridExplanation(recommendation *VolunteerRecommendation) (string, error)
+	GetHybridStats() (*HybridStats, error)
+}
+
 // CppHybridRecommendationBridge C++混合推荐引擎的Go桥接器
 type CppHybridRecommendationBridge struct {
 	engine            unsafe.Pointer
@@ -199,9 +208,18 @@ func NewHybridRecommendationBridge(configPath string) (HybridRecommendationBridg
 		return nil, errors.New("failed to create hybrid recommendation engine")
 	}
 	
-	// TODO: 这里需要创建传统匹配器和AI引擎
-	// bridge.traditionalMatcher = C.CreateVolunteerMatcher()
-	// bridge.aiEngine = C.CreateAIRecommendationEngine()
+	// 创建传统匹配器和AI引擎
+	bridge.traditionalMatcher = C.CreateVolunteerMatcher()
+	if bridge.traditionalMatcher == nil {
+		bridge.Close()
+		return nil, errors.New("failed to create traditional volunteer matcher")
+	}
+	
+	bridge.aiEngine = C.CreateAIRecommendationEngine()
+	if bridge.aiEngine == nil {
+		bridge.Close()
+		return nil, errors.New("failed to create AI recommendation engine")
+	}
 	
 	// 初始化引擎
 	configPathC := C.CString(configPath)
@@ -214,33 +232,33 @@ func NewHybridRecommendationBridge(configPath string) (HybridRecommendationBridg
 	}
 	
 	// 设置finalizer确保资源释放
-	runtime.SetFinalizer(bridge, (*HybridRecommendationBridge).Close)
+	runtime.SetFinalizer(bridge, (*CppHybridRecommendationBridge).Close)
 	
 	return bridge, nil
 }
 
 // Close 关闭桥接器并释放资源
-func (b *HybridRecommendationBridge) Close() {
+func (b *CppHybridRecommendationBridge) Close() {
 	if b.engine != nil {
 		C.DestroyHybridRecommendationEngine(b.engine)
 		b.engine = nil
 	}
 	
-	// TODO: 释放其他C++对象
-	// if b.traditionalMatcher != nil {
-	//     C.DestroyVolunteerMatcher(b.traditionalMatcher)
-	//     b.traditionalMatcher = nil
-	// }
-	// if b.aiEngine != nil {
-	//     C.DestroyAIRecommendationEngine(b.aiEngine)
-	//     b.aiEngine = nil
-	// }
+	// 释放其他C++对象
+	if b.traditionalMatcher != nil {
+		C.DestroyVolunteerMatcher(b.traditionalMatcher)
+		b.traditionalMatcher = nil
+	}
+	if b.aiEngine != nil {
+		C.DestroyAIRecommendationEngine(b.aiEngine)
+		b.aiEngine = nil
+	}
 	
 	runtime.SetFinalizer(b, nil)
 }
 
 // GenerateHybridPlan 生成混合推荐方案
-func (b *HybridRecommendationBridge) GenerateHybridPlan(student *Student, maxVolunteers int) (*VolunteerPlan, error) {
+func (b *CppHybridRecommendationBridge) GenerateHybridPlan(student *Student, maxVolunteers int) (*VolunteerPlan, error) {
 	if b.engine == nil {
 		return nil, errors.New("hybrid engine not initialized")
 	}
@@ -262,7 +280,7 @@ func (b *HybridRecommendationBridge) GenerateHybridPlan(student *Student, maxVol
 }
 
 // SetFusionWeights 设置融合权重
-func (b *HybridRecommendationBridge) SetFusionWeights(traditionalWeight, aiWeight float64) error {
+func (b *CppHybridRecommendationBridge) SetFusionWeights(traditionalWeight, aiWeight float64) error {
 	if b.engine == nil {
 		return errors.New("hybrid engine not initialized")
 	}
@@ -276,7 +294,7 @@ func (b *HybridRecommendationBridge) SetFusionWeights(traditionalWeight, aiWeigh
 }
 
 // GetHybridExplanation 获取混合推荐解释
-func (b *HybridRecommendationBridge) GetHybridExplanation(recommendation *VolunteerRecommendation) (string, error) {
+func (b *CppHybridRecommendationBridge) GetHybridExplanation(recommendation *VolunteerRecommendation) (string, error) {
 	if b.engine == nil {
 		return "", errors.New("hybrid engine not initialized")
 	}
@@ -294,7 +312,7 @@ func (b *HybridRecommendationBridge) GetHybridExplanation(recommendation *Volunt
 }
 
 // GetHybridStats 获取混合引擎统计信息
-func (b *HybridRecommendationBridge) GetHybridStats() (*HybridStats, error) {
+func (b *CppHybridRecommendationBridge) GetHybridStats() (*HybridStats, error) {
 	if b.engine == nil {
 		return nil, errors.New("hybrid engine not initialized")
 	}
@@ -316,7 +334,7 @@ func (b *HybridRecommendationBridge) GetHybridStats() (*HybridStats, error) {
 }
 
 // 辅助函数：Go Student转C Student
-func (b *HybridRecommendationBridge) studentToC(student *Student) *C.C_Student {
+func (b *CppHybridRecommendationBridge) studentToC(student *Student) *C.C_Student {
 	cStudent := (*C.C_Student)(C.malloc(C.size_t(unsafe.Sizeof(C.C_Student{}))))
 	
 	cStudent.student_id = C.CString(student.StudentID)
@@ -384,7 +402,7 @@ func (b *HybridRecommendationBridge) studentToC(student *Student) *C.C_Student {
 }
 
 // 辅助函数：释放C Student
-func (b *HybridRecommendationBridge) freeCStudent(cStudent *C.C_Student) {
+func (b *CppHybridRecommendationBridge) freeCStudent(cStudent *C.C_Student) {
 	if cStudent == nil {
 		return
 	}
@@ -423,7 +441,7 @@ func (b *HybridRecommendationBridge) freeCStudent(cStudent *C.C_Student) {
 }
 
 // 辅助函数：Go Recommendation转C Recommendation
-func (b *HybridRecommendationBridge) recommendationToC(rec *VolunteerRecommendation) *C.C_VolunteerRecommendation {
+func (b *CppHybridRecommendationBridge) recommendationToC(rec *VolunteerRecommendation) *C.C_VolunteerRecommendation {
 	cRec := (*C.C_VolunteerRecommendation)(C.malloc(C.size_t(unsafe.Sizeof(C.C_VolunteerRecommendation{}))))
 	
 	cRec.university_id = C.CString(rec.UniversityID)
@@ -450,7 +468,7 @@ func (b *HybridRecommendationBridge) recommendationToC(rec *VolunteerRecommendat
 }
 
 // 辅助函数：释放C Recommendation
-func (b *HybridRecommendationBridge) freeCRecommendation(cRec *C.C_VolunteerRecommendation) {
+func (b *CppHybridRecommendationBridge) freeCRecommendation(cRec *C.C_VolunteerRecommendation) {
 	if cRec == nil {
 		return
 	}
@@ -474,7 +492,7 @@ func (b *HybridRecommendationBridge) freeCRecommendation(cRec *C.C_VolunteerReco
 }
 
 // 辅助函数：C Plan转Go Plan
-func (b *HybridRecommendationBridge) cPlanToGo(cPlan *C.C_VolunteerPlan) *VolunteerPlan {
+func (b *CppHybridRecommendationBridge) cPlanToGo(cPlan *C.C_VolunteerPlan) *VolunteerPlan {
 	plan := &VolunteerPlan{
 		StudentID:        C.GoString(cPlan.student_id),
 		TotalVolunteers:  int(cPlan.total_volunteers),

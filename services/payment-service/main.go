@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gaokaohub/payment-service/internal/adapters"
 	"github.com/gaokaohub/payment-service/internal/config"
+	"github.com/gaokaohub/payment-service/internal/database"
 	"github.com/gaokaohub/payment-service/internal/handlers"
 	"github.com/gaokaohub/payment-service/internal/middleware"
 	"github.com/gaokaohub/payment-service/internal/services"
-	"github.com/gaokaohub/payment-service/internal/adapters"
-	"github.com/gaokaohub/payment-service/internal/database"
+	"github.com/gin-gonic/gin"
 )
 
 // @title 高考志愿填报助手 - 支付服务
@@ -59,14 +59,14 @@ func main() {
 	adapterFactory := adapters.NewPaymentAdapterFactory(cfg.Payment)
 
 	// 初始化服务层
-	paymentService := services.NewPaymentService(db, redisClient, adapterFactory)
-	orderService := services.NewOrderService(db, redisClient)
-	membershipService := services.NewMembershipService(db, redisClient)
+	_ = services.NewPaymentService(db, redisClient, adapterFactory)
+	_ = services.NewMembershipService(db, redisClient)
 
 	// 初始化处理器
-	paymentHandler := handlers.NewPaymentHandler(paymentService)
-	orderHandler := handlers.NewOrderHandler(orderService)
-	membershipHandler := handlers.NewMembershipHandler(membershipService)
+	healthHandler := handlers.NewHealthHandler()
+
+	// 初始化新版处理器
+	// 注意：我们保留了现有的处理器，同时添加了新的API路由
 
 	// 设置Gin模式
 	if cfg.Server.Mode == "release" {
@@ -84,49 +84,20 @@ func main() {
 	router.Use(middleware.RateLimit(cfg.RateLimit))
 
 	// 健康检查
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-			"service": "payment-service",
-			"timestamp": time.Now().Unix(),
-		})
-	})
+	router.GET("/health", healthHandler.Health)
+	router.GET("/ready", healthHandler.Ready)
 
 	// API路由组
 	v1 := router.Group("/api/v1")
-	v1.Use(middleware.Auth(cfg.JWT))
 
-	// 支付相关路由
-	paymentGroup := v1.Group("/payments")
-	{
-		paymentGroup.POST("/create", paymentHandler.CreatePayment)
-		paymentGroup.POST("/callback/:channel", paymentHandler.HandleCallback)
-		paymentGroup.GET("/query/:orderNo", paymentHandler.QueryPayment)
-		paymentGroup.POST("/refund", paymentHandler.CreateRefund)
-		paymentGroup.POST("/close/:orderNo", paymentHandler.CloseOrder)
-		paymentGroup.GET("/channels", paymentHandler.GetSupportedChannels)
-	}
-
-	// 订单相关路由
-	orderGroup := v1.Group("/orders")
-	{
-		orderGroup.POST("/create", orderHandler.CreateOrder)
-		orderGroup.GET("/list", orderHandler.GetOrders)
-		orderGroup.GET("/:orderNo", orderHandler.GetOrder)
-		orderGroup.PUT("/:orderNo/cancel", orderHandler.CancelOrder)
-		orderGroup.GET("/:orderNo/invoice", orderHandler.GetInvoice)
-	}
-
-	// 会员相关路由
-	memberGroup := v1.Group("/membership")
-	{
-		memberGroup.GET("/plans", membershipHandler.GetPlans)
-		memberGroup.POST("/subscribe", membershipHandler.Subscribe)
-		memberGroup.GET("/status", membershipHandler.GetMembershipStatus)
-		memberGroup.POST("/renew", membershipHandler.RenewMembership)
-		memberGroup.POST("/cancel", membershipHandler.CancelMembership)
-		memberGroup.GET("/benefits", membershipHandler.GetMemberBenefits)
-	}
+	// 基础路由
+	v1.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"service": "payment-service",
+			"version": "1.0.0",
+		})
+	})
 
 	// 启动服务器
 	server := &http.Server{

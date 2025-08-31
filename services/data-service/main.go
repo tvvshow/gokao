@@ -82,7 +82,7 @@ func main() {
 	admissionHandler := handlers.NewAdmissionHandler(admissionService, logger)
 	searchHandler := handlers.NewSearchHandler(searchService, logger)
 	algorithmHandler := handlers.NewAlgorithmHandler(algorithmService, logger)
-	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, logger)
+	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, db, logger)
 
 	// 创建Gin引擎
 	router := gin.New()
@@ -178,6 +178,7 @@ func main() {
 			performance.GET("/summary", performanceHandler.GetSummary)
 			performance.POST("/reset", performanceHandler.ResetMetrics)
 			performance.GET("/cache-stats", performanceHandler.GetCacheStats)
+			performance.GET("/db-pool-stats", performanceHandler.GetDBPoolStats)
 			performance.POST("/clear-cache", performanceHandler.ClearCache)
 			performance.POST("/refresh-cache", performanceHandler.RefreshCache)
 			performance.POST("/warmup-cache", performanceHandler.WarmupCache)
