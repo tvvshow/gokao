@@ -18,22 +18,15 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.25'
+        cache: true
     
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-    
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
     
     - name: Cache Node modules
       uses: actions/cache@v3
@@ -43,10 +36,62 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
     
-    - name: Go Lint
+    # 验证Swagger文档是否最新
+    - name: Verify Swagger docs up-to-date
+      env:
+        GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
       run: |
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-        golangci-lint run ./...
+        cd services/api-gateway
+        go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "Swagger docs are out-of-date. Please run 'go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal' and commit the changes."
+          git diff -- docs/ | sed -n '1,200p'
+          exit 1
+        fi
+    
+    # API Gateway构建和测试
+    - name: Build and Test (api-gateway)
+      env:
+        GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+      run: |
+        cd services/api-gateway
+        go mod tidy
+        go build ./...
+        go test ./... -coverprofile=coverage.out
+        # Coverage gate: fail if below 60%
+        total=$(go tool cover -func=coverage.out | awk '/total:/ {print substr($3, 1, length($3)-1)}')
+        echo "Total coverage: ${total}%"
+        awk -v t="$total" 'BEGIN{ if (t+0 < 60) { print "Coverage below 60%"; exit 1 } }'
+    
+    # Go代码检查
+    - name: Lint (golangci-lint)
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: services/api-gateway
+        args: --timeout=5m
+    
+    # 上传覆盖率报告
+    - name: Upload coverage (artifact)
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-coverage
+        path: services/api-gateway/coverage.out
+        if-no-files-found: ignore
+    
+    # 生产环境保护：确保生产构建禁用Swagger
+    - name: Production Guard - Verify prod compose disables Swagger
+      if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+      run: |
+        test -f docker-compose.prod.yml
+        if ! grep -q "ENABLE_SWAGGER=0" docker-compose.prod.yml; then
+          echo "Expected ENABLE_SWAGGER=0 in docker-compose.prod.yml for production."; exit 1; fi
+    
+    - name: Production Guard - Verify main.go has startup warning
+      if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+      run: |
+        if ! grep -q "Swagger UI is enabled in release mode" services/api-gateway/main.go; then
+          echo "Expected startup warning for Swagger in release mode in main.go"; exit 1; fi
     
     - name: Go Vet
       run: go vet ./...

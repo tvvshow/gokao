@@ -1,0 +1,73 @@
+
+services:
+  drone-server:
+    image: drone/drone:2
+    container_name: drone-server
+    restart: always
+    environment:
+      # 【必须修改】你的服务器IP地址
+      - DRONE_SERVER_HOST=166.108.233.220
+      - DRONE_SERVER_PROTO=http
+
+      # 【必须修改】Gitea 配置
+      - DRONE_GITHUB_SERVER=https://github.com
+      - DRONE_GITHUB_CLIENT_ID=Ov23liNLo3pLvkuJvaol
+      - DRONE_GITHUB_CLIENT_SECRET=8976c7bd9894c2fb480276fa0b8a0149afa8c0d0
+
+      # 【必须修改】生成随机密钥：运行 openssl rand -hex 16
+      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725
+      - DRONE_USER_CREATE=username:oktetopython,admin:true
+      - DRONE_USER_FILTER=oktetopython
+    volumes:
+      - drone-data:/data
+    ports:
+      - "80:80"
+
+  drone-runner:
+    image: drone/drone-runner-docker:1
+    container_name: drone-runner
+    restart: always
+    depends_on:
+      - drone-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_RPC_HOST=drone-server
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725  # 必须和上面的一样
+      - DRONE_RUNNER_NAME=my-runner
+      - DRONE_RUNNER_CAPACITY=2
+
+volumes:
+  drone-data:
+  上面是我服务器上面的设置文件，
+  Webhooks / Manage webhook
+Settings
+Recent Deliveries
+We'll send a POST request to the URL below with details of any subscribed events. You can also specify which data format you'd like to receive (JSON, x-www-form-urlencoded, etc). More information can be found in our developer documentation.
+￼
+Payload URL 
+http://166.108.233.220/hook
+Content type 
+￼
+Secret
+6b6c389c06c7e33f3eab00bf1b483725
+Cancel
+￼
+SSL verification
+ By default, we verify SSL certificates when delivering payloads.
+￼
+ Enable SSL verification 
+￼
+ Disable (not recommended)
+￼
+Which events would you like to trigger this webhook?
+￼
+Just the push event.
+￼
+Send me everything.
+￼
+￼
+￼
+We will deliver event details when this hook is triggered.
+这是github里面的设置。
