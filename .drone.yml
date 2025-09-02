@@ -114,33 +114,29 @@ steps:
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
-    # environment: # Temporarily comment out environment variables for debugging
-    #   DOCKER_USERNAME:
-    #     from_secret: docker_username
-    #   DOCKER_PASSWORD:
-    #     from_secret: docker_password
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
     commands:
-      - echo "Running docker version..."
       - docker version
-      - echo "Docker version command completed."
-      # - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin # Temporarily comment out login
-      # - | # Temporarily comment out image build/tag/push loop
-      #   services="api-gateway user-service data-service recommendation-service payment-service"
-      #   for service in $services; do
-      #     echo "Building Docker image for $service..."
-      #     cd services/$service
-      #     echo "Attempting to build image: gaokaohub/$service:${DRONE_COMMIT_SHA:0:8}"
-      #     docker build -t gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} .
-      #     echo "Attempting to tag image: gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} as gaokaohub/$service:latest"
-      #     docker tag gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} gaokaohub/$service:latest
+      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+      - |
+        services="api-gateway user-service data-service recommendation-service payment-service"
+        for service in $services; do
+          echo "Building Docker image for $service..."
+          cd services/$service
+          docker build -t gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} .
+          docker tag gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} gaokaohub/$service:latest
           
-      #     # 只在master分支推送到registry
-      #     if [ "$DRONE_BRANCH" = "master" ]; then
-      #       docker push gaokaohub/$service:${DRONE_COMMIT_SHA:0:8}
-      #       docker push gaokaohub/$service:latest
-      #     fi
-      #     cd ../..
-      #   done
+          # 只在master分支推送到registry
+          if [ "$DRONE_BRANCH" = "master" ]; then
+            docker push gaokaohub/$service:${DRONE_COMMIT_SHA:0:8}
+            docker push gaokaohub/$service:latest
+          fi
+          cd ../..
+        done
     when:
       event: [push]
 
@@ -305,9 +301,8 @@ steps:
   - name: notify-success
     image: plugins/slack
     settings:
-      # WARNING: Hardcoding sensitive information like webhook URLs is a security risk.
-      # It is highly recommended to use Drone CI secrets for this purpose in production.
-      webhook: http://166.108.233.220/hook
+      webhook:
+        from_secret: slack_webhook
       channel: ci-cd
       username: drone
       template: |
