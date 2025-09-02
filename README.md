@@ -60,7 +60,7 @@ college-entrance-exam-app/
 │   └── monitoring/        # 监控配置
 └── docs/                   # 文档
 ```
-
+1.25.02
 ## 开发指南
 
 详见 [开发文档](docs/development.md)
