@@ -295,21 +295,39 @@ name: notify
 
 steps:
   - name: notify-success
-    image: plugins/slack
+    image: plugins/slack:1.4.1
     settings:
       webhook:
         from_secret: slack_webhook
-      channel: ci-cd
-      username: drone
+      channel: deployments
+      username: drone-ci
       template: |
-        🎉 **构建成功** 
-        仓库: {{repo.name}}
+        ✅ **构建成功**
+        项目: {{repo.name}}
         分支: {{build.branch}}
         提交: {{build.commit}}
         作者: {{build.author}}
         构建时间: {{since build.started}}
+        构建链接: {{build.link}}
     when:
       status: [success]
+
+  - name: notify-failure
+    image: plugins/slack:1.4.1
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: deployments
+      username: drone-ci
+      template: |
+        ❌ **构建失败**
+        项目: {{repo.name}}
+        分支: {{build.branch}}
+        状态: {{build.status}}
+        作者: {{build.author}}
+        构建链接: {{build.link}}
+    when:
+      status: [failure]
 
 trigger:
   status: [success, failure]
