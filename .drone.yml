@@ -127,7 +127,9 @@ steps:
         for service in $services; do
           echo "Building Docker image for $service..."
           cd services/$service
+          echo "Attempting to build image: gaokaohub/$service:${DRONE_COMMIT_SHA:0:8}"
           docker build -t gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} .
+          echo "Attempting to tag image: gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} as gaokaohub/$service:latest"
           docker tag gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} gaokaohub/$service:latest
           
           # 只在master分支推送到registry
