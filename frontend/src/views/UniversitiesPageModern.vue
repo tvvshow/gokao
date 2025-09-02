@@ -141,6 +141,33 @@
                     <UsersIcon class="w-4 h-4 mr-2" />
                     在校生 {{ university.studentCount || '未知' }} 人
                   </div>
+                  <!-- 新增关键信息展示 -->
+                  <div v-if="university.rank" class="flex items-center">
+                    <span class="w-4 h-4 mr-2 text-center font-bold">🏆</span>
+                    全国排名: {{ university.rank }}名
+                  </div>
+                  <div v-if="university.employmentRate" class="flex items-center">
+                    <span class="w-4 h-4 mr-2 text-center font-bold">📈</span>
+                    就业率: {{ university.employmentRate }}%
+                  </div>
+                  <div v-if="university.strongMajors && university.strongMajors.length > 0" class="flex items-start">
+                    <span class="w-4 h-4 mr-2 text-center font-bold mt-0.5">🎯</span>
+                    <div>
+                      <span class="font-medium">优势专业:</span>
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        <span 
+                          v-for="(major, index) in university.strongMajors.slice(0, 2)"
+                          :key="index"
+                          class="badge badge-info text-xs"
+                        >
+                          {{ major }}
+                        </span>
+                        <span v-if="university.strongMajors.length > 2" class="text-xs text-gray-500">
+                          等{{ university.strongMajors.length - 2 }}个
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 <div class="mt-4 flex items-center justify-between">
@@ -197,6 +224,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from 'lucide-vue-next'
+import { universityApi } from '@/api/university'
+import type { University, UniversitySearchParams } from '@/types/university'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -206,6 +236,7 @@ const hasSearched = ref(false)
 const currentPage = ref(1)
 const pageSize = 10
 const sortBy = ref('name')
+const totalCount = ref(0)
 
 // 搜索表单
 const searchForm = ref({
@@ -224,103 +255,19 @@ const provinces = ref([
 ])
 
 // 院校数据
-const universities = ref([
-  {
-    id: 1,
-    name: '清华大学',
-    province: '北京',
-    city: '北京',
-    type: '综合类',
-    is985: true,
-    is211: true,
-    isDoubleFirstClass: true,
-    studentCount: 50000,
-    description: '中国顶尖综合性研究型大学'
-  },
-  {
-    id: 2,
-    name: '北京大学',
-    province: '北京',
-    city: '北京',
-    type: '综合类',
-    is985: true,
-    is211: true,
-    isDoubleFirstClass: true,
-    studentCount: 45000,
-    description: '中国最高学府之一'
-  },
-  {
-    id: 3,
-    name: '复旦大学',
-    province: '上海',
-    city: '上海',
-    type: '综合类',
-    is985: true,
-    is211: true,
-    isDoubleFirstClass: true,
-    studentCount: 32000,
-    description: '享誉海内外的综合性研究型大学'
-  }
-])
+const universities = ref<University[]>([])
 
 // 计算属性
-const filteredUniversities = computed(() => {
-  let result = [...universities.value]
-  
-  if (searchForm.value.name) {
-    result = result.filter(u => u.name.includes(searchForm.value.name))
-  }
-  
-  if (searchForm.value.province) {
-    result = result.filter(u => u.province === searchForm.value.province)
-  }
-  
-  if (searchForm.value.type) {
-    result = result.filter(u => u.type === searchForm.value.type)
-  }
-  
-  if (searchForm.value.level) {
-    const level = searchForm.value.level
-    result = result.filter(u => {
-      if (level === '985') return u.is985
-      if (level === '211') return u.is211
-      if (level === '双一流') return u.isDoubleFirstClass
-      return true
-    })
-  }
-  
-  return result
-})
 
-const sortedUniversities = computed(() => {
-  const result = [...filteredUniversities.value]
-  
-  result.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'name':
-        return a.name.localeCompare(b.name)
-      case 'level':
-        if (a.is985 && !b.is985) return -1
-        if (!a.is985 && b.is985) return 1
-        if (a.is211 && !b.is211) return -1
-        if (!a.is211 && b.is211) return 1
-        return 0
-      case 'province':
-        return a.province.localeCompare(b.province)
-      default:
-        return 0
-    }
-  })
-  
-  return result
-})
 
-const totalPages = computed(() => Math.ceil(sortedUniversities.value.length / pageSize))
+
+
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize))
 
 const paginatedUniversities = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
-  return sortedUniversities.value.slice(start, end)
+  return universities.value.slice(start, end)
 })
 
 // 方法
@@ -328,11 +275,42 @@ const handleSearch = async () => {
   loading.value = true
   hasSearched.value = true
   currentPage.value = 1
-  
-  // 模拟API调用
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  loading.value = false
+
+  try {
+    const params: any = {
+      page: currentPage.value,
+      limit: pageSize,
+    }
+
+    if (searchForm.value.name) {
+      params.keyword = searchForm.value.name
+    }
+    if (searchForm.value.province) {
+      params.province = searchForm.value.province
+    }
+    if (searchForm.value.type) {
+      params.type = searchForm.value.type
+    }
+    if (searchForm.value.level) {
+      params.level = searchForm.value.level
+    }
+
+    const response = await universityApi.search(params)
+    if (response.success && response.data) {
+      universities.value = response.data.universities || []
+      totalCount.value = response.data.total || 0
+    } else {
+      universities.value = []
+      totalCount.value = 0
+    }
+
+    ElMessage.success(`找到 ${totalCount.value} 所院校`)
+  } catch (error) {
+    console.error('搜索院校失败:', error)
+    ElMessage.error('搜索院校失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
 const resetSearch = () => {
@@ -344,6 +322,7 @@ const resetSearch = () => {
   }
   hasSearched.value = false
   currentPage.value = 1
+  universities.value = []
 }
 
 const handleSort = () => {
@@ -356,7 +335,8 @@ const viewUniversityDetail = (university: any) => {
 
 // 生命周期
 onMounted(() => {
-  // 初始化数据
+  // 初始化数据 - 加载热门院校
+  handleSearch()
 })
 </script>
 

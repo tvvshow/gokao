@@ -261,7 +261,21 @@ func (s *PaymentService) savePaymentOrder(ctx context.Context, order *models.Pay
 }
 
 // getPaymentOrder 获取支付订单
+// getPaymentOrder 获取支付订单 - 优化版本，添加缓存机制
 func (s *PaymentService) getPaymentOrder(ctx context.Context, orderNo string) (*models.PaymentOrder, error) {
+	// 先尝试从缓存获取
+	cacheKey := fmt.Sprintf("payment_order:%s", orderNo)
+	if s.redis != nil {
+		cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var order models.PaymentOrder
+			if json.Unmarshal([]byte(cachedData), &order) == nil {
+				return &order, nil
+			}
+		}
+	}
+
+	// 缓存未命中，查询数据库
 	query := `
 		SELECT id, order_no, user_id, amount, currency, subject, description,
 		       status, payment_channel, channel_trade_no, client_ip, notify_url,
@@ -283,10 +297,20 @@ func (s *PaymentService) getPaymentOrder(ctx context.Context, orderNo string) (*
 		return nil, err
 	}
 
+	// 缓存查询结果（已支付订单缓存更长时间）
+	if s.redis != nil {
+		data, _ := json.Marshal(order)
+		cacheTTL := time.Minute * 5 // 默认5分钟
+		if order.Status == models.PaymentStatusPaid {
+			cacheTTL = time.Hour * 2 // 已支付订单缓存2小时
+		}
+		s.redis.Set(ctx, cacheKey, data, cacheTTL)
+	}
+
 	return order, nil
 }
 
-// updateOrderStatus 更新订单状态
+// updateOrderStatus 更新订单状态 - 优化版本，添加缓存失效机制
 func (s *PaymentService) updateOrderStatus(ctx context.Context, orderNo, status string) error {
 	query := `
 		UPDATE payment_orders 
@@ -295,7 +319,22 @@ func (s *PaymentService) updateOrderStatus(ctx context.Context, orderNo, status 
 	`
 
 	_, err := s.db.ExecContext(ctx, query, status, time.Now(), orderNo)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 清除相关缓存
+	if s.redis != nil {
+		cacheKeys := []string{
+			fmt.Sprintf("payment_order:%s", orderNo),
+			fmt.Sprintf("payment:%s", orderNo),
+		}
+		for _, key := range cacheKeys {
+			s.redis.Del(ctx, key)
+		}
+	}
+
+	return nil
 }
 
 // saveRefundRecord 保存退款记录

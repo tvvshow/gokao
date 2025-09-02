@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/cache"
 )
 
 // RecommendationCache 推荐缓存
@@ -52,7 +54,7 @@ type BatchProcessor struct {
 // SimpleRecommendationHandler 简化的推荐处理器
 type SimpleRecommendationHandler struct {
 	bridge            cppbridge.HybridRecommendationBridge
-	cache             *RecommendationCache
+	cache             cache.CacheInterface
 	explainer         *RecommendationExplainer
 	confidenceCalc    *ConfidenceCalculator
 	batchProcessor    *BatchProcessor
@@ -129,10 +131,10 @@ func NewBatchProcessor(maxWorkers, batchSize int, timeout time.Duration) *BatchP
 }
 
 // NewSimpleRecommendationHandler 创建新的简化推荐处理器
-func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge) *SimpleRecommendationHandler {
+func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge, cacheInterface cache.CacheInterface) *SimpleRecommendationHandler {
 	return &SimpleRecommendationHandler{
 		bridge:           bridge,
-		cache:            NewRecommendationCache(30 * time.Minute),
+		cache:            cacheInterface,
 		explainer:        NewRecommendationExplainer(),
 		confidenceCalc:   NewConfidenceCalculator(),
 		batchProcessor:   NewBatchProcessor(10, 50, 30*time.Second),
@@ -146,23 +148,104 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// StudentInfo 前端学生信息结构
+type StudentInfo struct {
+	Score       *int                   `json:"score"`
+	Province    string                 `json:"province"`
+	ScienceType string                 `json:"scienceType"`
+	Year        int                    `json:"year"`
+	Rank        *int                   `json:"rank"`
+	Preferences StudentPreferences     `json:"preferences"`
+}
+
+// StudentPreferences 学生偏好设置
+type StudentPreferences struct {
+	Regions           []string `json:"regions"`
+	MajorCategories   []string `json:"majorCategories"`
+	UniversityTypes   []string `json:"universityTypes"`
+	RiskTolerance     string   `json:"riskTolerance"`
+	SpecialRequirements string `json:"specialRequirements"`
+}
+
+// APIResponse 统一API响应格式
+type APIResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message,omitempty"`
+}
+
+// RecommendationData 推荐数据格式
+type RecommendationData struct {
+	Recommendations []FrontendRecommendation `json:"recommendations"`
+	AnalysisReport  string                   `json:"analysisReport"`
+}
+
+// FrontendRecommendation 前端推荐格式
+type FrontendRecommendation struct {
+	ID                  string                    `json:"id"`
+	University          FrontendUniversity        `json:"university"`
+	Type                string                    `json:"type"`
+	AdmissionProbability int                      `json:"admissionProbability"`
+	MatchScore          int                       `json:"matchScore"`
+	RecommendReason     string                    `json:"recommendReason"`
+	RiskLevel           string                    `json:"riskLevel"`
+	SuggestedMajors     []FrontendMajor          `json:"suggestedMajors"`
+	HistoricalData      []FrontendHistoricalData `json:"historicalData"`
+}
+
+// FrontendUniversity 前端大学格式
+type FrontendUniversity struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Province   string `json:"province"`
+	City       string `json:"city"`
+	Level      string `json:"level"`
+	Type       string `json:"type"`
+	IsFavorite bool   `json:"isFavorite"`
+}
+
+// FrontendMajor 前端专业格式
+type FrontendMajor struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Probability int    `json:"probability"`
+}
+
+// FrontendHistoricalData 前端历史数据格式
+type FrontendHistoricalData struct {
+	MinScore int `json:"minScore"`
+	AvgScore int `json:"avgScore"`
+	MaxScore int `json:"maxScore"`
+	Year     int `json:"year"`
+}
+
 // GenerateRecommendations 生成推荐
 // @Summary 生成志愿推荐
 // @Description 根据学生信息生成个性化的志愿填报推荐
 // @Tags recommendations
 // @Accept json
 // @Produce json
-// @Param request body cppbridge.RecommendationRequest true "推荐请求"
-// @Success 200 {object} cppbridge.RecommendationResponse
+// @Param request body StudentInfo true "学生信息"
+// @Success 200 {object} APIResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/recommendations/generate [post]
 func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
-	var request cppbridge.RecommendationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	var studentInfo StudentInfo
+	if err := c.ShouldBindJSON(&studentInfo); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: "请求格式错误: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换为后端期望的格式
+	request, err := h.convertStudentInfoToRequest(&studentInfo)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "conversion_failed",
+			Message: "数据转换失败: " + err.Error(),
 		})
 		return
 	}
@@ -173,7 +256,7 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	h.updatePerformanceStats(true, false, 0)
 
 	// 设置默认值和参数验证
-	if err := h.validateAndSetDefaults(&request); err != nil {
+	if err := h.validateAndSetDefaults(request); err != nil {
 		h.updatePerformanceStats(false, true, time.Since(startTime))
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
@@ -183,13 +266,20 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	}
 
 	// 尝试从缓存获取
-	cacheKey := h.generateCacheKey(&request)
+	cacheKey := h.generateCacheKey(request)
 	if cachedResponse := h.getFromCache(cacheKey); cachedResponse != nil {
 		h.updatePerformanceStats(false, false, time.Since(startTime))
 		h.performanceStats.mu.Lock()
 		h.performanceStats.cacheHits++
 		h.performanceStats.mu.Unlock()
-		c.JSON(http.StatusOK, cachedResponse)
+		
+		// 转换为前端格式
+		frontendData := h.convertToFrontendFormat(cachedResponse)
+		c.JSON(http.StatusOK, APIResponse{
+			Success: true,
+			Data:    frontendData,
+			Message: "推荐生成成功（来自缓存）",
+		})
 		return
 	}
 
@@ -198,11 +288,12 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	h.performanceStats.mu.Unlock()
 
 	// 生成推荐
-	response, err := h.generateEnhancedRecommendations(&request)
+	response, err := h.generateEnhancedRecommendations(request)
 	if err != nil {
 		h.updatePerformanceStats(false, true, time.Since(startTime))
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error:   "generation_failed",
+		c.JSON(http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Data:    nil,
 			Message: "生成推荐失败: " + err.Error(),
 		})
 		return
@@ -214,7 +305,13 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	// 更新性能统计
 	h.updatePerformanceStats(false, false, time.Since(startTime))
 
-	c.JSON(http.StatusOK, response)
+	// 转换为前端格式
+	frontendData := h.convertToFrontendFormat(response)
+	c.JSON(http.StatusOK, APIResponse{
+		Success: true,
+		Data:    frontendData,
+		Message: "推荐生成成功",
+	})
 }
 
 // BatchGenerateRecommendations 批量生成推荐
@@ -367,11 +464,23 @@ func (h *SimpleRecommendationHandler) GetSystemStatus(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/system/cache/clear [post]
 func (h *SimpleRecommendationHandler) ClearCache(c *gin.Context) {
-	err := h.bridge.ClearCache()
+	// 清空推荐服务缓存
+	ctx := context.Background()
+	err := h.cache.Clear(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "cache_error",
-			Message: "清空缓存失败: " + err.Error(),
+			Message: "清空推荐缓存失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 清空C++桥接缓存
+	err = h.bridge.ClearCache()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "cache_error",
+			Message: "清空桥接缓存失败: " + err.Error(),
 		})
 		return
 	}
@@ -434,6 +543,52 @@ func (h *SimpleRecommendationHandler) UpdateModel(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// convertStudentInfoToRequest 将前端StudentInfo转换为RecommendationRequest
+func (h *SimpleRecommendationHandler) convertStudentInfoToRequest(studentInfo *StudentInfo) (*cppbridge.RecommendationRequest, error) {
+	if studentInfo.Score == nil {
+		return nil, fmt.Errorf("score is required")
+	}
+	if studentInfo.Province == "" {
+		return nil, fmt.Errorf("province is required")
+	}
+
+	request := &cppbridge.RecommendationRequest{
+		StudentID:          fmt.Sprintf("student_%d", time.Now().UnixNano()),
+		Name:               "Student",
+		TotalScore:         *studentInfo.Score,
+		Province:           studentInfo.Province,
+		SubjectCombination: studentInfo.ScienceType,
+		MaxRecommendations: 30,
+		Algorithm:          "hybrid",
+	}
+
+	// 设置排名（如果提供）
+	if studentInfo.Rank != nil {
+		request.Ranking = *studentInfo.Rank
+	}
+
+	// 转换偏好设置
+	preferences := make(map[string]interface{})
+	if len(studentInfo.Preferences.Regions) > 0 {
+		preferences["regions"] = studentInfo.Preferences.Regions
+	}
+	if len(studentInfo.Preferences.MajorCategories) > 0 {
+		preferences["major_categories"] = studentInfo.Preferences.MajorCategories
+	}
+	if len(studentInfo.Preferences.UniversityTypes) > 0 {
+		preferences["university_types"] = studentInfo.Preferences.UniversityTypes
+	}
+	if studentInfo.Preferences.RiskTolerance != "" {
+		preferences["risk_tolerance"] = studentInfo.Preferences.RiskTolerance
+	}
+	if studentInfo.Preferences.SpecialRequirements != "" {
+		preferences["special_requirements"] = studentInfo.Preferences.SpecialRequirements
+	}
+	request.Preferences = preferences
+
+	return request, nil
+}
+
 // validateAndSetDefaults 验证并设置默认值
 func (h *SimpleRecommendationHandler) validateAndSetDefaults(request *cppbridge.RecommendationRequest) error {
 	if request.StudentID == "" {
@@ -494,49 +649,36 @@ func (h *SimpleRecommendationHandler) hashPreferences(preferences map[string]int
 
 // getFromCache 从缓存获取
 func (h *SimpleRecommendationHandler) getFromCache(key string) *cppbridge.RecommendationResponse {
-	h.cache.mu.RLock()
-	defer h.cache.mu.RUnlock()
-	
-	entry, exists := h.cache.data[key]
-	if !exists {
+	ctx := context.Background()
+	value, err := h.cache.Get(ctx, key)
+	if err != nil {
 		return nil
 	}
 	
-	// 检查是否过期
-	if time.Since(entry.Timestamp) > h.cache.expiry {
-		// 异步清理过期条目
-		go h.cleanupExpiredEntries()
+	var response cppbridge.RecommendationResponse
+	if err := json.Unmarshal(value, &response); err != nil {
 		return nil
 	}
 	
-	// 更新命中次数
-	entry.HitCount++
-	return entry.Response
+	return &response
 }
 
 // setToCache 设置到缓存
 func (h *SimpleRecommendationHandler) setToCache(key string, response *cppbridge.RecommendationResponse) {
-	h.cache.mu.Lock()
-	defer h.cache.mu.Unlock()
-	
-	h.cache.data[key] = &CacheEntry{
-		Response:  response,
-		Timestamp: time.Now(),
-		HitCount:  0,
+	ctx := context.Background()
+	data, err := json.Marshal(response)
+	if err != nil {
+		return
 	}
+	
+	// 设置30分钟过期时间
+	h.cache.Set(ctx, key, data, 30*time.Minute)
 }
 
-// cleanupExpiredEntries 清理过期条目
+// cleanupExpiredEntries 清理过期条目 (现在由缓存接口自动处理)
 func (h *SimpleRecommendationHandler) cleanupExpiredEntries() {
-	h.cache.mu.Lock()
-	defer h.cache.mu.Unlock()
-	
-	now := time.Now()
-	for key, entry := range h.cache.data {
-		if now.Sub(entry.Timestamp) > h.cache.expiry {
-			delete(h.cache.data, key)
-		}
-	}
+	// 缓存接口会自动处理过期条目的清理
+	// 这个方法保留以保持向后兼容性
 }
 
 // generateEnhancedRecommendations 生成增强推荐
@@ -1088,6 +1230,108 @@ func (h *SimpleRecommendationHandler) updatePerformanceStats(isNewRequest, isFai
 	}
 	
 	h.performanceStats.lastUpdate = time.Now()
+}
+
+// convertToFrontendFormat 转换为前端格式
+func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridge.RecommendationResponse) RecommendationData {
+	var frontendRecs []FrontendRecommendation
+	
+	for i, rec := range response.Recommendations {
+		// 确定推荐类型
+		recType := "稳妥"
+		if rec.Probability >= 0.8 {
+			recType = "稳妥"
+		} else if rec.Probability >= 0.6 {
+			recType = "适中"
+		} else {
+			recType = "冲刺"
+		}
+		
+		// 确定风险等级
+		riskLevel := "中等"
+		if rec.Probability >= 0.8 {
+			riskLevel = "低"
+		} else if rec.Probability < 0.5 {
+			riskLevel = "高"
+		}
+		
+		// 生成推荐原因
+		recommendReason := "综合评估推荐"
+		if len(rec.Reasons) > 0 {
+			recommendReason = rec.Reasons[0]
+		}
+		
+		// 构建前端推荐格式
+		frontendRec := FrontendRecommendation{
+			ID:                  fmt.Sprintf("rec_%d", i+1),
+			University: FrontendUniversity{
+				ID:         rec.SchoolID,
+				Name:       rec.SchoolName,
+				Province:   rec.Province,
+				City:       rec.City,
+				Level:      rec.SchoolLevel,
+				Type:       rec.SchoolType,
+				IsFavorite: false,
+			},
+			Type:                recType,
+			AdmissionProbability: int(rec.Probability * 100),
+			MatchScore:          int(rec.Score * 100),
+			RecommendReason:     recommendReason,
+			RiskLevel:           riskLevel,
+			SuggestedMajors: []FrontendMajor{
+				{
+					ID:          rec.MajorID,
+					Name:        rec.MajorName,
+					Probability: int(rec.Probability * 100),
+				},
+			},
+			HistoricalData: []FrontendHistoricalData{
+				{
+					MinScore: rec.AdmissionScore - 10,
+					AvgScore: rec.AdmissionScore,
+					MaxScore: rec.AdmissionScore + 10,
+					Year:     2023,
+				},
+			},
+		}
+		
+		frontendRecs = append(frontendRecs, frontendRec)
+	}
+	
+	// 生成分析报告
+	analysisReport := h.generateAnalysisReport(response)
+	
+	return RecommendationData{
+		Recommendations: frontendRecs,
+		AnalysisReport:  analysisReport,
+	}
+}
+
+// generateAnalysisReport 生成分析报告
+func (h *SimpleRecommendationHandler) generateAnalysisReport(response *cppbridge.RecommendationResponse) string {
+	if len(response.Recommendations) == 0 {
+		return "暂无推荐结果"
+	}
+	
+	// 统计不同类型的推荐数量
+	stableCount := 0
+	moderateCount := 0
+	reachCount := 0
+	
+	for _, rec := range response.Recommendations {
+		if rec.Probability >= 0.8 {
+			stableCount++
+		} else if rec.Probability >= 0.6 {
+			moderateCount++
+		} else {
+			reachCount++
+		}
+	}
+	
+	report := fmt.Sprintf("根据您的分数和偏好，为您推荐了%d所院校。其中稳妥选择%d个，适中选择%d个，冲刺选择%d个。建议合理搭配，确保志愿填报的科学性和安全性。",
+		len(response.Recommendations), stableCount, moderateCount, reachCount)
+	
+	return report
 }
 
 // GetPerformanceStats 获取性能统计（新增方法）

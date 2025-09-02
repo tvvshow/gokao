@@ -1,20 +1,22 @@
 module github.com/gaokaohub/payment-service
 
-go 1.23.0
+go 1.22
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-pay/gopay v1.5.114
-	github.com/go-pay/util v0.0.4
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.1
 	github.com/lib/pq v1.10.9
 	github.com/shopspring/decimal v1.3.1
+	github.com/sirupsen/logrus v1.9.3
+	github.com/smartwalle/alipay/v3 v3.2.26
 	github.com/stretchr/testify v1.8.3
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.21
 	golang.org/x/time v0.3.0
+	gorm.io/gorm v1.30.2
 )
 
 require (
@@ -25,9 +27,6 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/go-pay/crypto v0.0.1 // indirect
-	github.com/go-pay/xlog v0.0.3 // indirect
-	github.com/go-pay/xtime v0.0.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
@@ -42,6 +41,9 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/smartwalle/ncrypto v1.0.4 // indirect
+	github.com/smartwalle/ngx v1.0.9 // indirect
+	github.com/smartwalle/nsign v1.0.9 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
@@ -52,5 +54,12 @@ require (
 	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.30.2 // indirect
 )
+
+replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
+
+replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+
+replace github.com/gaokaohub/pkg/database => ../../pkg/database
+
+replace github.com/gaokaohub/pkg/logger => ../../pkg/logger

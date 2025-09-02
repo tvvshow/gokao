@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"data-service/internal/config"
+	"data-service/internal/models"
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/olivere/elastic/v7"
@@ -12,6 +15,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	pkgdatabase "gaokao/pkg/database"
 )
 
 // DB 数据库连接管理器
@@ -76,15 +80,16 @@ func (db *DB) initPostgreSQL() error {
 		return fmt.Errorf("获取SQL DB实例失败: %w", err)
 	}
 
-	// 设置连接池参数
-	sqlDB.SetMaxIdleConns(10)                // 最大空闲连接数
-	sqlDB.SetMaxOpenConns(100)               // 最大打开连接数
-	sqlDB.SetConnMaxLifetime(time.Hour * 24) // 连接最大生存时间
+	// 设置连接池参数（使用统一配置）
+	sqlDB.SetMaxIdleConns(db.Config.MaxIdleConns)                // 最大空闲连接数
+	sqlDB.SetMaxOpenConns(db.Config.MaxOpenConns)               // 最大打开连接数
+	sqlDB.SetConnMaxLifetime(time.Duration(db.Config.ConnMaxLifetime) * time.Second) // 连接最大生存时间
+	sqlDB.SetConnMaxIdleTime(time.Duration(db.Config.ConnMaxIdleTime) * time.Second) // 连接最大空闲时间
 
 	// 测试连接
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("PostgreSQL连接测试失败: %w", err)
 	}
@@ -118,7 +123,7 @@ func (db *DB) initRedis() error {
 	// 测试连接
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := client.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("Redis连接测试失败: %w", err)
 	}
@@ -150,12 +155,12 @@ func (db *DB) initElasticsearch() error {
 	// 测试连接
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	info, code, err := client.Ping(db.Config.ElasticsearchURL).Do(ctx)
 	if err != nil {
 		return fmt.Errorf("Elasticsearch连接测试失败: %w", err)
 	}
-	
+
 	if code >= 400 {
 		return fmt.Errorf("Elasticsearch返回错误状态码: %d", code)
 	}
@@ -175,17 +180,19 @@ func (db *DB) initElasticsearch() error {
 func (db *DB) migrate() error {
 	db.Logger.Info("开始数据库迁移...")
 
-	// 跳过简单模型测试，直接进行基本表检查
-	db.Logger.Info("跳过模型迁移，仅检查数据库连接")
-
 	// 执行一个简单的查询来验证连接
 	var result int
 	if err := db.PostgreSQL.Raw("SELECT 1").Scan(&result).Error; err != nil {
 		return fmt.Errorf("数据库连接验证失败: %w", err)
 	}
 
-	// 定义所有需要迁移的模型 - 暂时注释掉复杂的模型
-	/*models := []interface{}{
+	// NEW: 确保 pgcrypto 扩展可用以支持 gen_random_uuid()
+	if err := db.PostgreSQL.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;").Error; err != nil {
+		db.Logger.Warnf("创建扩展 pgcrypto 失败（可能权限不足）：%v", err)
+	}
+
+	// 定义所有需要迁移的模型
+	models := []interface{}{
 		&models.University{},
 		&models.Major{},
 		&models.AdmissionData{},
@@ -195,12 +202,65 @@ func (db *DB) migrate() error {
 		&models.DataStatistics{},
 	}
 
-	// 执行自动迁移
+	// 对所有模型执行迁移，确保字段更新
 	for _, model := range models {
+		// 获取模型对应的表名
+		modelType := reflect.TypeOf(model)
+		if modelType.Kind() == reflect.Ptr {
+			modelType = modelType.Elem()
+		}
+		typeName := modelType.Name()
+		
+		db.Logger.Infof("正在迁移模型: %s", typeName)
 		if err := db.PostgreSQL.AutoMigrate(model); err != nil {
+			// 如果是约束相关错误，记录警告但继续执行
+			if strings.Contains(err.Error(), "constraint") || strings.Contains(err.Error(), "does not exist") {
+				db.Logger.Warnf("迁移模型 %s 时遇到约束错误，继续执行: %v", typeName, err)
+				continue
+			}
 			return fmt.Errorf("迁移模型 %T 失败: %w", model, err)
 		}
-	}*/
+	}
+
+	// NEW: 为 UUID 主键设置数据库默认值 gen_random_uuid()，避免插入失败
+	uuidDefaultAlters := []string{
+		"ALTER TABLE IF EXISTS universities ALTER COLUMN id SET DEFAULT gen_random_uuid();",
+		"ALTER TABLE IF EXISTS majors ALTER COLUMN id SET DEFAULT gen_random_uuid();",
+		"ALTER TABLE IF EXISTS admission_data ALTER COLUMN id SET DEFAULT gen_random_uuid();",
+		"ALTER TABLE IF EXISTS search_indices ALTER COLUMN id SET DEFAULT gen_random_uuid();",
+		"ALTER TABLE IF EXISTS analysis_results ALTER COLUMN id SET DEFAULT gen_random_uuid();",
+	}
+	for _, q := range uuidDefaultAlters {
+		if err := db.PostgreSQL.Exec(q).Error; err != nil {
+			db.Logger.Warnf("设置UUID默认值失败: %v | SQL: %s", err, q)
+		}
+	}
+
+	// 手动添加 popularity_score 字段到 majors 表
+	db.Logger.Info("检查并添加 popularity_score 字段...")
+	if err := db.PostgreSQL.Exec("ALTER TABLE majors ADD COLUMN IF NOT EXISTS popularity_score INTEGER DEFAULT 0;").Error; err != nil {
+		db.Logger.Warnf("添加 popularity_score 字段失败: %v", err)
+	} else {
+		db.Logger.Info("成功添加 popularity_score 字段")
+		
+		// 更新现有记录的 popularity_score 值
+		updateQueries := []string{
+			`UPDATE majors SET popularity_score = 95 WHERE name LIKE '%计算机%' OR name LIKE '%软件%' OR name LIKE '%人工智能%';`,
+			`UPDATE majors SET popularity_score = 90 WHERE name LIKE '%电子%' OR name LIKE '%通信%' OR name LIKE '%自动化%';`,
+			`UPDATE majors SET popularity_score = 85 WHERE name LIKE '%金融%' OR name LIKE '%经济%' OR name LIKE '%管理%';`,
+			`UPDATE majors SET popularity_score = 80 WHERE name LIKE '%医学%' OR name LIKE '%临床%' OR name LIKE '%护理%';`,
+			`UPDATE majors SET popularity_score = 75 WHERE name LIKE '%机械%' OR name LIKE '%土木%' OR name LIKE '%建筑%';`,
+			`UPDATE majors SET popularity_score = 70 WHERE popularity_score = 0;`,
+		}
+		
+		for i, query := range updateQueries {
+			if err := db.PostgreSQL.Exec(query).Error; err != nil {
+				db.Logger.Warnf("更新专业热度分数失败 (查询 %d): %v", i+1, err)
+			} else {
+				db.Logger.Infof("完成专业热度分数更新 (查询 %d)", i+1)
+			}
+		}
+	}
 
 	// 创建索引
 	if err := db.createIndices(); err != nil {
@@ -213,33 +273,51 @@ func (db *DB) migrate() error {
 
 // createIndices 创建数据库索引
 func (db *DB) createIndices() error {
-	// 暂时跳过复杂索引创建
-	db.Logger.Info("跳过索引创建 - 使用简单测试模式")
-	return nil
-
-	/*
-	// 创建复合索引
+	db.Logger.Info("开始创建数据库索引...")
+	
+	// 创建复合索引 - 基于查询模式优化
 	indices := []string{
+		// 院校表核心查询索引
 		"CREATE INDEX IF NOT EXISTS idx_universities_province_type ON universities(province, type)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_level_nature ON universities(level, nature)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_level_nature ON universities(level, nature)", 
+		"CREATE INDEX IF NOT EXISTS idx_universities_province_level ON universities(province, level)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_type_level ON universities(type, level)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_active_recruiting ON universities(is_active, is_recruiting)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_rank_score ON universities(national_rank, popularity_score)",
+		
+		// 专业表查询索引
 		"CREATE INDEX IF NOT EXISTS idx_majors_university_category ON majors(university_id, category)",
 		"CREATE INDEX IF NOT EXISTS idx_majors_discipline_degree ON majors(discipline, degree_type)",
+		"CREATE INDEX IF NOT EXISTS idx_majors_category_active ON majors(category, is_active)",
+		"CREATE INDEX IF NOT EXISTS idx_majors_university_active ON majors(university_id, is_active)",
+		
+		// 录取数据表索引
 		"CREATE INDEX IF NOT EXISTS idx_admission_data_year_province ON admission_data(year, province)",
 		"CREATE INDEX IF NOT EXISTS idx_admission_data_university_year ON admission_data(university_id, year)",
 		"CREATE INDEX IF NOT EXISTS idx_admission_data_score_rank ON admission_data(avg_score, min_rank)",
+		"CREATE INDEX IF NOT EXISTS idx_admission_data_year_batch ON admission_data(year, batch_type)",
+		
+		// 搜索和分析表索引
 		"CREATE INDEX IF NOT EXISTS idx_search_indices_type_province ON search_indices(type, province)",
-		"CREATE INDEX IF NOT EXISTS idx_hot_searches_date_category ON hot_searches(date, category)",
 		"CREATE INDEX IF NOT EXISTS idx_analysis_results_user_created ON analysis_results(user_id, created_at)",
+		
+		// 全文搜索索引
+		"CREATE INDEX IF NOT EXISTS idx_universities_name_gin ON universities USING gin(to_tsvector('chinese', name))",
+		"CREATE INDEX IF NOT EXISTS idx_majors_name_gin ON majors USING gin(to_tsvector('chinese', name))",
 	}
 
+	createdCount := 0
 	for _, indexSQL := range indices {
 		if err := db.PostgreSQL.Exec(indexSQL).Error; err != nil {
 			db.Logger.Warnf("创建索引失败: %s, 错误: %v", indexSQL, err)
+		} else {
+			createdCount++
+			db.Logger.Debugf("成功创建索引: %s", indexSQL)
 		}
 	}
-
+	
+	db.Logger.Infof("索引创建完成，成功创建 %d/%d 个索引", createdCount, len(indices))
 	return nil
-	*/
 }
 
 // initElasticsearchIndices 初始化Elasticsearch索引
@@ -415,14 +493,14 @@ func (db *DB) GetConnectionPoolStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"max_open_conns":     sqlDB.Stats().MaxOpenConnections,
-		"open_conns":         sqlDB.Stats().OpenConnections,
-		"in_use":             sqlDB.Stats().InUse,
-		"idle":               sqlDB.Stats().Idle,
-		"wait_count":         sqlDB.Stats().WaitCount,
-		"wait_duration":      sqlDB.Stats().WaitDuration.String(),
-		"max_idle_closed":    sqlDB.Stats().MaxIdleClosed,
+		"max_open_conns":      sqlDB.Stats().MaxOpenConnections,
+		"open_conns":          sqlDB.Stats().OpenConnections,
+		"in_use":              sqlDB.Stats().InUse,
+		"idle":                sqlDB.Stats().Idle,
+		"wait_count":          sqlDB.Stats().WaitCount,
+		"wait_duration":       sqlDB.Stats().WaitDuration.String(),
+		"max_idle_closed":     sqlDB.Stats().MaxIdleClosed,
 		"max_lifetime_closed": sqlDB.Stats().MaxLifetimeClosed,
-		"max_idle_conns":     sqlDB.Stats().MaxIdleClosed,
+		"max_idle_conns":      sqlDB.Stats().MaxIdleClosed,
 	}
 }

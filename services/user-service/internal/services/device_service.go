@@ -300,9 +300,9 @@ func (s *DeviceService) GenerateDeviceLicense(ctx context.Context, userID uint, 
 	}
 
 	expiresAt := time.Now().Add(time.Duration(validDays) * 24 * time.Hour)
-	_ = s.getLicenseFeatures(licenseType) // 存根实现忽略features
+	features := s.getLicenseFeatures(licenseType)
 
-	licenseData, err := s.licenseService.GenerateLicense(deviceID, expiresAt, s.config.PrivateKey)
+	licenseData, err := s.licenseService.GenerateLicense(deviceID, expiresAt, s.config.PrivateKey, licenseType, features)
 	if err != nil {
 		s.updatePerformanceStats(startTime, false)
 		return nil, fmt.Errorf("failed to generate license: %w", err)

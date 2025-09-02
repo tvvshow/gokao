@@ -110,7 +110,7 @@ type LicenseConfig struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Port:         getEnvAsInt("PORT", 8084),
+			Port:         getEnvAsInt("PORT", 10084),
 			Mode:         getEnv("GIN_MODE", "debug"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 10),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 10),
@@ -118,9 +118,9 @@ func Load() (*Config, error) {
 		Database: DatabaseConfig{
 			Host:         getEnv("DB_HOST", "localhost"),
 			Port:         getEnvAsInt("DB_PORT", 5432),
-			User:         getEnv("DB_USER", "gaokaohub"),
-			Password:     getEnv("DB_PASSWORD", "gaokaohub123"),
-			Database:     getEnv("DB_NAME", "gaokaohub_payment"),
+			User:         getEnv("DB_USER", "postgres"),
+			Password:     getEnv("DB_PASSWORD", "password"),
+			Database:     getEnv("DB_NAME", "gaokao_users"),
 			SSLMode:      getEnv("DB_SSL_MODE", "disable"),
 			MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
 			MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
@@ -131,7 +131,7 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 2),
 		},
 		JWT: JWTConfig{
-			Secret:      getEnv("JWT_SECRET", "gaokaohub-payment-secret"),
+			Secret:      getEnv("JWT_SECRET", ""),
 			ExpireHours: getEnvAsInt("JWT_EXPIRE_HOURS", 24),
 		},
 		Payment: PaymentConfig{

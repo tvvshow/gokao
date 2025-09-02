@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +30,7 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:8084
+// @host localhost:10084
 // @BasePath /api/v1
 
 func main() {
@@ -59,14 +58,13 @@ func main() {
 	adapterFactory := adapters.NewPaymentAdapterFactory(cfg.Payment)
 
 	// 初始化服务层
-	_ = services.NewPaymentService(db, redisClient, adapterFactory)
-	_ = services.NewMembershipService(db, redisClient)
+	paymentService := services.NewPaymentService(db, redisClient, adapterFactory)
+	membershipService := services.NewMembershipService(db, redisClient)
 
 	// 初始化处理器
 	healthHandler := handlers.NewHealthHandler()
-
-	// 初始化新版处理器
-	// 注意：我们保留了现有的处理器，同时添加了新的API路由
+	paymentHandler := handlers.NewPaymentHandler(paymentService, log.Default())
+	membershipHandler := handlers.NewMembershipHandler(membershipService, log.Default())
 
 	// 设置Gin模式
 	if cfg.Server.Mode == "release" {
@@ -99,9 +97,38 @@ func main() {
 		})
 	})
 
+	// 支付路由
+	paymentGroup := v1.Group("/payments")
+	{
+		paymentGroup.POST("", paymentHandler.CreatePayment)
+		paymentGroup.GET("/:payment_id", paymentHandler.QueryPayment)
+		paymentGroup.POST("/:payment_id/close", paymentHandler.ClosePayment)
+		paymentGroup.GET("", paymentHandler.ListPayments)
+		paymentGroup.GET("/statistics", paymentHandler.GetPaymentStatistics)
+		paymentGroup.POST("/callback/:channel", paymentHandler.PaymentCallback)
+		paymentGroup.GET("/webhook-test/:channel", paymentHandler.WebhookTest)
+	}
+
+	// 退款路由
+	refundGroup := v1.Group("/refunds")
+	{
+		refundGroup.POST("", paymentHandler.Refund)
+		refundGroup.GET("/:refund_id", paymentHandler.QueryRefund)
+	}
+
+	// 会员路由
+	membershipGroup := v1.Group("/memberships")
+	{
+		membershipGroup.POST("", membershipHandler.CreateMembership)
+		membershipGroup.GET("/:user_id", membershipHandler.GetMembership)
+		membershipGroup.PUT("/:user_id", membershipHandler.UpdateMembership)
+		membershipGroup.DELETE("/:user_id", membershipHandler.DeleteMembership)
+		membershipGroup.GET("", membershipHandler.ListMemberships)
+	}
+
 	// 启动服务器
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:         ":10084",
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,

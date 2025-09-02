@@ -13,7 +13,11 @@ type Config struct {
 	Environment string `json:"environment"`
 
 	// 数据库配置
-	DatabaseURL string `json:"database_url"`
+	DatabaseURL        string `json:"database_url"`
+	MaxOpenConns       int    `json:"max_open_conns"`
+	MaxIdleConns       int    `json:"max_idle_conns"`
+	ConnMaxLifetime   int    `json:"conn_max_lifetime"`
+	ConnMaxIdleTime   int    `json:"conn_max_idle_time"`
 
 	// Redis配置
 	RedisURL      string `json:"redis_url"`
@@ -50,11 +54,15 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		// 服务配置
-		Port:        getEnv("PORT", "8082"),
+		Port:        getEnv("PORT", "10082"),
 		Environment: getEnv("GIN_MODE", "debug"),
 
 		// 数据库配置
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/gaokao_data?sslmode=disable"),
+		DatabaseURL:      getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/gaokao_data?sslmode=disable"),
+		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+		ConnMaxLifetime:  getEnvAsInt("DB_CONN_MAX_LIFETIME", 1800), // 30分钟
+		ConnMaxIdleTime: getEnvAsInt("DB_CONN_MAX_IDLE_TIME", 900),  // 15分钟
 
 		// Redis配置
 		RedisURL:      getEnv("REDIS_URL", "localhost:6379"),

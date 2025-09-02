@@ -13,13 +13,14 @@ import (
 	"github.com/oktetopython/gaokao/recommendation-service/internal/config"
 	"github.com/oktetopython/gaokao/recommendation-service/internal/handlers"
 	"github.com/oktetopython/gaokao/recommendation-service/internal/services"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/cache"
 	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
 )
 
 // @title 高考志愿填报推荐服务 API
 // @version 1.0
 // @description 混合推荐引擎API服务，融合传统算法和AI推荐
-// @host localhost:8083
+// @host localhost:10083
 // @BasePath /api/v1
 func main() {
 	// 加载配置
@@ -70,13 +71,21 @@ func main() {
 	// API路由组
 	v1 := router.Group("/api/v1")
 	{
-		// 创建服务
-		analyticsService := services.NewAnalyticsService(bridge)
-		
-		// 创建处理器
-		recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge)
-		hybridHandler := handlers.NewSimpleHybridHandler(bridge)
-		analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
+		// 初始化缓存系统
+	cacheInterface := cache.NewCacheWithFallback(cfg.Redis)
+	defer func() {
+		if cacheInterface != nil {
+			cacheInterface.Close()
+		}
+	}()
+
+	// 创建服务
+	analyticsService := services.NewAnalyticsService(bridge)
+	
+	// 创建处理器
+	recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge, cacheInterface)
+	hybridHandler := handlers.NewSimpleHybridHandler(bridge)
+	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 		// 推荐相关路由
 		recommendations := v1.Group("/recommendations")
@@ -116,7 +125,7 @@ func main() {
 
 	// 创建HTTP服务器
 	srv := &http.Server{
-		Addr:    cfg.Server.Port,
+		Addr:    ":10083",
 		Handler: router,
 	}
 

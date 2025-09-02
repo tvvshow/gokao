@@ -98,6 +98,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MajorCard from '@/components/MajorCard.vue'
 import type { Major } from '@/types/university'
+import { api } from '@/api/api-client'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -127,9 +129,30 @@ const categories = ref([
 const handleSearch = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // 这里应该调用实际的API
+    const params: any = {
+      page: currentPage.value,
+      limit: pageSize.value,
+    }
+
+    if (searchForm.name) {
+      params.keyword = searchForm.name
+    }
+    if (searchForm.category) {
+      params.category = searchForm.category
+    }
+
+    const response = await api.majors.list(params)
+    majors.value = response.data
+    total.value = response.total || response.data.length
+
+    // 更新统计数据
+    totalMajors.value = response.total || response.data.length
+
+    ElMessage.success(`找到 ${total.value} 个专业`)
+  } catch (error) {
+    console.error('获取专业数据失败:', error)
+    ElMessage.error('获取专业数据失败')
+    // 如果API失败，使用模拟数据作为备选
     majors.value = generateMockMajors()
     total.value = 120
   } finally {

@@ -128,10 +128,44 @@
 
                 <el-form-item label="院校类型">
                   <el-checkbox-group v-model="studentForm.preferences.universityTypes">
-                    <el-checkbox label="985工程">985工程</el-checkbox>
-                    <el-checkbox label="211工程">211工程</el-checkbox>
-                    <el-checkbox label="双一流">双一流</el-checkbox>
-                    <el-checkbox label="普通本科">普通本科</el-checkbox>
+                    <el-row :gutter="10">
+                      <el-col :span="12">
+                        <el-checkbox label="985工程">985工程</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="211工程">211工程</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="双一流">双一流</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="普通本科">普通本科</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="师范类">师范类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="财经类">财经类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="理工类">理工类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="医药类">医药类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="农林类">农林类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="艺术类">艺术类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="体育类">体育类</el-checkbox>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-checkbox label="民族类">民族类</el-checkbox>
+                      </el-col>
+                    </el-row>
                   </el-checkbox-group>
                 </el-form-item>
 
@@ -286,11 +320,12 @@ import {
   Loading
 } from '@element-plus/icons-vue'
 import RecommendationCard from '@/components/RecommendationCard.vue'
-import { recommendationApi } from '@/api/recommendation'
+import { useRecommendationStore } from '@/stores/recommendation'
 import type { StudentInfo, Recommendation } from '@/types/recommendation'
 
 const router = useRouter()
 const formRef = ref<FormInstance>()
+const recommendationStore = useRecommendationStore()
 
 // 表单数据
 const studentForm = reactive<StudentInfo>({
@@ -325,8 +360,11 @@ const formRules: FormRules = {
 // 状态数据
 const generating = ref(false)
 const progressPercentage = ref(0)
-const recommendations = ref<Recommendation[]>([])
 const activeCategory = ref('moderate')
+
+// 计算属性
+const recommendations = computed(() => recommendationStore.recommendations)
+const isLoading = computed(() => recommendationStore.isLoading)
 
 // 基础数据
 const provinces = ref([
@@ -369,17 +407,11 @@ const handleRecommend = async () => {
     }, 200)
 
     try {
-      const response = await recommendationApi.generateRecommendations(studentForm)
-      
-      if (response.success) {
-        recommendations.value = response.data.recommendations
-        progressPercentage.value = 100
-        ElMessage.success('推荐生成成功')
-      } else {
-        ElMessage.error(response.message || '推荐生成失败')
-      }
+      await recommendationStore.generateRecommendations(studentForm)
+      progressPercentage.value = 100
+      ElMessage.success('推荐生成成功')
     } catch (error) {
-      ElMessage.error('推荐生成失败，请稍后重试')
+      ElMessage.error(error instanceof Error ? error.message : '推荐生成失败，请稍后重试')
     } finally {
       clearInterval(progressInterval)
       setTimeout(() => {
@@ -397,7 +429,7 @@ const handleReset = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
-  recommendations.value = []
+  recommendationStore.clearRecommendations()
 }
 
 // 获取当前分类的推荐
@@ -432,7 +464,7 @@ const getMatchScore = () => {
 }
 
 // 处理分类切换
-const handleCategoryChange = (tab: any) => {
+const handleCategoryChange = (tab: { paneName: string }) => {
   activeCategory.value = tab.paneName
 }
 
@@ -544,7 +576,7 @@ onMounted(() => {
 
 .recommendation-content {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: minmax(450px, 500px) 1fr;
   gap: 30px;
   align-items: start;
 }
@@ -686,6 +718,26 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 1024px) {
+  .recommendation-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .form-section {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-row .el-form-item {
+    margin-bottom: 20px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 10px;
@@ -693,6 +745,24 @@ onMounted(() => {
   
   .page-title {
     font-size: 24px;
+  }
+  
+  .form-section {
+    padding: 15px;
+  }
+  
+  .el-form-item__label {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .el-input__inner {
+    font-size: 16px;
+    padding: 12px 15px;
+  }
+  
+  .el-select {
+    width: 100%;
   }
   
   .form-actions .el-button {

@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -404,9 +406,22 @@ func (s *RoleService) GetRolePermissions(roleID uint) ([]models.Permission, erro
 	return permissions, nil
 }
 
-// GetUserRoles 获取用户的所有角色
+// GetUserRoles 获取用户角色 - 优化版本，添加Redis缓存
 func (s *RoleService) GetUserRoles(userID uuid.UUID) ([]models.Role, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("user_roles:%s", userID.String())
 	var roles []models.Role
+	
+	// 检查Redis缓存
+	cachedData, err := s.redis.Get(context.Background(), cacheKey).Result()
+	if err == nil {
+		// 缓存命中，解析JSON数据
+		if err := json.Unmarshal([]byte(cachedData), &roles); err == nil {
+			return roles, nil
+		}
+	}
+	
+	// 缓存未命中，从数据库查询
 	query := `
 		SELECT r.* FROM roles r
 		JOIN user_roles ur ON r.id = ur.role_id
@@ -416,7 +431,12 @@ func (s *RoleService) GetUserRoles(userID uuid.UUID) ([]models.Role, error) {
 	if err := s.db.Raw(query, userID).Scan(&roles).Error; err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
-
+	
+	// 将结果缓存到Redis（缓存30分钟）
+	if rolesJSON, err := json.Marshal(roles); err == nil {
+		s.redis.Set(context.Background(), cacheKey, rolesJSON, 30*time.Minute)
+	}
+	
 	return roles, nil
 }
 
@@ -450,6 +470,57 @@ func (s *RoleService) clearPermissionCache() {
 	}
 }
 
+// GetUserPermissions 获取用户所有权限 - 带缓存优化
+func (s *RoleService) GetUserPermissions(userID uuid.UUID) ([]models.Permission, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("user_permissions:%s", userID.String())
+	var permissions []models.Permission
+	
+	// 检查Redis缓存
+	cachedData, err := s.redis.Get(context.Background(), cacheKey).Result()
+	if err == nil {
+		// 缓存命中，解析JSON数据
+		if err := json.Unmarshal([]byte(cachedData), &permissions); err == nil {
+			return permissions, nil
+		}
+	}
+	
+	// 缓存未命中，从数据库查询
+	query := `
+		SELECT DISTINCT p.* FROM permissions p
+		JOIN role_permissions rp ON p.id = rp.permission_id
+		JOIN user_roles ur ON rp.role_id = ur.role_id
+		WHERE ur.user_id = ?
+		ORDER BY p.resource, p.action
+	`
+	if err := s.db.Raw(query, userID).Scan(&permissions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user permissions: %w", err)
+	}
+	
+	// 将结果缓存到Redis（缓存30分钟）
+	if permissionsJSON, err := json.Marshal(permissions); err == nil {
+		s.redis.Set(context.Background(), cacheKey, permissionsJSON, 30*time.Minute)
+	}
+	
+	return permissions, nil
+}
+
+// HasPermission 检查用户是否有特定权限 - 带缓存优化
+func (s *RoleService) HasPermission(userID uuid.UUID, permissionName string) (bool, error) {
+	permissions, err := s.GetUserPermissions(userID)
+	if err != nil {
+		return false, err
+	}
+	
+	for _, perm := range permissions {
+		if perm.Name == permissionName {
+			return true, nil
+		}
+	}
+	
+	return false, nil
+}
+
 // clearUserPermissionCache 清除用户权限缓存
 func (s *RoleService) clearUserPermissionCache(roleID uint) {
 	// 获取使用该角色的所有用户
@@ -459,10 +530,13 @@ func (s *RoleService) clearUserPermissionCache(roleID uint) {
 		return
 	}
 
-	// 清除这些用户的权限缓存
+	// 清除这些用户的权限和角色缓存
 	for _, userID := range userIDs {
-		cacheKey := fmt.Sprintf("user_permissions:%s", userID.String())
-		s.redis.Del(context.Background(), cacheKey)
+		userIDStr := userID.String()
+		s.redis.Del(context.Background(), 
+			fmt.Sprintf("user_permissions:%s", userIDStr),
+			fmt.Sprintf("user_roles:%s", userIDStr),
+		)
 	}
 }
 

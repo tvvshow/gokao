@@ -1,4 +1,4 @@
-import api from './index'
+import { api } from './api-client'
 import type { 
   University, 
   UniversitySearchParams, 
@@ -14,7 +14,7 @@ export const universityApi = {
     data: UniversitySearchResponse
     message?: string
   }> {
-    return api.get('/v1/universities', { params })
+    return api.get('/api/v1/data/universities', { params })
   },
 
   // 获取院校详情
@@ -23,7 +23,7 @@ export const universityApi = {
     data: UniversityDetail
     message?: string
   }> {
-    return api.get(`/v1/universities/${id}`)
+    return api.get(`/api/v1/data/universities/${id}`)
   },
 
   // 获取院校统计信息
@@ -37,7 +37,7 @@ export const universityApi = {
     }
     message?: string
   }> {
-    return api.get('/v1/universities/statistics')
+    return api.get('/api/v1/data/universities/statistics')
   },
 
   // 获取热门院校
@@ -46,7 +46,7 @@ export const universityApi = {
     data: University[]
     message?: string
   }> {
-    return api.get('/v1/universities/popular', { 
+    return api.get('/api/v1/data/universities/popular', { 
       params: { limit } 
     })
   },
@@ -57,7 +57,7 @@ export const universityApi = {
     data: { isFavorite: boolean }
     message?: string
   }> {
-    return api.post(`/v1/universities/${universityId}/favorite`)
+    return api.post(`/api/v1/data/universities/${universityId}/favorite`)
   },
 
   // 获取收藏的院校
@@ -66,7 +66,7 @@ export const universityApi = {
     data: University[]
     message?: string
   }> {
-    return api.get('/v1/universities/favorites')
+    return api.get('/api/v1/data/universities/favorites')
   },
 
   // 获取录取数据
@@ -79,7 +79,7 @@ export const universityApi = {
     data: AdmissionData[]
     message?: string
   }> {
-    return api.get(`/v1/universities/${universityId}/admission`, { params })
+    return api.get(`/api/v1/data/universities/${universityId}/admission`, { params })
   },
 
   // 分析录取趋势
@@ -99,7 +99,7 @@ export const universityApi = {
     }
     message?: string
   }> {
-    return api.get(`/v1/universities/${universityId}/admission/analyze`, {
+    return api.get(`/api/v1/data/universities/${universityId}/admission/analyze`, {
       params: { years }
     })
   },
@@ -117,6 +117,6 @@ export const universityApi = {
     }
     message?: string
   }> {
-    return api.post('/v1/universities/compare', { universityIds })
+    return api.post('/api/v1/data/universities/compare', { universityIds })
   }
 }

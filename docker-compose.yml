@@ -2,14 +2,17 @@ services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:15
+    ports:
+      - "5433:5432"
+    env_file:
+      - config/.env.development
     environment:
-      - POSTGRES_DB=gaokao
+      - POSTGRES_DB=gaokao_db
       - POSTGRES_USER=gaokao_user
-      - POSTGRES_PASSWORD=gaokao_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gaokao_user -d gaokao"]
+      test: ["CMD-SHELL", "pg_isready -U gaokao_user -d gaokao_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,7 +38,7 @@ services:
       - PORT=8082
       - GIN_MODE=release
       - ENABLE_SWAGGER=1
-      - DATABASE_URL=postgres://gaokao_user:gaokao_pass@postgres:5432/gaokao?sslmode=disable
+      - DATABASE_URL=postgres://gaokao_user:gaokao_pass@postgres:5432/gaokao_db?sslmode=disable
       - REDIS_URL=redis:6379
     depends_on:
       postgres:

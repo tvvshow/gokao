@@ -23,15 +23,17 @@ type AuthService struct {
 	redis       *redis.Client
 	config      *config.Config
 	userService *UserService
+	roleService *RoleService // NEW: delegate permission queries to RoleService cache
 }
 
 // NewAuthService 创建认证服务实例
-func NewAuthService(db *gorm.DB, redis *redis.Client, config *config.Config, userService *UserService) *AuthService {
+func NewAuthService(db *gorm.DB, redis *redis.Client, config *config.Config, userService *UserService, roleService *RoleService) *AuthService {
 	return &AuthService{
 		db:          db,
 		redis:       redis,
 		config:      config,
 		userService: userService,
+		roleService: roleService,
 	}
 }
 
@@ -353,54 +355,22 @@ func (s *AuthService) clearLoginAttempts(username, ip string) {
 
 // GetUserPermissions 获取用户权限
 func (s *AuthService) GetUserPermissions(userID uuid.UUID) ([]string, error) {
-	// 从Redis缓存中获取权限
-	cacheKey := fmt.Sprintf("user_permissions:%s", userID.String())
-	cachedPermissions, err := s.redis.SMembers(context.Background(), cacheKey).Result()
-	if err == nil && len(cachedPermissions) > 0 {
-		return cachedPermissions, nil
+	// Delegate to RoleService which already implements Redis-cached permission retrieval
+	perms, err := s.roleService.GetUserPermissions(userID)
+	if err != nil {
+		return nil, err
 	}
-
-	// 从数据库获取权限
-	var permissions []models.Permission
-	query := `
-		SELECT DISTINCT p.* FROM permissions p
-		JOIN role_permissions rp ON p.id = rp.permission_id
-		JOIN user_roles ur ON rp.role_id = ur.role_id
-		WHERE ur.user_id = ?
-	`
-	if err := s.db.Raw(query, userID).Scan(&permissions).Error; err != nil {
-		return nil, fmt.Errorf("failed to get user permissions: %w", err)
+	// Map to permission names for backward compatibility with callers
+	names := make([]string, 0, len(perms))
+	for _, p := range perms {
+		names = append(names, p.Name)
 	}
-
-	// 构建权限列表
-	permissionNames := make([]string, len(permissions))
-	for i, permission := range permissions {
-		permissionNames[i] = permission.Name
-	}
-
-	// 缓存权限到Redis（5分钟过期）
-	if len(permissionNames) > 0 {
-		s.redis.SAdd(context.Background(), cacheKey, permissionNames)
-		s.redis.Expire(context.Background(), cacheKey, 5*time.Minute)
-	}
-
-	return permissionNames, nil
+	return names, nil
 }
 
 // HasPermission 检查用户是否有指定权限
 func (s *AuthService) HasPermission(userID uuid.UUID, permission string) (bool, error) {
-	permissions, err := s.GetUserPermissions(userID)
-	if err != nil {
-		return false, err
-	}
-
-	for _, p := range permissions {
-		if p == permission {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return s.roleService.HasPermission(userID, permission)
 }
 
 // RevokeAllTokens 撤销用户的所有令牌

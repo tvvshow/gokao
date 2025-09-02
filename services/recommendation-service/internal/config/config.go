@@ -70,7 +70,7 @@ func loadConfig() (*Config, error) {
 	// 默认配置
 	config := &Config{
 		Server: &ServerConfig{
-			Port: ":8083",
+			Port: ":10083",
 			Mode: gin.ReleaseMode,
 		},
 		CPP: &CPPConfig{

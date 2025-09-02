@@ -7,6 +7,8 @@ import (
     "net/http"
     "os"
     "time"
+    "io"
+    "net/url"
 
     // NEW: for Request-ID generation
     "crypto/rand"
@@ -27,14 +29,24 @@ import (
     "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
+    // NEW: Redis for caching
+    "github.com/go-redis/redis/v8"
+
     // NEW: Swagger/OpenAPI integration
     swaggerFiles "github.com/swaggo/files"
     ginSwagger "github.com/swaggo/gin-swagger"
 
     // NEW: generated docs package (Option A: committed to repo)
     "gaokao/docs"
+    
+    // Security middleware
+    "gaokao/internal/middleware"
+
+    // Unified error handling
+    "gaokao/pkg/errors"
 
     "github.com/gin-gonic/gin"
+    "github.com/sirupsen/logrus"
 )
 
 // @title Gaokao API Gateway
@@ -65,21 +77,7 @@ type ErrorResponse struct {
     Error string `json:"error" example:"too many requests"`
 }
 
-// NEW: simple CORS middleware for cross-origin and preflight support
-func corsMiddleware() gin.HandlerFunc { // NEW: CORS
-    return func(c *gin.Context) {
-        c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-        c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-        c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-Request-ID")
-        c.Writer.Header().Set("Access-Control-Max-Age", "3600")
-
-        if c.Request.Method == http.MethodOptions {
-            c.AbortWithStatus(http.StatusNoContent)
-            return
-        }
-        c.Next()
-    }
-}
+// 已删除简单的corsMiddleware()，使用security中间件的CORS实现
 
 // NEW: structured access log middleware (method, path, status, latency_ms, request_id)
 func accessLogMiddleware() gin.HandlerFunc { // NEW: access log
@@ -111,6 +109,76 @@ type metrics struct {
     registry        *prometheus.Registry
     reqCounter      *prometheus.CounterVec
     reqDurationHist *prometheus.HistogramVec
+}
+
+// NEW: Redis cache manager
+type cacheManager struct {
+    client *redis.Client
+    logger *logrus.Logger
+}
+
+// NEW: cache middleware function
+func cacheMiddleware(cache *cacheManager, ttl time.Duration) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Only cache GET requests
+        if c.Request.Method != "GET" {
+            c.Next()
+            return
+        }
+
+        // Skip caching for certain paths
+        fullPath := c.FullPath()
+        if fullPath == "" {
+            fullPath = c.Request.URL.Path
+        }
+        if strings.HasPrefix(fullPath, "/metrics") || strings.HasPrefix(fullPath, "/swagger") ||
+            strings.HasPrefix(fullPath, "/healthz") || strings.HasPrefix(fullPath, "/readyz") {
+            c.Next()
+            return
+        }
+
+        // Generate cache key from request
+        cacheKey := fmt.Sprintf("cache:%s:%s", c.Request.Method, c.Request.URL.RequestURI())
+
+        // Try to get from cache
+        cachedData, err := cache.client.Get(c.Request.Context(), cacheKey).Bytes()
+        if err == nil {
+            // Cache hit
+            var response gin.H
+            if err := json.Unmarshal(cachedData, &response); err == nil {
+                cache.logger.WithFields(logrus.Fields{
+                    "cache_key": cacheKey,
+                    "hit":       true,
+                }).Debug("Cache hit")
+                c.JSON(http.StatusOK, response)
+                c.Abort()
+                return
+            }
+        }
+
+        // Cache miss, continue processing
+        c.Next()
+
+        // Cache the response if successful
+        if c.Writer.Status() == http.StatusOK {
+            // Capture response data
+            responseData, exists := c.Get("response_data")
+            if exists {
+                if data, ok := responseData.([]byte); ok {
+                    err := cache.client.Set(c.Request.Context(), cacheKey, data, ttl).Err()
+                    if err != nil {
+                        cache.logger.WithError(err).Warn("Failed to cache response")
+                    } else {
+                        cache.logger.WithFields(logrus.Fields{
+                            "cache_key": cacheKey,
+                            "hit":       false,
+                            "ttl":       ttl.String(),
+                        }).Debug("Cache miss - response cached")
+                    }
+                }
+            }
+        }
+    }
 }
 
 func newMetrics() *metrics {
@@ -243,11 +311,58 @@ func setupRouter() *gin.Engine { // NEW: expose router for tests
     return setupRouterWithLimiter(defaultRatePerSec, defaultBurst)
 }
 
+// NEW: initialize Redis cache
+func initRedisCache() (*cacheManager, error) {
+    redisURL := getEnv("REDIS_URL", "localhost:6379")
+    redisPassword := getEnv("REDIS_PASSWORD", "")
+    redisDB := 0
+    
+    if dbStr := getEnv("REDIS_DB", ""); dbStr != "" {
+        if db, err := strconv.Atoi(dbStr); err == nil {
+            redisDB = db
+        }
+    }
+
+    client := redis.NewClient(&redis.Options{
+        Addr:     redisURL,
+        Password: redisPassword,
+        DB:       redisDB,
+    })
+
+    // Test connection
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    
+    if err := client.Ping(ctx).Err(); err != nil {
+        return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+    }
+
+    logger := logrus.New()
+    logger.SetLevel(logrus.DebugLevel)
+
+    return &cacheManager{
+        client: client,
+        logger: logger,
+    }, nil
+}
+
 // NEW: allow tests to customize limiter
 func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
     // Switch to gin.New to avoid duplicate logs, and add Recovery explicitly
     r := gin.New()
     r.Use(gin.Recovery())
+    
+    // 创建日志记录器
+    logger := logrus.New()
+    logger.SetFormatter(&logrus.JSONFormatter{})
+
+    // 初始化Redis缓存
+    cache, err := initRedisCache()
+    if err != nil {
+        log.Printf("Warning: Redis cache initialization failed: %v. Caching will be disabled.", err)
+        cache = nil
+    }
+    
     // NEW: Register middlewares in order:
     // 1) request ID for correlation
     // 2) metrics (wrap around the whole chain)
@@ -255,13 +370,29 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
     // 4) security headers (should be present on all responses)
     // 5) CORS (may abort preflight; security headers already set)
     // 6) Rate limiter (skip OPTIONS)
+    // 7) Unified error handling
     r.Use(requestIDMiddleware())
     m := newMetrics()
     r.Use(m.middleware())
     r.Use(accessLogMiddleware())
-    r.Use(securityHeadersMiddleware())
-    r.Use(corsMiddleware())
+    
+    // 添加缓存中间件（如果Redis可用）
+    if cache != nil {
+        cacheTTL := getEnvAsDuration("CACHE_TTL", "5m")
+        r.Use(cacheMiddleware(cache, cacheTTL))
+    }
+    
+    // 使用security中间件的CORS实现，不使用重复的securityHeadersMiddleware
+    securityMiddleware := middleware.NewSecurityMiddleware(&middleware.SecurityConfig{
+        JWTSecret:          os.Getenv("JWT_SECRET"),
+        RateLimitEnabled:   false,
+        SecurityHeaders:    true,
+    })
+    r.Use(securityMiddleware.SecurityHeaders())
+    allowedOrigins := []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+    r.Use(securityMiddleware.CORS(allowedOrigins))
     r.Use(rateLimitMiddlewareWithConfig(ratePerSec, burst))
+    r.Use(errors.ErrorHandler(logger))
 
     // configure swagger base path
     docs.SwaggerInfo.BasePath = "/"
@@ -310,6 +441,31 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
         v1.GET("/ping", func(c *gin.Context) {
             c.JSON(http.StatusOK, gin.H{"message": "pong"})
         })
+
+        // NEW: Proxy routes to microservices
+        // Data service routes (universities, majors, recommendations)
+        dataServiceGroup := v1.Group("/data")
+        {
+            dataServiceGroup.Any("/*path", proxyToService(getEnv("DATA_SERVICE_URL", "http://data-service:8082")))
+        }
+
+        // User service routes (auth, profile)
+        userServiceGroup := v1.Group("/users")
+        {
+            userServiceGroup.Any("/*path", proxyToService(getEnv("USER_SERVICE_URL", "http://user-service:8081")))
+        }
+
+        // Payment service routes
+        paymentServiceGroup := v1.Group("/payments")
+        {
+            paymentServiceGroup.Any("/*path", proxyToService(getEnv("PAYMENT_SERVICE_URL", "http://payment-service:8083")))
+        }
+
+        // Recommendation service routes
+        recommendationServiceGroup := v1.Group("/recommendations")
+        {
+            recommendationServiceGroup.Any("/*path", proxyToService(getEnv("RECOMMENDATION_SERVICE_URL", "http://recommendation-service:8084")))
+        }
     }
 
     return r
@@ -410,6 +566,77 @@ func generateRequestID() string {
     b := make([]byte, 16)
     _, _ = rand.Read(b)
     return hex.EncodeToString(b)
+}
+
+// NEW: HTTP proxy function to forward requests to microservices
+func proxyToService(targetURL string) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Parse target URL
+        target, err := url.Parse(targetURL)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid target URL"})
+            return
+        }
+
+        // Build the full target URL with path
+        path := c.Param("path")
+        if path == "" {
+            path = "/"
+        }
+        // For recommendation service, we need to prepend /api/v1/recommendations
+        if strings.Contains(targetURL, ":10083") {
+            target.Path = "/api/v1/recommendations" + path
+        } else if strings.Contains(targetURL, ":10081") {
+            // For user service, we need to prepend /api/v1 (path already contains /auth)
+            target.Path = "/api/v1" + path
+        } else {
+            target.Path = path
+        }
+        target.RawQuery = c.Request.URL.RawQuery
+
+        // Create new request
+        req, err := http.NewRequest(c.Request.Method, target.String(), c.Request.Body)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create request"})
+            return
+        }
+
+        // Copy headers
+        for key, values := range c.Request.Header {
+            for _, value := range values {
+                req.Header.Add(key, value)
+            }
+        }
+
+        // Forward request
+        client := &http.Client{Timeout: 30 * time.Second}
+        resp, err := client.Do(req)
+        if err != nil {
+            c.JSON(http.StatusBadGateway, gin.H{"error": "service unavailable"})
+            return
+        }
+        defer resp.Body.Close()
+
+        // Copy response headers (exclude CORS headers to avoid conflicts)
+        for key, values := range resp.Header {
+            // Skip CORS headers as they are handled by API Gateway middleware
+            if strings.HasPrefix(strings.ToLower(key), "access-control-") {
+                continue
+            }
+            for _, value := range values {
+                c.Writer.Header().Add(key, value)
+            }
+        }
+
+        // Set status code
+        c.Status(resp.StatusCode)
+
+        // Copy response body
+        _, err = io.Copy(c.Writer, resp.Body)
+        if err != nil {
+            log.Printf("Error copying response body: %v", err)
+        }
+    }
 }
 
 // Doc-only placeholders (no-op) to make swagger annotations explicit when handlers are closures.

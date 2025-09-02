@@ -10,7 +10,7 @@ import (
 // University 院校模型
 type University struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
-	Code        string         `gorm:"uniqueIndex;not null;size:20" json:"code"`
+	Code        string         `gorm:"not null;size:20;index" json:"code"`
 	Name        string         `gorm:"index;not null;size:200" json:"name"`
 	EnglishName string         `gorm:"size:300" json:"english_name,omitempty"`
 	Alias       string         `gorm:"size:500" json:"alias,omitempty"`

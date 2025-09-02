@@ -45,6 +45,19 @@ func main() {
 	// 初始化配置
 	cfg := config.Load()
 
+	// 加载安全配置
+	securityCfg, err := config.LoadSecurityConfig()
+	if err != nil {
+		log.Fatal("Failed to load security config:", err)
+	}
+
+	// 验证生产环境安全配置
+	if securityCfg.IsProduction() {
+		logrus.Info("Running in production mode with enhanced security")
+	} else {
+		logrus.Warn("Running in development mode - some security features may be relaxed")
+	}
+
 	// 设置日志级别
 	if cfg.Environment == "production" {
 		logrus.SetLevel(logrus.InfoLevel)
@@ -67,20 +80,23 @@ func main() {
 	}
 
 	// 初始化服务
-	userService := services.NewUserService(db, redisClient, cfg)
-	authService := services.NewAuthService(db, redisClient, cfg, userService)
 	roleService := services.NewRoleService(db, redisClient, cfg)
+	userService := services.NewUserService(db, redisClient, cfg)
+	authService := services.NewAuthService(db, redisClient, cfg, userService, roleService)
 
 	// 初始化处理器
 	userHandler := handlers.NewUserHandler(userService, roleService)
 	authHandler := handlers.NewAuthHandler(authService, userService)
 	roleHandler := handlers.NewRoleHandler(roleService)
 
+	// Initialize permission middleware with caching-backed role/permission checks
+	perm := middleware.NewPermission(userService, roleService, cfg.JWTSecret)
+
 	// 创建Gin路由器
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middleware.CORS())
+	// r.Use(middleware.CORS()) // 注释掉，由API Gateway统一处理CORS
 
 	// Swagger文档路由
 	if cfg.EnableSwagger {
@@ -105,41 +121,40 @@ func main() {
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.RefreshToken)
-			auth.POST("/logout", middleware.JWTAuth(cfg.JWTSecret), authHandler.Logout)
+			auth.POST("/logout", perm.RequireAuth(), authHandler.Logout)
 		}
 
 		// 用户相关路由（需要JWT）
 		users := v1.Group("/users")
-		users.Use(middleware.JWTAuth(cfg.JWTSecret))
+		users.Use(perm.RequireAuth())
 		{
 			users.GET("/profile", userHandler.GetProfile)
 			users.PUT("/profile", userHandler.UpdateProfile)
 			users.POST("/change-password", userHandler.ChangePassword)
-			users.GET("/", middleware.RequireRole("admin"), userHandler.ListUsers)
-			users.GET("/:id", middleware.RequireRole("admin"), userHandler.GetUser)
-			users.PUT("/:id", middleware.RequireRole("admin"), userHandler.UpdateUser)
-			users.DELETE("/:id", middleware.RequireRole("admin"), userHandler.DeleteUser)
+			users.GET("/", perm.AdminOnly(), userHandler.ListUsers)
+			users.GET("/:id", perm.AdminOnly(), userHandler.GetUser)
+			users.PUT("/:id", perm.AdminOnly(), userHandler.UpdateUser)
+			users.DELETE("/:id", perm.AdminOnly(), userHandler.DeleteUser)
 		}
 
-		// 角色权限相关路由（需要管理员权限）
+		// 角色权限相关路由（需要权限控制）
 		roles := v1.Group("/roles")
-		roles.Use(middleware.JWTAuth(cfg.JWTSecret))
-		roles.Use(middleware.RequireRole("admin"))
+		roles.Use(perm.RequireAuth())
 		{
-			roles.GET("/", roleHandler.ListRoles)
-			roles.POST("/", roleHandler.CreateRole)
-			roles.GET("/:id", roleHandler.GetRole)
-			roles.PUT("/:id", roleHandler.UpdateRole)
-			roles.DELETE("/:id", roleHandler.DeleteRole)
-			roles.POST("/:id/permissions", roleHandler.AssignPermissions)
-			roles.DELETE("/:id/permissions/:permissionId", roleHandler.RevokePermission)
+		    roles.GET("/", perm.RequirePermission("role:read"), roleHandler.ListRoles)
+		    roles.POST("/", perm.RequirePermission("role:write"), roleHandler.CreateRole)
+		    roles.GET("/:id", perm.RequirePermission("role:read"), roleHandler.GetRole)
+		    roles.PUT("/:id", perm.RequirePermission("role:write"), roleHandler.UpdateRole)
+		    roles.DELETE("/:id", perm.RequirePermission("role:delete"), roleHandler.DeleteRole)
+		    roles.POST("/:id/permissions", perm.RequirePermission("permission:manage"), roleHandler.AssignPermissions)
+		    roles.DELETE("/:id/permissions/:permissionId", perm.RequirePermission("permission:manage"), roleHandler.RevokePermission)
 		}
 	}
 
 	// 启动服务器
 	port := cfg.Port
 	if port == "" {
-		port = "8081"
+		port = "10081"
 	}
 
 	logrus.Infof("🚀 User Service starting on port %s", port)

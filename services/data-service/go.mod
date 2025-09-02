@@ -1,6 +1,6 @@
 module data-service
 
-go 1.23
+go 1.22
 
 require (
 	github.com/gin-gonic/gin v1.9.1
@@ -67,3 +67,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
+
+replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+
+replace github.com/gaokaohub/pkg/database => ../../pkg/database
+
+replace github.com/gaokaohub/pkg/logger => ../../pkg/logger

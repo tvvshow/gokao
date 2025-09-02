@@ -32,7 +32,7 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:8082
+// @host localhost:10082
 // @BasePath /
 
 func main() {
@@ -90,7 +90,7 @@ func main() {
 	// 注册中间件
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.Recovery(logger))
-	router.Use(middleware.CORS())
+	// 移除CORS中间件，因为请求通过API Gateway代理，由API Gateway处理CORS
 	router.Use(middleware.Security())
 	router.Use(middleware.RateLimit(logger))
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))
@@ -114,8 +114,8 @@ func main() {
 		}
 	})
 
-	// API路由组
-	apiV1 := router.Group("/api/v1")
+	// API路由组 - 修复前端路径匹配
+	apiV1 := router.Group("/v1")
 	{
 		// 院校路由
 		universities := apiV1.Group("/universities")
@@ -188,7 +188,7 @@ func main() {
 	// Swagger文档
 	if cfg.EnableSwagger {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-		logger.Info("Swagger文档已启用: http://localhost:" + cfg.Port + "/swagger/index.html")
+		logger.Info("Swagger文档已启用: http://localhost:10082/swagger/index.html")
 	}
 
 	// 创建HTTP服务器

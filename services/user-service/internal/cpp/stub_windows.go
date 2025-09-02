@@ -238,9 +238,9 @@ func NewLicenseService() *LicenseService {
 }
 
 // GenerateLicense 生成许可证
-func (s *LicenseService) GenerateLicense(deviceID string, expiresAt time.Time, privateKey string) (string, error) {
+func (s *LicenseService) GenerateLicense(deviceID string, expiresAt time.Time, privateKey string, licenseType string, features []string) (string, error) {
 	// 生成简单的许可证字符串
-	license := deviceID + ":" + expiresAt.Format(time.RFC3339) + ":stub-license"
+	license := deviceID + ":" + expiresAt.Format(time.RFC3339) + ":" + licenseType + ":stub-license"
 	return license, nil
 }
 

@@ -239,6 +239,60 @@ type PaymentNotifyResponse struct {
 	Message string `json:"message"`
 }
 
+// PaymentStatus 支付状态查询响应
+type PaymentStatus struct {
+	OrderNo       string          `json:"order_no"`
+	Status        string          `json:"status"`
+	PaymentMethod string          `json:"payment_method"`
+	TransactionID string          `json:"transaction_id"`
+	PaidAt        *time.Time      `json:"paid_at"`
+	Amount        decimal.Decimal `json:"amount"`
+	Currency      string          `json:"currency"`
+	Extra         PaymentJSONB    `json:"extra"`
+}
+
+// RefundRequest 退款请求
+type RefundRequest struct {
+	OrderNo  string          `json:"order_no"`
+	RefundID string          `json:"refund_id"`
+	Amount   decimal.Decimal `json:"amount"`
+	Reason   string          `json:"reason"`
+}
+
+// RefundResponse 退款响应
+type RefundResponse struct {
+	RefundID      string          `json:"refund_id"`
+	OrderNo       string          `json:"order_no"`
+	Status        string          `json:"status"`
+	Amount        decimal.Decimal `json:"amount"`
+	Currency      string          `json:"currency"`
+	RefundedAt    time.Time       `json:"refunded_at"`
+	PaymentMethod string          `json:"payment_method"`
+	Extra         PaymentJSONB    `json:"extra"`
+}
+
+// CallbackResult 回调处理结果
+type CallbackResult struct {
+	OrderNo       string          `json:"order_no"`
+	Status        string          `json:"status"`
+	PaymentMethod string          `json:"payment_method"`
+	TransactionID string          `json:"transaction_id"`
+	Amount        decimal.Decimal `json:"amount"`
+	Currency      string          `json:"currency"`
+	PaidAt        *time.Time      `json:"paid_at"`
+	Extra         PaymentJSONB    `json:"extra"`
+}
+
+// CreatePaymentRequest 创建支付请求
+type CreatePaymentRequest struct {
+	UserID        string                 `json:"user_id"`
+	Amount        decimal.Decimal        `json:"amount"`
+	Currency      string                 `json:"currency"`
+	Description   string                 `json:"description"`
+	PaymentMethod string                 `json:"payment_method"`
+	Extra         map[string]interface{} `json:"extra"`
+}
+
 // APIResponse 通用API响应
 type APIResponse struct {
 	Success bool        `json:"success"`

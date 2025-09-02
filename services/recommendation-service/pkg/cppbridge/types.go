@@ -52,17 +52,22 @@ type RecommendationResponse struct {
 
 // Recommendation 推荐项
 type Recommendation struct {
-	SchoolID       string  `json:"school_id"`
-	SchoolName     string  `json:"school_name"`
-	MajorID        string  `json:"major_id"`
-	MajorName      string  `json:"major_name"`
-	AdmissionScore int     `json:"admission_score"`
-	Probability    float64 `json:"probability"`
-	RiskLevel      string  `json:"risk_level"`
-	Ranking        int     `json:"ranking"`
-	Algorithm      string  `json:"algorithm"`
+	SchoolID       string   `json:"school_id"`
+	SchoolName     string   `json:"school_name"`
+	MajorID        string   `json:"major_id"`
+	MajorName      string   `json:"major_name"`
+	AdmissionScore int      `json:"admission_score"`
+	Probability    float64  `json:"probability"`
+	RiskLevel      string   `json:"risk_level"`
+	Ranking        int      `json:"ranking"`
+	Algorithm      string   `json:"algorithm"`
 	Reasons        []string `json:"reasons,omitempty"`
-	Score          float64 `json:"score"`
+	Score          float64  `json:"score"`
+	// 新增字段以支持前端格式
+	Province       string   `json:"province,omitempty"`
+	City           string   `json:"city,omitempty"`
+	SchoolLevel    string   `json:"school_level,omitempty"`
+	SchoolType     string   `json:"school_type,omitempty"`
 }
 
 // BatchRecommendationRequest 批量推荐请求

@@ -263,6 +263,16 @@ certs/
 *.p12
 *.pfx
 
+# Configuration with secrets
+config/secrets/
+config/certs/
+config/.env.*
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
 # Monitoring and deployment
 prometheus/
 grafana/
@@ -274,3 +284,7 @@ logstash/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+
+# Large files
+gaokao.rar
+gaokaohub_-ai-college-application-assistant.zip

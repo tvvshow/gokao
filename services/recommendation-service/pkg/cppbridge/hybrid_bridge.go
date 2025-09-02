@@ -357,29 +357,17 @@ func (b *CppHybridRecommendationBridge) studentToC(student *Student) *C.C_Studen
 	
 	// 偏好城市
 	if len(student.PreferredCities) > 0 {
-		cStudent.preferred_cities = (**C.char)(C.malloc(C.size_t(len(student.PreferredCities)) * C.size_t(unsafe.Sizeof(uintptr(0)))))
-		for i, city := range student.PreferredCities {
-			*(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.preferred_cities)) + uintptr(i)*unsafe.Sizeof(uintptr(0)))) = C.CString(city)
-		}
-		cStudent.preferred_cities_count = C.int(len(student.PreferredCities))
+		cStudent.preferred_cities, cStudent.preferred_cities_count = b.createCStringArray(student.PreferredCities)
 	}
 	
 	// 偏好专业
 	if len(student.PreferredMajors) > 0 {
-		cStudent.preferred_majors = (**C.char)(C.malloc(C.size_t(len(student.PreferredMajors)) * C.size_t(unsafe.Sizeof(uintptr(0)))))
-		for i, major := range student.PreferredMajors {
-			*(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.preferred_majors)) + uintptr(i)*unsafe.Sizeof(uintptr(0)))) = C.CString(major)
-		}
-		cStudent.preferred_majors_count = C.int(len(student.PreferredMajors))
+		cStudent.preferred_majors, cStudent.preferred_majors_count = b.createCStringArray(student.PreferredMajors)
 	}
 	
 	// 避免专业
 	if len(student.AvoidedMajors) > 0 {
-		cStudent.avoided_majors = (**C.char)(C.malloc(C.size_t(len(student.AvoidedMajors)) * C.size_t(unsafe.Sizeof(uintptr(0)))))
-		for i, major := range student.AvoidedMajors {
-			*(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.avoided_majors)) + uintptr(i)*unsafe.Sizeof(uintptr(0)))) = C.CString(major)
-		}
-		cStudent.avoided_majors_count = C.int(len(student.AvoidedMajors))
+		cStudent.avoided_majors, cStudent.avoided_majors_count = b.createCStringArray(student.AvoidedMajors)
 	}
 	
 	// 权重
@@ -414,27 +402,15 @@ func (b *CppHybridRecommendationBridge) freeCStudent(cStudent *C.C_Student) {
 	
 	// 释放数组
 	if cStudent.preferred_cities != nil {
-		for i := 0; i < int(cStudent.preferred_cities_count); i++ {
-			ptr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.preferred_cities)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
-			C.free(unsafe.Pointer(ptr))
-		}
-		C.free(unsafe.Pointer(cStudent.preferred_cities))
+		b.freeCStringArray(cStudent.preferred_cities, cStudent.preferred_cities_count)
 	}
 	
 	if cStudent.preferred_majors != nil {
-		for i := 0; i < int(cStudent.preferred_majors_count); i++ {
-			ptr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.preferred_majors)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
-			C.free(unsafe.Pointer(ptr))
-		}
-		C.free(unsafe.Pointer(cStudent.preferred_majors))
+		b.freeCStringArray(cStudent.preferred_majors, cStudent.preferred_majors_count)
 	}
 	
 	if cStudent.avoided_majors != nil {
-		for i := 0; i < int(cStudent.avoided_majors_count); i++ {
-			ptr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cStudent.avoided_majors)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
-			C.free(unsafe.Pointer(ptr))
-		}
-		C.free(unsafe.Pointer(cStudent.avoided_majors))
+		b.freeCStringArray(cStudent.avoided_majors, cStudent.avoided_majors_count)
 	}
 	
 	C.free(unsafe.Pointer(cStudent))
@@ -481,11 +457,7 @@ func (b *CppHybridRecommendationBridge) freeCRecommendation(cRec *C.C_VolunteerR
 	C.free(unsafe.Pointer(cRec.recommendation_reason))
 	
 	if cRec.risk_factors != nil {
-		for i := 0; i < int(cRec.risk_factors_count); i++ {
-			ptr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cRec.risk_factors)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
-			C.free(unsafe.Pointer(ptr))
-		}
-		C.free(unsafe.Pointer(cRec.risk_factors))
+		b.freeCStringArray(cRec.risk_factors, cRec.risk_factors_count)
 	}
 	
 	C.free(unsafe.Pointer(cRec))

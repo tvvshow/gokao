@@ -1,4 +1,4 @@
-import api from './index'
+import { api } from './api-client'
 import type { 
   StudentInfo, 
   Recommendation,
@@ -15,7 +15,7 @@ export const recommendationApi = {
     }
     message?: string
   }> {
-    return api.post('/v1/recommendation/generate', studentInfo)
+    return api.post('/api/v1/recommendations/generate', studentInfo)
   },
 
   // 获取推荐类型
@@ -24,7 +24,7 @@ export const recommendationApi = {
     data: string[]
     message?: string
   }> {
-    return api.get('/v1/recommendation/types')
+    return api.get('/api/v1/recommendations/types')
   },
 
   // 获取风险承受度选项
@@ -37,7 +37,7 @@ export const recommendationApi = {
     }>
     message?: string
   }> {
-    return api.get('/v1/recommendation/risk-tolerance')
+    return api.get('/api/v1/recommendations/risk-tolerance')
   },
 
   // 保存推荐方案
@@ -46,7 +46,7 @@ export const recommendationApi = {
     data: { id: string }
     message?: string
   }> {
-    return api.post('/v1/recommendation/schemes', scheme)
+    return api.post('/api/v1/recommendations/schemes', scheme)
   },
 
   // 获取保存的方案
@@ -55,7 +55,7 @@ export const recommendationApi = {
     data: RecommendationScheme[]
     message?: string
   }> {
-    return api.get('/v1/recommendation/schemes')
+    return api.get('/api/v1/recommendations/schemes')
   },
 
   // 导出推荐报告
@@ -64,7 +64,7 @@ export const recommendationApi = {
     data: Blob
     message?: string
   }> {
-    return api.post('/v1/recommendation/export', 
+    return api.post('/api/v1/recommendations/export', 
       { recommendations }, 
       { responseType: 'blob' }
     )

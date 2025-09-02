@@ -1,3 +1,4 @@
+import "github.com/go-redis/redis/v8"
 package alerts
 
 import (

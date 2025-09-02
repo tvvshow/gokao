@@ -382,20 +382,27 @@ func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (map[st
 // 辅助方法
 
 // applyUniversityFilters 应用院校筛选条件
+// applyUniversityFilters 应用查询过滤器 - 优化版本，提升查询性能
 func (s *UniversityService) applyUniversityFilters(query *gorm.DB, params UniversityQueryParams) {
+	// 优先使用精确匹配的索引字段，提升查询效率
 	if params.ID != "" {
 		query.Where("id = ?", params.ID)
+		return // ID查询直接返回，无需其他条件
 	}
 	if params.Code != "" {
 		query.Where("code = ?", params.Code)
+		return // Code查询直接返回，无需其他条件
 	}
-	if params.Name != "" {
-		query.Where("name ILIKE ?", "%"+params.Name+"%")
+	
+	// 地理位置过滤 - 优先使用province索引
+	if params.Province != "" {
+		query.Where("province = ?", params.Province)
 	}
-	if params.Keyword != "" {
-		keyword := "%" + params.Keyword + "%"
-		query.Where("name ILIKE ? OR alias ILIKE ? OR description ILIKE ?", keyword, keyword, keyword)
+	if params.City != "" {
+		query.Where("city = ?", params.City)
 	}
+	
+	// 分类过滤 - 使用复合索引
 	if params.Type != "" {
 		query.Where("type = ?", params.Type)
 	}
@@ -408,27 +415,38 @@ func (s *UniversityService) applyUniversityFilters(query *gorm.DB, params Univer
 	if params.Category != "" {
 		query.Where("category = ?", params.Category)
 	}
-	if params.Province != "" {
-		query.Where("province = ?", params.Province)
-	}
-	if params.City != "" {
-		query.Where("city = ?", params.City)
-	}
-	if params.MinRank > 0 {
+	
+	// 排名范围查询 - 优化为单个BETWEEN查询
+	if params.MinRank > 0 && params.MaxRank > 0 {
+		query.Where("national_rank BETWEEN ? AND ?", params.MinRank, params.MaxRank)
+	} else if params.MinRank > 0 {
 		query.Where("national_rank >= ?", params.MinRank)
+	} else if params.MaxRank > 0 {
+		query.Where("national_rank <= ? AND national_rank > 0", params.MaxRank)
 	}
-	if params.MaxRank > 0 {
-		query.Where("national_rank <= ?", params.MaxRank)
-	}
+	
+	// 状态过滤
 	if params.IsActive != nil {
 		query.Where("is_active = ?", *params.IsActive)
 	}
 	if params.IsRecruiting != nil {
 		query.Where("is_recruiting = ?", *params.IsRecruiting)
 	}
+	
+	// 文本搜索 - 最后执行，避免影响索引使用
+	if params.Name != "" {
+		// 优先尝试精确匹配，再使用模糊匹配
+		query.Where("(name = ? OR name ILIKE ?)", params.Name, "%"+params.Name+"%")
+	}
+	if params.Keyword != "" {
+		keyword := "%" + params.Keyword + "%"
+		// 使用全文搜索索引优化关键词查询
+		query.Where("(to_tsvector('chinese', name || ' ' || COALESCE(alias, '') || ' ' || COALESCE(description, '')) @@ plainto_tsquery('chinese', ?) OR name ILIKE ? OR alias ILIKE ? OR description ILIKE ?)", 
+			params.Keyword, keyword, keyword, keyword)
+	}
 }
 
-// applyUniversitySort 应用排序
+// applyUniversitySort 应用排序 - 优化版本，使用更高效的排序策略
 func (s *UniversityService) applyUniversitySort(query *gorm.DB, params UniversityQueryParams) {
 	sortBy := params.SortBy
 	if sortBy == "" {
@@ -440,21 +458,32 @@ func (s *UniversityService) applyUniversitySort(query *gorm.DB, params Universit
 		sortOrder = "ASC"
 	}
 	
+	// 优化排序逻辑，减少复杂的CASE WHEN语句
 	switch sortBy {
 	case "name":
 		query.Order("name " + sortOrder)
 	case "rank":
-		query.Order("national_rank " + sortOrder + ", name ASC")
-	case "score":
-		query.Order("overall_score " + sortOrder + ", name ASC")
-	case "created_at":
-		query.Order("created_at " + sortOrder)
-	default:
-		// 默认按排名排序，未排名的放后面
+		// 使用NULLS LAST/FIRST代替CASE WHEN，性能更好
 		if sortOrder == "ASC" {
-			query.Order("CASE WHEN national_rank = 0 THEN 999999 ELSE national_rank END ASC, name ASC")
+			query.Order("national_rank ASC NULLS LAST, name ASC")
 		} else {
-			query.Order("CASE WHEN national_rank = 0 THEN -1 ELSE national_rank END DESC, name ASC")
+			query.Order("national_rank DESC NULLS LAST, name ASC")
+		}
+	case "score":
+		if sortOrder == "ASC" {
+			query.Order("overall_score ASC NULLS LAST, name ASC")
+		} else {
+			query.Order("overall_score DESC NULLS LAST, name ASC")
+		}
+	case "created_at":
+		query.Order("created_at " + sortOrder + ", name ASC")
+	default:
+		// 默认按排名排序，0值排名视为未排名，放在最后
+		if sortOrder == "ASC" {
+			// 使用WHERE子句分离有排名和无排名的记录，避免复杂排序
+			query.Order("(national_rank = 0), national_rank ASC, name ASC")
+		} else {
+			query.Order("(national_rank = 0), national_rank DESC, name ASC")
 		}
 	}
 }
@@ -538,8 +567,58 @@ func (s *UniversityService) orderUniversitiesByIDs(universities []models.Univers
 	return ordered
 }
 
-// generateCacheKey 生成缓存键
+// generateCacheKey 生成缓存键 - 优化版本，避免JSON序列化开销
 func (s *UniversityService) generateCacheKey(prefix string, params UniversityQueryParams) string {
-	data, _ := json.Marshal(params)
-	return fmt.Sprintf("%s:%x", prefix, data)
+	// 使用字符串拼接代替JSON序列化，提升性能
+	var keyParts []string
+	keyParts = append(keyParts, prefix)
+	
+	if params.ID != "" {
+		keyParts = append(keyParts, "id:"+params.ID)
+	}
+	if params.Code != "" {
+		keyParts = append(keyParts, "code:"+params.Code)
+	}
+	if params.Name != "" {
+		keyParts = append(keyParts, "name:"+params.Name)
+	}
+	if params.Keyword != "" {
+		keyParts = append(keyParts, "keyword:"+params.Keyword)
+	}
+	if params.Type != "" {
+		keyParts = append(keyParts, "type:"+params.Type)
+	}
+	if params.Level != "" {
+		keyParts = append(keyParts, "level:"+params.Level)
+	}
+	if params.Nature != "" {
+		keyParts = append(keyParts, "nature:"+params.Nature)
+	}
+	if params.Category != "" {
+		keyParts = append(keyParts, "category:"+params.Category)
+	}
+	if params.Province != "" {
+		keyParts = append(keyParts, "province:"+params.Province)
+	}
+	if params.City != "" {
+		keyParts = append(keyParts, "city:"+params.City)
+	}
+	if params.MinRank > 0 {
+		keyParts = append(keyParts, fmt.Sprintf("minrank:%d", params.MinRank))
+	}
+	if params.MaxRank > 0 {
+		keyParts = append(keyParts, fmt.Sprintf("maxrank:%d", params.MaxRank))
+	}
+	if params.IsActive != nil {
+		keyParts = append(keyParts, fmt.Sprintf("active:%t", *params.IsActive))
+	}
+	if params.IsRecruiting != nil {
+		keyParts = append(keyParts, fmt.Sprintf("recruiting:%t", *params.IsRecruiting))
+	}
+	
+	keyParts = append(keyParts, fmt.Sprintf("sort:%s:%s", params.SortBy, params.SortOrder))
+	keyParts = append(keyParts, fmt.Sprintf("page:%d:%d", params.Page, params.PageSize))
+	keyParts = append(keyParts, fmt.Sprintf("majors:%t", params.IncludeMajors))
+	
+	return strings.Join(keyParts, "|")
 }

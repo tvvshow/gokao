@@ -61,6 +61,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// 验证密码复杂度
+	if err := h.validatePassword(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "password_complexity_failed",
+			"message": "Password does not meet complexity requirements",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	// 创建用户模型
 	user := &models.User{
 		Username: req.Username,
@@ -324,6 +334,16 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
+	// 验证新密码复杂度
+	if err := h.validatePassword(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "password_complexity_failed",
+			"message": "New password does not meet complexity requirements",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	// 修改密码
 	if err := h.userService.ChangePassword(userID.(uuid.UUID), req.OldPassword, req.NewPassword); err != nil {
 		if strings.Contains(err.Error(), "incorrect") {
@@ -375,4 +395,92 @@ func (h *AuthHandler) GetPermissions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"permissions": permissions,
 	})
+}
+
+// validatePassword 验证密码复杂度
+func (h *AuthHandler) validatePassword(password string) error {
+	// 密码长度至少8位
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
+	}
+
+	// 检查是否包含大写字母
+	hasUpper := false
+	// 检查是否包含小写字母
+	hasLower := false
+	// 检查是否包含数字
+	hasDigit := false
+	// 检查是否包含特殊字符
+	hasSpecial := false
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	var requirements []string
+	
+	if !hasUpper {
+		requirements = append(requirements, "at least one uppercase letter")
+	}
+	if !hasLower {
+		requirements = append(requirements, "at least one lowercase letter")
+	}
+	if !hasDigit {
+		requirements = append(requirements, "at least one digit")
+	}
+	if !hasSpecial {
+		requirements = append(requirements, "at least one special character")
+	}
+
+	if len(requirements) > 0 {
+		return fmt.Errorf("password must contain %s", strings.Join(requirements, ", "))
+	}
+
+	// 检查常见弱密码
+	weakPasswords := []string{
+		"password", "123456", "12345678", "123456789", "qwerty",
+		"abc123", "password1", "admin", "welcome", "letmein",
+	}
+	
+	for _, weak := range weakPasswords {
+		if strings.ToLower(password) == weak {
+			return fmt.Errorf("password is too common and easily guessable")
+		}
+	}
+
+	// 检查连续字符或重复模式
+	if hasRepeatingPattern(password, 3) {
+		return fmt.Errorf("password contains easily guessable patterns")
+	}
+
+	return nil
+}
+
+// hasRepeatingPattern 检查密码中是否有重复模式
+func hasRepeatingPattern(s string, minLength int) bool {
+	if len(s) < minLength*2 {
+		return false
+	}
+
+	for length := minLength; length <= len(s)/2; length++ {
+		for i := 0; i <= len(s)-length*2; i++ {
+			sub1 := s[i : i+length]
+			sub2 := s[i+length : i+length*2]
+			
+			if sub1 == sub2 {
+				return true
+			}
+		}
+	}
+
+	return false
 }

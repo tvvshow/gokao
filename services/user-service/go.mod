@@ -1,10 +1,11 @@
 module user-service
 
-go 1.23
+go 1.22
 
 toolchain go1.24.6
 
 require (
+	github.com/gaokaohub/pkg/auth v0.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.4.0
@@ -66,3 +67,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
+
+replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+
+replace github.com/gaokaohub/pkg/database => ../../pkg/database
+
+replace github.com/gaokaohub/pkg/logger => ../../pkg/logger
