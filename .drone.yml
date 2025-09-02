@@ -41,11 +41,11 @@ steps:
       GOSUMDB: sum.golang.google.cn
     commands:
       - apk add --no-cache git gcc musl-dev
-      - cd services/api-gateway && go mod download
-      - cd ../user-service && go mod download  
-      - cd ../data-service && go mod download
-      - cd ../recommendation-service && go mod download
-      - cd ../payment-service && go mod download
+      - |
+        for service in api-gateway user-service data-service recommendation-service payment-service; do
+          echo "Downloading Go dependencies for $service..."
+          cd services/$service && go mod download && cd ../..
+        done
       - echo "Go dependencies downloaded successfully"
 
   # 代码质量检查
@@ -58,10 +58,7 @@ steps:
       - |
         for service in api-gateway user-service data-service recommendation-service payment-service; do
           echo "Linting $service..."
-          cd services/$service
-          golangci-lint run --timeout=10m || true
-          staticcheck ./... || true
-          cd ../..
+          cd services/$service && golangci-lint run --timeout=10m || true && staticcheck ./... || true && cd ../..
         done
 
   # Go单元测试
@@ -74,10 +71,7 @@ steps:
       - |
         for service in api-gateway user-service data-service recommendation-service payment-service; do
           echo "Testing $service..."
-          cd services/$service
-          go test -v -race -coverprofile=coverage.out ./...
-          go tool cover -html=coverage.out -o coverage.html || true
-          cd ../..
+          cd services/$service && go test -v -race -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html || true && cd ../..
         done
 
   # C++构建和测试
@@ -109,9 +103,7 @@ steps:
       - |
         for service in api-gateway user-service data-service recommendation-service payment-service; do
           echo "Security scanning $service..."
-          cd services/$service
-          gosec -fmt json -out gosec-report.json ./... || true
-          cd ../..
+          cd services/$service && gosec -fmt json -out gosec-report.json ./... || true && cd ../..
         done
     when:
       event: [push, pull_request]
