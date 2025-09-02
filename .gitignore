@@ -288,3 +288,10 @@ logstash/
 # Large files
 gaokao.rar
 gaokaohub_-ai-college-application-assistant.zip
+
+# Tooling directories
+.iflow/
+.claude/
+.qoder/
+.spec-workflow/
+.trae/
