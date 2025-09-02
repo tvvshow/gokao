@@ -301,8 +301,9 @@ steps:
   - name: notify-success
     image: plugins/slack
     settings:
-      webhook:
-        from_secret: slack_webhook
+      # WARNING: Hardcoding sensitive information like webhook URLs is a security risk.
+      # It is highly recommended to use Drone CI secrets for this purpose in production.
+      webhook: http://166.108.233.220/hook
       channel: ci-cd
       username: drone
       template: |
