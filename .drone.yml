@@ -123,8 +123,8 @@ steps:
         for service in $services; do
           echo "Building Docker image for $service..."
           cd services/$service
-          docker build -t gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} .
-          docker tag gaokaohub/$service:${DRONE_COMMIT_SHA:0:8} gaokaohub/$service:latest
+          docker build -t $DOCKER_USERNAME/$service:${DRONE_COMMIT_SHA:0:8} .
+          docker tag $DOCKER_USERNAME/$service:${DRONE_COMMIT_SHA:0:8} $DOCKER_USERNAME/$service:latest
           
           # 只在master分支推送到registry
           if [ "$DRONE_BRANCH" = "master" ]; then
@@ -143,8 +143,8 @@ steps:
       - |
         services="api-gateway user-service data-service recommendation-service payment-service"
         for service in $services; do
-          echo "Scanning Docker image: gaokaohub/$service:latest"
-          trivy image --exit-code 0 --severity HIGH,CRITICAL gaokaohub/$service:latest || true
+          echo "Scanning Docker image: $DOCKER_USERNAME/$service:latest"
+          trivy image --exit-code 0 --severity HIGH,CRITICAL $DOCKER_USERNAME/$service:latest || true
         done
     when:
       event: [push]
