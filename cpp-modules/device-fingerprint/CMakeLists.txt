@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.16)
 project(DeviceFingerprint 
     VERSION 1.0.0
     DESCRIPTION "High-performance cross-platform device fingerprint collection module"
-    LANGUAGES CXX
+    LANGUAGES CXX C
 )
 
 # C++标准设置
