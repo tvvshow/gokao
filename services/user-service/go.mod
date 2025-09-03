@@ -1,8 +1,6 @@
 module user-service
 
-go 1.22
-
-toolchain go1.24.6
+go 1.21
 
 require (
 	github.com/gaokaohub/pkg/auth v0.0.0
