@@ -6,6 +6,7 @@ toolchain go1.24.6
 
 require (
 	github.com/gaokaohub/pkg/auth v0.0.0
+	github.com/gaokaohub/pkg/errors v0.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0

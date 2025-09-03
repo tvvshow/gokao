@@ -6,6 +6,9 @@ toolchain go1.24.6
 
 require (
 	github.com/gaokaohub/pkg/auth v0.0.0
+	github.com/gaokaohub/pkg/database v0.0.0
+	github.com/gaokaohub/pkg/errors v0.0.0
+	github.com/gaokaohub/pkg/logger v0.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.4.0

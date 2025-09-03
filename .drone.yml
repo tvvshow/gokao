@@ -50,7 +50,7 @@ steps:
     commands:
       - apk add --no-cache git gcc musl-dev
       - go install honnef.co/go/tools/cmd/staticcheck@latest
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
       - |
         for service in api-gateway user-service data-service recommendation-service payment-service; do
           echo "Linting $service..."
