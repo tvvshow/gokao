@@ -4,7 +4,7 @@
 APP_NAME=user-service
 DOCKER_IMAGE=gaokao/user-service
 DOCKER_TAG=latest
-GO_VERSION=1.23
+GO_VERSION=1.21
 PORT=8080
 CPP_LIB_PATH=../../cpp-modules/device-fingerprint/lib
 CPP_INCLUDE_PATH=../../cpp-modules/device-fingerprint/include

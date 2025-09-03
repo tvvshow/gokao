@@ -4,7 +4,7 @@
 APP_NAME=data-service
 DOCKER_IMAGE=gaokao/data-service
 VERSION=1.0.0
-GO_VERSION=1.23
+GO_VERSION=1.21
 
 # 颜色定义
 RED=\033[0;31m
