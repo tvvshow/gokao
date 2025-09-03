@@ -31,7 +31,7 @@ steps:
 
   # Go依赖下载和代码检查
   - name: go-deps
-    image: golang:1.21-alpine
+    image: golang:1.23-alpine
     environment:
       GOPROXY: https://goproxy.cn,direct
       GOSUMDB: sum.golang.google.cn
@@ -46,7 +46,7 @@ steps:
 
   # 代码质量检查
   - name: code-quality
-    image: golang:1.21-alpine
+    image: golang:1.23-alpine
     commands:
       - apk add --no-cache git gcc musl-dev
       - go install honnef.co/go/tools/cmd/staticcheck@latest
@@ -59,7 +59,7 @@ steps:
 
   # Go单元测试
   - name: go-test
-    image: golang:1.21-alpine
+    image: golang:1.23-alpine
     environment:
       CGO_ENABLED: "1"
     commands:
@@ -346,7 +346,7 @@ trigger:
 
 steps:
   - name: dependency-check
-    image: golang:1.21-alpine
+    image: golang:1.23-alpine
     commands:
       - apk add --no-cache git
       - go install github.com/sonatypeiq/nancy@latest
