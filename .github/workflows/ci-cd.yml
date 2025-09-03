@@ -178,10 +178,72 @@ jobs:
         npm ci
         npm run test:unit
 
+  # C++模块构建
+  cpp-build:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        module: [device-fingerprint, license, volunteer-matcher]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install C++ Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+    
+    - name: Cache CMake builds
+      uses: actions/cache@v3
+      with:
+        path: |
+          cpp-modules/${{ matrix.module }}/build
+          ~/.cache/cmake
+        key: ${{ runner.os }}-cmake-${{ matrix.module }}-${{ hashFiles('cpp-modules/${{ matrix.module }}/CMakeLists.txt', 'cpp-modules/${{ matrix.module }}/src/**') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-${{ matrix.module }}-
+    
+    - name: Build C++ Module
+      run: |
+        cd cpp-modules/${{ matrix.module }}
+        mkdir -p build
+        cd build
+        cmake ..
+        make -j$(nproc)
+    
+    - name: Run C++ Tests
+      run: |
+        cd cpp-modules/${{ matrix.module }}/build
+        # 运行CTest测试套件
+        if [ -f "CTestTestfile.cmake" ]; then
+          ctest --output-on-failure --verbose
+        fi
+        # 直接运行测试可执行文件（备用方案）
+        if [ -f "device_fingerprint_tests" ]; then
+          ./device_fingerprint_tests
+        fi
+        if [ -f "${{ matrix.module }}_tests" ]; then
+          ./${{ matrix.module }}_tests
+        fi
+    
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cpp-${{ matrix.module }}-artifacts
+        path: |
+          cpp-modules/${{ matrix.module }}/build/lib*
+          cpp-modules/${{ matrix.module }}/build/*_example
+          cpp-modules/${{ matrix.module }}/build/*.so
+          cpp-modules/${{ matrix.module }}/build/*.a
+        retention-days: 7
+
   # 构建镜像
   build:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: [unit-tests, cpp-build]
     if: github.event_name == 'push'
     
     strategy:
