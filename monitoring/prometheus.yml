@@ -1,0 +1,148 @@
+# 高考志愿填报系统 - Prometheus监控配置
+global:
+  scrape_interval: 15s      # 默认抓取间隔
+  evaluation_interval: 15s # 规则评估间隔
+  scrape_timeout: 10s      # 抓取超时时间
+
+# 告警规则配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# 加载规则文件
+rule_files:
+  - 'alerts/*.yml'
+
+# 抓取配置
+scrape_configs:
+  # 监控Prometheus自身
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  # Go服务监控
+  - job_name: 'gaokao-go-services'
+    scrape_interval: 10s
+    scrape_timeout: 8s
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets:
+          - 'api-gateway:8080'
+          - 'user-service:8081'
+          - 'data-service:8082'
+          - 'payment-service:8083'
+          - 'recommendation-service:8084'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __metrics_path__
+        regex: '(.*)'
+        replacement: '/metrics'
+
+  # 节点监控（cAdvisor）
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # 容器监控
+  - job_name: 'docker'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['docker-engine:9323']
+
+  # 数据库监控
+  - job_name: 'postgres'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres:9187']
+    metrics_path: '/metrics'
+
+  # Redis监控
+  - job_name: 'redis'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['redis:9121']
+    metrics_path: '/metrics'
+
+  # 黑盒监控（服务健康检查）
+  - job_name: 'blackbox'
+    scrape_interval: 30s
+    metrics_path: '/probe'
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://api-gateway:8080/health'
+          - 'http://user-service:8081/health'
+          - 'http://data-service:8082/health'
+          - 'http://payment-service:8083/health'
+          - 'http://recommendation-service:8084/health'
+          - 'http://frontend:3000'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'blackbox-exporter:9115'
+
+  # 业务指标监控
+  - job_name: 'gaokao-business-metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['api-gateway:8080']
+    metrics_path: '/business-metrics'
+    scheme: 'http'
+
+# 远程写入配置（可选，用于长期存储）
+remote_write:
+  - url: 'http://thanos:10908/api/v1/receive'
+    queue_config:
+      max_samples_per_send: 1000
+      capacity: 10000
+      max_shards: 200
+      min_shards: 1
+
+# 远程读取配置（可选）
+remote_read:
+  - url: 'http://thanos:10908/api/v1/query'
+
+# 服务发现配置（如果使用Kubernetes）
+# - job_name: 'kubernetes-services'
+#   kubernetes_sd_configs:
+#     - role: service
+#   relabel_configs:
+#     - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+#       action: keep
+#       regex: true
+#     - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+#       target_label: __metrics_path__
+#       regex: (.+)
+#     - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+#       target_label: __address__
+#       regex: ([^:]+)(?::\d+)?;(\d+)
+#       replacement: $1:$2
+
+# 资源限制
+# 根据实际硬件配置调整
+# query:
+#   max_concurrency: 20
+#   timeout: 2m
+#   lookback_delta: 5m
+
+# 存储配置
+storage:
+  tsdb:
+    retention: 15d  # 本地保留15天数据
+    # 根据磁盘空间调整
+    # max_block_duration: 2h
+    # min_block_duration: 2h
+
+# 外部标签（用于多集群区分）
+# external_labels:
+#   cluster: 'gaokao-production'
+#   environment: 'prod'

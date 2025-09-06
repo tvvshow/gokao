@@ -1,0 +1,299 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+*.sqlite
+*.db
+test.db
+*.log
+logs/
+temp/
+tmp/
+
+# Docker
+.dockerignore
+
+# Node.js (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+
+# ML Models
+models/*.pkl
+models/*.joblib
+models/*.h5
+models/*.pb
+
+# Data files
+data/
+*.csv
+*.json
+*.parquet
+
+# Backup files
+*.sql
+backup_*
+
+# Local configuration
+.env.local
+.env.development
+.env.production
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Pytest
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+vendor/
+
+# C++ specific
+*.o
+*.a
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.pch
+*.ipch
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Frontend specific
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.nuxt/
+frontend/.next/
+frontend/out/
+
+# Build outputs
+bin/
+*.exe
+
+# Secrets and configuration
+*.env
+*.env.*
+config/secrets.yml
+secrets/
+keys/
+certs/
+*.secret
+*.private
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Configuration with secrets
+config/secrets/
+config/certs/
+config/.env.*
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Monitoring and deployment
+prometheus/
+grafana/
+elasticsearch/
+kibana/
+logstash/
+*.kubeconfig
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Large files
+gaokao.rar
+gaokaohub_-ai-college-application-assistant.zip
+
+# Tooling directories
+.iflow/
+.claude/
+.qoder/
+.spec-workflow/
+.trae/
+.ai-rules/
+.augment/

@@ -1,0 +1,102 @@
+# 通用Makefile配置
+# 在服务级别的Makefile中包含此文件
+
+# 颜色定义
+GREEN=\033[0;32m
+YELLOW=\033[1;33m
+RED=\033[0;31m
+NC=\033[0m
+
+# 通用变量
+GO_VERSION ?= 1.21
+DOCKER_REGISTRY ?= registry.example.com
+
+# 跨平台时间和Git提交获取
+ifeq ($(OS),Windows_NT)
+    BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat '+%Y-%m-%d_%H:%M:%S'")
+    GIT_COMMIT := $(shell git rev-parse --short HEAD 2>nul || echo unknown)
+else
+    BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+    GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+endif
+
+# 默认目标
+.DEFAULT_GOAL := help
+
+# 通用目标
+.PHONY: help build test clean docker-build docker-push deps fmt lint
+
+help: ## 显示帮助信息
+	@echo "$(GREEN)可用命令:$(NC)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## 构建服务
+	@echo "$(GREEN)构建 $(SERVICE_NAME)...$(NC)"
+ifeq ($(OS),Windows_NT)
+	@if not exist bin mkdir bin
+	set CGO_ENABLED=$(CGO_ENABLED) && go build \
+		-ldflags "-X main.Version=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT)" \
+		-o bin$(PATH_SEP)$(SERVICE_NAME)$(EXE_EXT) \
+		./cmd/$(SERVICE_NAME)
+else
+	@$(MKDIR) bin/
+	CGO_ENABLED=$(CGO_ENABLED) go build \
+		-ldflags "-X main.Version=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT)" \
+		-o bin/$(SERVICE_NAME)$(EXE_EXT) \
+		./cmd/$(SERVICE_NAME)
+endif
+	@echo "$(GREEN)构建完成: bin/$(SERVICE_NAME)$(EXE_EXT)$(NC)"
+
+test: ## 运行测试
+	@echo "$(GREEN)运行测试 $(SERVICE_NAME)...$(NC)"
+	go test -v -race ./...
+
+test-coverage: ## 运行测试并生成覆盖率报告
+	@echo "$(GREEN)运行测试覆盖率检查...$(NC)"
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "$(GREEN)覆盖率报告: coverage.html$(NC)"
+
+clean: ## 清理构建文件
+	@echo "$(GREEN)清理 $(SERVICE_NAME)...$(NC)"
+ifeq ($(OS),Windows_NT)
+	@if exist bin rmdir /s /q bin
+	@if exist coverage.out del /q coverage.out
+	@if exist coverage.html del /q coverage.html
+else
+	@$(RM) -rf bin/
+	@$(RM) coverage.out coverage.html
+endif
+	@go clean
+
+deps: ## 安装依赖
+	@echo "$(GREEN)安装依赖 $(SERVICE_NAME)...$(NC)"
+	go mod download
+	go mod tidy
+
+fmt: ## 格式化代码
+	@echo "$(GREEN)格式化代码 $(SERVICE_NAME)...$(NC)"
+	go fmt ./...
+	go vet ./...
+
+lint: ## 代码检查
+	@echo "$(GREEN)代码检查 $(SERVICE_NAME)...$(NC)"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run; \
+	else \
+		echo "$(RED)golangci-lint 未安装$(NC)"; \
+	fi
+
+docker-build: ## 构建Docker镜像
+	@echo "$(GREEN)构建Docker镜像 $(SERVICE_NAME)...$(NC)"
+	@docker build -t $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT) .
+	@docker tag $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT) $(DOCKER_REGISTRY)/$(SERVICE_NAME):latest
+
+docker-push: docker-build ## 推送Docker镜像
+	@echo "$(GREEN)推送Docker镜像 $(SERVICE_NAME)...$(NC)"
+	docker push $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT)
+	docker push $(DOCKER_REGISTRY)/$(SERVICE_NAME):latest
+
+# CI流程
+ci: deps fmt lint test build ## 完整CI流程
+	@echo "$(GREEN)CI流程完成 $(SERVICE_NAME)$(NC)"

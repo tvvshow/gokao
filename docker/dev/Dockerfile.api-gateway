@@ -1,0 +1,100 @@
+# syntax=docker/dockerfile:1
+# 开发环境 API Gateway Dockerfile
+# 支持热重载和调试功能
+
+FROM golang:1.21-alpine AS builder
+
+# 安装开发工具和依赖
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    build-base \
+    gdb \
+    delve
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+
+# 复制依赖文件
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 安装热重载工具 air
+RUN go install github.com/cosmtrek/air@latest
+
+# 复制源代码
+COPY . .
+
+# 开发环境构建（包含调试信息）
+RUN CGO_ENABLED=1 GOOS=linux go build -gcflags="all=-N -l" -o /app/api-gateway
+
+# 运行阶段 - 开发环境保留构建环境
+FROM golang:1.21-alpine
+
+# 安装运行时依赖和工具
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    jq \
+    bash \
+    gdb \
+    delve
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+
+# 创建应用用户
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制应用
+COPY --from=builder /app/api-gateway ./
+COPY --from=builder /go/bin/air /usr/local/bin/air
+
+# 复制源代码（用于热重载）
+COPY . .
+
+# 设置权限
+RUN chown -R appuser:appgroup /app
+
+# 创建air配置文件
+RUN echo 'root = "."' > .air.toml && \
+    echo 'testdata_dir = "testdata"' >> .air.toml && \
+    echo '[build]' >> .air.toml && \
+    echo '  cmd = "go build -o ./tmp/main ."' >> .air.toml && \
+    echo '  bin = "tmp/main"' >> .air.toml && \
+    echo '  full_bin = "./tmp/main"' >> .air.toml && \
+    echo '  include_ext = ["go", "tpl", "tmpl", "html"]' >> .air.toml && \
+    echo '  exclude_dir = ["assets", "tmp", "vendor", "testdata"]' >> .air.toml && \
+    echo '  include_dir = []' >> .air.toml && \
+    echo '  exclude_file = []' >> .air.toml
+
+# 环境变量
+ENV PORT=8080 \
+    GIN_MODE=debug \
+    ENABLE_SWAGGER=1 \
+    DEBUG=true \
+    LOG_LEVEL=debug
+
+# 暴露端口
+EXPOSE 8080 2345
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# 切换用户
+USER appuser
+
+# 开发模式入口点
+CMD ["air", "-c", ".air.toml"]

@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: VolunteerMatcher
+Description: C++ Volunteer Matching Library
+Version: @PROJECT_VERSION@
+Requires: jsoncpp openssl
+Libs: -L${libdir} -lvolunteer_matcher
+Cflags: -I${includedir}

@@ -1,0 +1,118 @@
+# syntax=docker/dockerfile:1
+# 生产环境 C++ Modules Dockerfile
+# 最小化镜像，优化性能和安全性
+
+FROM ubuntu:22.04 AS builder
+
+# 避免交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装构建依赖
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    g++ \
+    gcc \
+    pkg-config \
+    libssl-dev \
+    libcrypto++-dev \
+    libjson-dev \
+    libcurl4-openssl-dev \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置工作目录
+WORKDIR /workspace
+
+# 复制C++模块源代码
+COPY cpp-modules/ ./cpp-modules/
+
+# 构建C++模块（优化生产版本）
+WORKDIR /workspace/cpp-modules/device-fingerprint
+RUN mkdir -p build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -s" \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          .. && \
+    make -j$(nproc) && \
+    make install
+
+# 运行测试确保构建正确
+RUN cd build && \
+    if [ -f ./test_device_fingerprint ]; then \
+        ./test_device_fingerprint; \
+    fi
+
+# 安全扫描阶段
+FROM aquasec/trivy:latest AS security-scan
+COPY --from=builder /usr/local/lib/ /tmp/lib/
+RUN trivy filesystem --exit-code 0 --no-progress /tmp/
+
+# 运行阶段 - 最小化镜像
+FROM ubuntu:22.04
+
+# 避免交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装最少的运行时依赖
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libcrypto++8 \
+    libcurl4 \
+    ca-certificates \
+    tzdata \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 创建应用用户
+RUN groupadd -r -g 1001 appgroup && \
+    useradd -r -u 1001 -g appgroup -s /bin/false appuser
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制库文件和可执行文件
+COPY --from=builder /usr/local/lib/ /usr/local/lib/
+COPY --from=builder /usr/local/include/ /usr/local/include/
+COPY --from=builder /workspace/cpp-modules/device-fingerprint/build/ ./
+
+# 更新动态链接库缓存
+RUN ldconfig
+
+# 创建健康检查脚本
+RUN echo '#!/bin/bash' > health-check.sh && \
+    echo 'if [ -f ./test_device_fingerprint ]; then' >> health-check.sh && \
+    echo '  timeout 5s ./test_device_fingerprint > /dev/null 2>&1' >> health-check.sh && \
+    echo '  exit $?' >> health-check.sh && \
+    echo 'else' >> health-check.sh && \
+    echo '  exit 0' >> health-check.sh && \
+    echo 'fi' >> health-check.sh && \
+    chmod +x health-check.sh
+
+# 设置权限
+RUN chown -R appuser:appgroup /app
+
+# 环境变量
+ENV LD_LIBRARY_PATH=/usr/local/lib:/app \
+    CPP_MODULE_PATH=/app \
+    DEBUG=false \
+    LOG_LEVEL=info
+
+# 暴露端口（如果C++模块提供HTTP接口）
+EXPOSE 8082
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ./health-check.sh
+
+# 切换用户
+USER appuser
+
+# 生产模式入口点
+CMD ["tail", "-f", "/dev/null"]

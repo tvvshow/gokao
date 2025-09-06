@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  drone-server:
+    image: drone/drone:2
+    container_name: drone-server
+    restart: always
+    environment:
+      # 服务器配置
+      - DRONE_SERVER_HOST=166.108.233.220
+      - DRONE_SERVER_PROTO=http
+
+      # GitHub 配置
+      - DRONE_GITHUB_SERVER=https://github.com
+      - DRONE_GITHUB_CLIENT_ID=Ov23liNLo3pLvkuJvaol
+      - DRONE_GITHUB_CLIENT_SECRET=8976c7bd9894c2fb480276fa0b8a0149afa8c0d0
+
+      # RPC 密钥和用户配置
+      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725
+      - DRONE_USER_CREATE=username:oktetopython,admin:true
+      - DRONE_USER_FILTER=oktetopython
+    volumes:
+      - drone-data:/data
+    ports:
+      - "80:80"
+
+  drone-runner:
+    image: drone/drone-runner-docker:1
+    container_name: drone-runner
+    restart: always
+    depends_on:
+      - drone-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_RPC_HOST=drone-server
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725
+      - DRONE_RUNNER_NAME=my-runner
+      - DRONE_RUNNER_CAPACITY=2
+      # 🔧 修复重复CI/CD提交问题：只处理push事件
+      - DRONE_LIMIT_EVENTS=push
+
+volumes:
+  drone-data:

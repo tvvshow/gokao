@@ -1,0 +1,266 @@
+version: "3.9"
+
+# 测试环境 Docker Compose 配置
+# 专门用于集成测试和自动化测试
+
+services:
+  # PostgreSQL 测试数据库
+  postgres-test:
+    image: postgres:14-alpine
+    container_name: gaokao-postgres-test
+    environment:
+      POSTGRES_DB: gaokao_test
+      POSTGRES_USER: gaokao_test_user
+      POSTGRES_PASSWORD: gaokao_test_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=zh_CN.UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./test/sql/init:/docker-entrypoint-initdb.d
+      - ./test/sql/test-data:/test-data
+    networks:
+      - gaokao-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gaokao_test_user -d gaokao_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    tmpfs:
+      - /var/lib/postgresql/data:noexec,nosuid,size=512m
+
+  # Redis 测试缓存
+  redis-test:
+    image: redis:7.0-alpine
+    container_name: gaokao-redis-test
+    command: redis-server --appendonly no --save ""
+    ports:
+      - "6380:6379"
+    networks:
+      - gaokao-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    tmpfs:
+      - /data:noexec,nosuid,size=256m
+
+  # C++ 模块测试服务
+  cpp-modules-test:
+    build:
+      context: ../../
+      dockerfile: docker/dev/Dockerfile.cpp-modules
+      target: builder
+    image: gaokao/cpp-modules:test
+    container_name: gaokao-cpp-modules-test
+    command: >
+      sh -c "
+        cd /workspace/cpp-modules/device-fingerprint/build &&
+        ./test_device_fingerprint &&
+        tail -f /dev/null
+      "
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - CPP_MODULE_PATH=/workspace
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../cpp-modules:/workspace/cpp-modules:ro
+
+  # User Service 测试
+  user-service-test:
+    build:
+      context: ../../services/user-service
+      dockerfile: ../../docker/dev/Dockerfile.user-service
+    image: gaokao/user-service:test
+    container_name: gaokao-user-service-test
+    environment:
+      - PORT=8081
+      - GIN_MODE=test
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USER=gaokao_test_user
+      - DB_PASSWORD=gaokao_test_pass
+      - DB_NAME=gaokao_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=""
+      - CPP_MODULE_HOST=cpp-modules-test
+      - CPP_MODULE_PORT=8082
+      - TEST_MODE=true
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      cpp-modules-test:
+        condition: service_started
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../services/user-service:/app:ro
+      - test_coverage:/app/coverage
+
+  # API Gateway 测试
+  api-gateway-test:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: ../../docker/dev/Dockerfile.api-gateway
+    image: gaokao/api-gateway:test
+    container_name: gaokao-api-gateway-test
+    environment:
+      - PORT=8080
+      - GIN_MODE=test
+      - ENABLE_SWAGGER=1
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - USER_SERVICE_URL=http://user-service-test:8081
+      - CPP_MODULE_URL=http://cpp-modules-test:8082
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=""
+      - TEST_MODE=true
+    depends_on:
+      - user-service-test
+      - redis-test
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../services/api-gateway:/app:ro
+      - test_coverage:/app/coverage
+
+  # 测试运行器
+  test-runner:
+    build:
+      context: ../../
+      dockerfile: docker/test/Dockerfile.test-runner
+    image: gaokao/test-runner:latest
+    container_name: gaokao-test-runner
+    environment:
+      - API_GATEWAY_URL=http://api-gateway-test:8080
+      - USER_SERVICE_URL=http://user-service-test:8081
+      - CPP_MODULE_URL=http://cpp-modules-test:8082
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USER=gaokao_test_user
+      - DB_PASSWORD=gaokao_test_pass
+      - DB_NAME=gaokao_test
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - TEST_TIMEOUT=300
+    depends_on:
+      - api-gateway-test
+      - user-service-test
+      - cpp-modules-test
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../:/workspace:ro
+      - test_results:/test-results
+      - test_coverage:/coverage
+    working_dir: /workspace
+    command: >
+      sh -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 30 &&
+        echo 'Running integration tests...' &&
+        ./docker/scripts/run-tests.sh
+      "
+
+  # Newman API 测试
+  newman-test:
+    image: postman/newman:latest
+    container_name: gaokao-newman-test
+    environment:
+      - API_BASE_URL=http://api-gateway-test:8080
+    depends_on:
+      - api-gateway-test
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../tests/api:/etc/newman:ro
+      - test_results:/var/newman-results
+    command: >
+      newman run /etc/newman/gaokao-api-tests.json
+      --environment /etc/newman/test-environment.json
+      --reporters cli,junit,htmlextra
+      --reporter-junit-export /var/newman-results/junit-report.xml
+      --reporter-htmlextra-export /var/newman-results/html-report.html
+
+  # 性能测试
+  k6-test:
+    image: grafana/k6:latest
+    container_name: gaokao-k6-test
+    environment:
+      - API_BASE_URL=http://api-gateway-test:8080
+    depends_on:
+      - api-gateway-test
+    networks:
+      - gaokao-test-network
+    volumes:
+      - ../../tests/performance:/scripts:ro
+      - test_results:/results
+    command: >
+      k6 run
+      --out json=/results/k6-results.json
+      --out influxdb=http://influxdb-test:8086/k6
+      /scripts/load-test.js
+
+  # InfluxDB for K6 结果存储
+  influxdb-test:
+    image: influxdb:1.8-alpine
+    container_name: gaokao-influxdb-test
+    environment:
+      - INFLUXDB_DB=k6
+      - INFLUXDB_USER=k6
+      - INFLUXDB_USER_PASSWORD=k6
+    networks:
+      - gaokao-test-network
+    volumes:
+      - influxdb_test_data:/var/lib/influxdb
+
+  # 测试结果收集器
+  test-collector:
+    image: alpine:latest
+    container_name: gaokao-test-collector
+    depends_on:
+      - test-runner
+      - newman-test
+      - k6-test
+    networks:
+      - gaokao-test-network
+    volumes:
+      - test_results:/test-results
+      - test_coverage:/coverage
+      - ../../:/workspace:ro
+    working_dir: /test-results
+    command: >
+      sh -c "
+        echo 'Collecting test results...' &&
+        find /coverage -name '*.out' -exec cp {} /test-results/ \; &&
+        find /coverage -name 'coverage.html' -exec cp {} /test-results/ \; &&
+        ls -la /test-results/ &&
+        echo 'Test collection completed.'
+      "
+
+# 网络配置
+networks:
+  gaokao-test-network:
+    driver: bridge
+    name: gaokao-test-network
+
+# 数据卷
+volumes:
+  postgres_test_data:
+    name: gaokao-postgres-test-data
+  influxdb_test_data:
+    name: gaokao-influxdb-test-data
+  test_results:
+    name: gaokao-test-results
+  test_coverage:
+    name: gaokao-test-coverage

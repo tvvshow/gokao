@@ -1,0 +1,25 @@
+package main
+
+/*
+#cgo CFLAGS: -I@CMAKE_INSTALL_PREFIX@/include
+#cgo LDFLAGS: -L@CMAKE_INSTALL_PREFIX@/lib -lvolunteer_matcher
+#include <volunteer_matcher/volunteer_matcher.h>
+*/
+import "C"
+import "unsafe"
+
+// VolunteerMatcher represents the C++ volunteer matcher instance
+type VolunteerMatcher struct {
+ptr unsafe.Pointer
+}
+
+// NewVolunteerMatcher creates a new volunteer matcher instance
+func NewVolunteerMatcher() *VolunteerMatcher {
+ptr := C.create_volunteer_matcher()
+return &VolunteerMatcher{ptr: ptr}
+}
+
+// Destroy cleans up the volunteer matcher instance
+func (vm *VolunteerMatcher) Destroy() {
+C.destroy_volunteer_matcher(vm.ptr)
+}

@@ -1,0 +1,522 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 代码质量检查
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Cache Node modules
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    
+    # 验证Swagger文档是否最新
+    - name: Verify Swagger docs up-to-date
+      env:
+        GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+      run: |
+        cd services/api-gateway
+        go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "Swagger docs are out-of-date. Please run 'go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal' and commit the changes."
+          git diff -- docs/ | sed -n '1,200p'
+          exit 1
+        fi
+    
+    # API Gateway构建和测试
+    - name: Build and Test (api-gateway)
+      env:
+        GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+      run: |
+        cd services/api-gateway
+        go mod tidy
+        go build ./...
+        go test ./... -coverprofile=coverage.out
+        # Coverage gate: fail if below 60%
+        total=$(go tool cover -func=coverage.out | awk '/total:/ {print substr($3, 1, length($3)-1)}')
+        echo "Total coverage: ${total}%"
+        awk -v t="$total" 'BEGIN{ if (t+0 < 60) { print "Coverage below 60%"; exit 1 } }'
+    
+    # Go代码检查
+    - name: Lint (golangci-lint)
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: services/api-gateway
+        args: --timeout=5m
+    
+    # 上传覆盖率报告
+    - name: Upload coverage (artifact)
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-coverage
+        path: services/api-gateway/coverage.out
+        if-no-files-found: ignore
+    
+    # 生产环境保护：确保生产构建禁用Swagger
+    - name: Production Guard - Verify prod compose disables Swagger
+      if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+      run: |
+        test -f docker-compose.prod.yml
+        if ! grep -q "ENABLE_SWAGGER=0" docker-compose.prod.yml; then
+          echo "Expected ENABLE_SWAGGER=0 in docker-compose.prod.yml for production."; exit 1; fi
+    
+    - name: Production Guard - Verify main.go has startup warning
+      if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+      run: |
+        if ! grep -q "Swagger UI is enabled in release mode" services/api-gateway/main.go; then
+          echo "Expected startup warning for Swagger in release mode in main.go"; exit 1; fi
+    
+    - name: Go Vet
+      run: go vet ./...
+    
+    - name: Go Security Check
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        gosec ./...
+    
+    - name: Frontend Lint
+      run: |
+        cd frontend
+        npm ci
+        npm run lint
+    
+    - name: TypeScript Check
+      run: |
+        cd frontend
+        npm run type-check
+
+  # 单元测试
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gaokao_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Run Go Tests
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/gaokao_test?sslmode=disable
+        REDIS_URL: redis://localhost:6379
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+        go tool cover -html=coverage.out -o coverage.html
+    
+    - name: Upload Coverage Reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+    
+    - name: Frontend Tests
+      run: |
+        cd frontend
+        npm ci
+        npm run test:unit
+
+  # C++模块构建
+  cpp-build:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        module: [device-fingerprint, license, volunteer-matcher]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install C++ Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+    
+    - name: Cache CMake builds
+      uses: actions/cache@v3
+      with:
+        path: |
+          cpp-modules/${{ matrix.module }}/build
+          ~/.cache/cmake
+        key: ${{ runner.os }}-cmake-${{ matrix.module }}-${{ hashFiles('cpp-modules/${{ matrix.module }}/CMakeLists.txt', 'cpp-modules/${{ matrix.module }}/src/**') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-${{ matrix.module }}-
+    
+    - name: Build C++ Module
+      run: |
+        cd cpp-modules/${{ matrix.module }}
+        mkdir -p build
+        cd build
+        cmake ..
+        make -j$(nproc)
+    
+    - name: Run C++ Tests
+      run: |
+        cd cpp-modules/${{ matrix.module }}/build
+        # 运行CTest测试套件
+        if [ -f "CTestTestfile.cmake" ]; then
+          ctest --output-on-failure --verbose
+        fi
+        # 直接运行测试可执行文件（备用方案）
+        if [ -f "device_fingerprint_tests" ]; then
+          ./device_fingerprint_tests
+        fi
+        if [ -f "${{ matrix.module }}_tests" ]; then
+          ./${{ matrix.module }}_tests
+        fi
+    
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cpp-${{ matrix.module }}-artifacts
+        path: |
+          cpp-modules/${{ matrix.module }}/build/lib*
+          cpp-modules/${{ matrix.module }}/build/*_example
+          cpp-modules/${{ matrix.module }}/build/*.so
+          cpp-modules/${{ matrix.module }}/build/*.a
+        retention-days: 7
+
+  # 构建镜像
+  build:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, cpp-build]
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        service: [api-gateway, user-service, data-service, payment-service, recommendation-service]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/${{ matrix.service }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # 构建前端
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Cache Node modules
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # 安全扫描
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # 部署到预发布环境
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build, build-frontend]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy to Staging
+      run: |
+        export KUBECONFIG=kubeconfig
+        envsubst < k8s/staging/kustomization.yaml | kubectl apply -k -
+        kubectl rollout status deployment/api-gateway -n gaokao-staging
+        kubectl rollout status deployment/frontend -n gaokao-staging
+
+  # 部署到生产环境
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build, build-frontend, security-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Blue-Green Deployment
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # 创建新版本部署
+        envsubst < k8s/production/kustomization.yaml | kubectl apply -k -
+        
+        # 等待新版本就绪
+        kubectl rollout status deployment/api-gateway-green -n gaokao-production
+        kubectl rollout status deployment/frontend-green -n gaokao-production
+        
+        # 健康检查
+        kubectl wait --for=condition=ready pod -l app=api-gateway,version=green -n gaokao-production --timeout=300s
+        
+        # 切换流量
+        kubectl patch service api-gateway -n gaokao-production -p '{"spec":{"selector":{"version":"green"}}}'
+        kubectl patch service frontend -n gaokao-production -p '{"spec":{"selector":{"version":"green"}}}'
+        
+        # 清理旧版本
+        kubectl delete deployment api-gateway-blue frontend-blue -n gaokao-production --ignore-not-found=true
+
+  # 集成测试
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Run Integration Tests
+      run: |
+        cd tests/integration
+        npm ci
+        npm run test
+      env:
+        API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+        TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+  # 性能测试
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run K6 Performance Tests
+      uses: grafana/k6-action@v0.3.1
+      with:
+        filename: tests/performance/load-test.js
+      env:
+        API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+
+  # 通知
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy-production, integration-tests, performance-tests]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: ${{ needs.deploy-production.result == 'success' }}
+      run: |
+        curl -X POST ${{ secrets.WEBHOOK_URL }} \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "text": "🎉 高考志愿填报系统部署成功！",
+            "attachments": [{
+              "color": "good",
+              "fields": [{
+                "title": "分支",
+                "value": "${{ github.ref_name }}",
+                "short": true
+              }, {
+                "title": "提交",
+                "value": "${{ github.sha }}",
+                "short": true
+              }]
+            }]
+          }'
+    
+    - name: Notify Failure
+      if: ${{ needs.deploy-production.result == 'failure' }}
+      run: |
+        curl -X POST ${{ secrets.WEBHOOK_URL }} \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "text": "❌ 高考志愿填报系统部署失败！",
+            "attachments": [{
+              "color": "danger",
+              "fields": [{
+                "title": "分支",
+                "value": "${{ github.ref_name }}",
+                "short": true
+              }, {
+                "title": "提交",
+                "value": "${{ github.sha }}",
+                "short": true
+              }]
+            }]
+          }'

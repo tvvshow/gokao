@@ -1,0 +1,131 @@
+# syntax=docker/dockerfile:1
+# 测试运行器 Dockerfile
+# 用于运行集成测试和收集覆盖率
+
+FROM golang:1.21-alpine AS go-tools
+
+# 安装Go测试工具
+RUN go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest && \
+    go install gotest.tools/gotestsum@latest && \
+    go install github.com/boumenot/gocover-cobertura@latest && \
+    go install github.com/axw/gocov/gocov@latest && \
+    go install github.com/matm/gocov-html@latest
+
+FROM ubuntu:22.04
+
+# 避免交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装基础工具和依赖
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    jq \
+    git \
+    build-essential \
+    postgresql-client \
+    redis-tools \
+    ca-certificates \
+    tzdata \
+    locales \
+    python3 \
+    python3-pip \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置时区和中文支持
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN locale-gen zh_CN.UTF-8
+ENV LANG=zh_CN.UTF-8
+ENV LANGUAGE=zh_CN:zh
+ENV LC_ALL=zh_CN.UTF-8
+
+# 安装Go
+COPY --from=golang:1.21-alpine /usr/local/go/ /usr/local/go/
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# 从go-tools阶段复制测试工具
+COPY --from=go-tools /go/bin/ /usr/local/bin/
+
+# 安装Python测试工具
+RUN pip3 install \
+    pytest \
+    pytest-html \
+    pytest-cov \
+    requests \
+    psycopg2-binary \
+    redis
+
+# 安装Node.js测试工具
+RUN npm install -g \
+    newman \
+    @playwright/test
+
+# 创建工作目录
+WORKDIR /workspace
+
+# 创建测试脚本
+RUN echo '#!/bin/bash' > /usr/local/bin/run-tests.sh && \
+    echo 'set -e' >> /usr/local/bin/run-tests.sh && \
+    echo 'echo "Starting test suite..."' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo '# 等待服务启动' >> /usr/local/bin/run-tests.sh && \
+    echo 'wait_for_service() {' >> /usr/local/bin/run-tests.sh && \
+    echo '  local url=$1' >> /usr/local/bin/run-tests.sh && \
+    echo '  local timeout=60' >> /usr/local/bin/run-tests.sh && \
+    echo '  local count=0' >> /usr/local/bin/run-tests.sh && \
+    echo '  while [ $count -lt $timeout ]; do' >> /usr/local/bin/run-tests.sh && \
+    echo '    if curl -f "$url/health" >/dev/null 2>&1; then' >> /usr/local/bin/run-tests.sh && \
+    echo '      echo "Service $url is ready"' >> /usr/local/bin/run-tests.sh && \
+    echo '      return 0' >> /usr/local/bin/run-tests.sh && \
+    echo '    fi' >> /usr/local/bin/run-tests.sh && \
+    echo '    echo "Waiting for $url..."' >> /usr/local/bin/run-tests.sh && \
+    echo '    sleep 2' >> /usr/local/bin/run-tests.sh && \
+    echo '    count=$((count + 1))' >> /usr/local/bin/run-tests.sh && \
+    echo '  done' >> /usr/local/bin/run-tests.sh && \
+    echo '  echo "Timeout waiting for $url"' >> /usr/local/bin/run-tests.sh && \
+    echo '  return 1' >> /usr/local/bin/run-tests.sh && \
+    echo '}' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo 'wait_for_service "$API_GATEWAY_URL"' >> /usr/local/bin/run-tests.sh && \
+    echo 'wait_for_service "$USER_SERVICE_URL"' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo '# 运行Go测试' >> /usr/local/bin/run-tests.sh && \
+    echo 'echo "Running Go unit tests..."' >> /usr/local/bin/run-tests.sh && \
+    echo 'cd services/api-gateway && go test -v -race -coverprofile=coverage.out ./... | tee /test-results/api-gateway-tests.log' >> /usr/local/bin/run-tests.sh && \
+    echo 'gocov convert coverage.out | gocov-html > /test-results/api-gateway-coverage.html' >> /usr/local/bin/run-tests.sh && \
+    echo 'cd ../user-service && go test -v -race -coverprofile=coverage.out ./... | tee /test-results/user-service-tests.log' >> /usr/local/bin/run-tests.sh && \
+    echo 'gocov convert coverage.out | gocov-html > /test-results/user-service-coverage.html' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo '# 运行C++测试' >> /usr/local/bin/run-tests.sh && \
+    echo 'echo "Running C++ tests..."' >> /usr/local/bin/run-tests.sh && \
+    echo 'curl -f "$CPP_MODULE_URL/test" > /test-results/cpp-module-tests.log 2>&1 || echo "C++ module test endpoint not available"' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo '# 运行集成测试' >> /usr/local/bin/run-tests.sh && \
+    echo 'echo "Running integration tests..."' >> /usr/local/bin/run-tests.sh && \
+    echo 'if [ -f tests/integration/run_tests.py ]; then' >> /usr/local/bin/run-tests.sh && \
+    echo '  cd tests/integration' >> /usr/local/bin/run-tests.sh && \
+    echo '  python3 run_tests.py --html=/test-results/integration-report.html' >> /usr/local/bin/run-tests.sh && \
+    echo 'fi' >> /usr/local/bin/run-tests.sh && \
+    echo '' >> /usr/local/bin/run-tests.sh && \
+    echo 'echo "All tests completed!"' >> /usr/local/bin/run-tests.sh && \
+    chmod +x /usr/local/bin/run-tests.sh
+
+# 创建健康检查脚本
+RUN echo '#!/bin/bash' > /usr/local/bin/health-check.sh && \
+    echo 'curl -f "$API_GATEWAY_URL/health" >/dev/null 2>&1' >> /usr/local/bin/health-check.sh && \
+    chmod +x /usr/local/bin/health-check.sh
+
+# 设置环境变量
+ENV GO111MODULE=on \
+    GOPROXY=https://goproxy.cn,direct \
+    GOSUMDB=sum.golang.google.cn
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /usr/local/bin/health-check.sh
+
+# 默认命令
+CMD ["/usr/local/bin/run-tests.sh"]

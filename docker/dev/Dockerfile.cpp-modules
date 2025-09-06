@@ -1,0 +1,142 @@
+# syntax=docker/dockerfile:1
+# 开发环境 C++ Modules Dockerfile
+# 支持设备指纹识别模块的构建和调试
+
+FROM ubuntu:22.04 AS builder
+
+# 避免交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装构建依赖和开发工具
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    g++ \
+    gcc \
+    gdb \
+    valgrind \
+    clang \
+    clang-format \
+    clang-tidy \
+    pkg-config \
+    libssl-dev \
+    libcrypto++-dev \
+    libjson-dev \
+    libcurl4-openssl-dev \
+    git \
+    wget \
+    curl \
+    ca-certificates \
+    tzdata \
+    locales \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置时区和中文支持
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN locale-gen zh_CN.UTF-8
+ENV LANG=zh_CN.UTF-8
+ENV LANGUAGE=zh_CN:zh
+ENV LC_ALL=zh_CN.UTF-8
+
+# 安装 Google Test 框架
+RUN cd /tmp && \
+    git clone https://github.com/google/googletest.git && \
+    cd googletest && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make && make install && \
+    cd / && rm -rf /tmp/googletest
+
+# 设置工作目录
+WORKDIR /workspace
+
+# 复制C++模块源代码
+COPY cpp-modules/ ./cpp-modules/
+
+# 构建C++模块
+WORKDIR /workspace/cpp-modules/device-fingerprint
+RUN mkdir -p build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Debug .. && \
+    make -j$(nproc)
+
+# 运行阶段 - 开发环境保留构建工具
+FROM ubuntu:22.04
+
+# 避免交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装运行时依赖和调试工具
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libcrypto++8 \
+    libcurl4 \
+    gdb \
+    valgrind \
+    curl \
+    ca-certificates \
+    tzdata \
+    locales \
+    netcat \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置时区和中文支持
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN locale-gen zh_CN.UTF-8
+ENV LANG=zh_CN.UTF-8
+ENV LANGUAGE=zh_CN:zh
+ENV LC_ALL=zh_CN.UTF-8
+
+# 创建应用用户
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制编译后的库和可执行文件
+COPY --from=builder /workspace/cpp-modules/device-fingerprint/build/ ./device-fingerprint/
+
+# 复制头文件
+COPY --from=builder /workspace/cpp-modules/device-fingerprint/include/ ./include/
+
+# 创建库目录和符号链接
+RUN mkdir -p /usr/local/lib && \
+    find ./device-fingerprint -name "*.so*" -exec cp {} /usr/local/lib/ \; && \
+    ldconfig
+
+# 创建测试脚本
+RUN echo '#!/bin/bash' > test-cpp-modules.sh && \
+    echo 'echo "Testing C++ modules..."' >> test-cpp-modules.sh && \
+    echo 'cd /app/device-fingerprint' >> test-cpp-modules.sh && \
+    echo 'if [ -f ./test_device_fingerprint ]; then' >> test-cpp-modules.sh && \
+    echo '  echo "Running device fingerprint tests..."' >> test-cpp-modules.sh && \
+    echo '  ./test_device_fingerprint' >> test-cpp-modules.sh && \
+    echo 'else' >> test-cpp-modules.sh && \
+    echo '  echo "Test executable not found"' >> test-cpp-modules.sh && \
+    echo 'fi' >> test-cpp-modules.sh && \
+    chmod +x test-cpp-modules.sh
+
+# 设置权限
+RUN chown -R appuser:appgroup /app
+
+# 环境变量
+ENV LD_LIBRARY_PATH=/usr/local/lib:/app/device-fingerprint
+ENV CPP_MODULE_PATH=/app
+ENV DEBUG=true
+ENV LOG_LEVEL=debug
+
+# 暴露端口（如果C++模块提供HTTP接口）
+EXPOSE 8082
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD /app/test-cpp-modules.sh > /dev/null 2>&1 || exit 1
+
+# 切换用户
+USER appuser
+
+# 开发模式入口点（保持容器运行并提供调试环境）
+CMD ["tail", "-f", "/dev/null"]

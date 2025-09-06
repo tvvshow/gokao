@@ -1,0 +1,246 @@
+version: "3.9"
+
+# 开发环境 Docker Compose 配置
+# 支持热重载、调试、开发工具
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:14-alpine
+    container_name: gaokao-postgres-dev
+    environment:
+      POSTGRES_DB: gaokao_dev
+      POSTGRES_USER: gaokao_user
+      POSTGRES_PASSWORD: gaokao_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=zh_CN.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./dev/sql/init:/docker-entrypoint-initdb.d
+      - ./dev/sql/dev-data:/dev-data
+    networks:
+      - gaokao-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gaokao_user -d gaokao_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis 缓存
+  redis:
+    image: redis:7.0-alpine
+    container_name: gaokao-redis-dev
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+      - ./dev/redis/redis.conf:/etc/redis/redis.conf
+    networks:
+      - gaokao-dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # C++ 模块服务
+  cpp-modules:
+    build:
+      context: ../../
+      dockerfile: docker/dev/Dockerfile.cpp-modules
+    image: gaokao/cpp-modules:dev
+    container_name: gaokao-cpp-modules-dev
+    ports:
+      - "8082:8082"
+    volumes:
+      - ../../cpp-modules:/workspace/cpp-modules:rw
+      - cpp_build_cache:/workspace/cpp-modules/device-fingerprint/build
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - CPP_MODULE_PATH=/app
+    networks:
+      - gaokao-dev-network
+    restart: unless-stopped
+
+  # User Service
+  user-service:
+    build:
+      context: ../../services/user-service
+      dockerfile: ../../docker/dev/Dockerfile.user-service
+    image: gaokao/user-service:dev
+    container_name: gaokao-user-service-dev
+    ports:
+      - "8081:8081"
+      - "2346:2345"  # 调试端口
+    volumes:
+      - ../../services/user-service:/app:rw
+      - user_service_cache:/app/tmp
+    environment:
+      - PORT=8081
+      - GIN_MODE=debug
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=gaokao_user
+      - DB_PASSWORD=gaokao_pass
+      - DB_NAME=gaokao_dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=""
+      - CPP_MODULE_HOST=cpp-modules
+      - CPP_MODULE_PORT=8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cpp-modules:
+        condition: service_started
+    networks:
+      - gaokao-dev-network
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: ../../docker/dev/Dockerfile.api-gateway
+    image: gaokao/api-gateway:dev
+    container_name: gaokao-api-gateway-dev
+    ports:
+      - "8080:8080"
+      - "2345:2345"  # 调试端口
+    volumes:
+      - ../../services/api-gateway:/app:rw
+      - api_gateway_cache:/app/tmp
+    environment:
+      - PORT=8080
+      - GIN_MODE=debug
+      - ENABLE_SWAGGER=1
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - USER_SERVICE_URL=http://user-service:8081
+      - CPP_MODULE_URL=http://cpp-modules:8082
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=""
+    depends_on:
+      - user-service
+      - redis
+    networks:
+      - gaokao-dev-network
+    restart: unless-stopped
+
+  # 开发工具容器
+  dev-tools:
+    image: alpine:latest
+    container_name: gaokao-dev-tools
+    command: tail -f /dev/null
+    volumes:
+      - ../../:/workspace:rw
+    working_dir: /workspace
+    networks:
+      - gaokao-dev-network
+    profiles:
+      - tools
+
+  # PostgreSQL 管理工具 (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: gaokao-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gaokao.dev
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - gaokao-dev-network
+    profiles:
+      - tools
+
+  # Redis 管理工具
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: gaokao-redis-commander-dev
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - gaokao-dev-network
+    profiles:
+      - tools
+
+  # 监控工具 - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gaokao-prometheus-dev
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./dev/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_dev_data:/prometheus
+    networks:
+      - gaokao-dev-network
+    profiles:
+      - monitoring
+
+  # 监控工具 - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gaokao-grafana-dev
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./dev/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - gaokao-dev-network
+    profiles:
+      - monitoring
+
+# 网络配置
+networks:
+  gaokao-dev-network:
+    driver: bridge
+    name: gaokao-dev-network
+
+# 数据卷
+volumes:
+  postgres_dev_data:
+    name: gaokao-postgres-dev-data
+  redis_dev_data:
+    name: gaokao-redis-dev-data
+  pgadmin_dev_data:
+    name: gaokao-pgadmin-dev-data
+  prometheus_dev_data:
+    name: gaokao-prometheus-dev-data
+  grafana_dev_data:
+    name: gaokao-grafana-dev-data
+  cpp_build_cache:
+    name: gaokao-cpp-build-cache
+  user_service_cache:
+    name: gaokao-user-service-cache
+  api_gateway_cache:
+    name: gaokao-api-gateway-cache

@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+find_dependency(OpenSSL REQUIRED)
+find_dependency(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/VolunteerMatcherTargets.cmake")
+
+# Set variables for compatibility
+set(VolunteerMatcher_LIBRARIES VolunteerMatcher::volunteer_matcher)
+set(VolunteerMatcher_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+
+check_required_components(VolunteerMatcher)

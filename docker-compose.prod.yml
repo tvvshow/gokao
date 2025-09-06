@@ -1,0 +1,5 @@
+version: "3.9"
+services:
+  api-gateway:
+    environment:
+      - ENABLE_SWAGGER=0

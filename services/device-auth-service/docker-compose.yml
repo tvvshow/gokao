@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  device-auth-service:
+    build: 
+      context: ../..
+      dockerfile: services/device-auth-service/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=device_auth
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./config:/app/config
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=device_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

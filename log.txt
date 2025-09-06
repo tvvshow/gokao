@@ -1,0 +1,750 @@
+Show all logs
+1308      
+|                                           ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+24s
+1309
+/drone/src/cpp-modules/device-fingerprint/src/crypto_utils.cpp:554:50: error: 'lowercase' is not a member of 'std'; did you mean 'uppercase'?
+24s
+1310  
+554 |     oss << std::hex << std::setfill('0') << std::lowercase;
+24s
+1311      
+|                                                  ^~~~~~~~~
+24s
+1312      
+|                                                  uppercase
+24s
+1313
+/drone/src/cpp-modules/device-fingerprint/src/crypto_utils.cpp: At global scope:
+24s
+1314
+/drone/src/cpp-modules/device-fingerprint/src/crypto_utils.cpp:566:10: error: no declaration matches 'uint32_t gaokao::crypto::RandomGenerator::GenerateRandomInt(uint32_t, uint32_t)'
+24s
+1315  
+566 | uint32_t RandomGenerator::GenerateRandomInt(uint32_t min, uint32_t max) {
+24s
+1316      
+|          ^~~~~~~~~~~~~~~
+24s
+1317
+/drone/src/cpp-modules/device-fingerprint/src/crypto_utils.cpp:566:10: note: no functions named 'uint32_t gaokao::crypto::RandomGenerator::GenerateRandomInt(uint32_t, uint32_t)'
+24s
+1318
+/drone/src/cpp-modules/device-fingerprint/include/crypto_utils.h:400:7: note: 'class gaokao::crypto::RandomGenerator' defined here
+24s
+1319  
+400 | class RandomGenerator {
+24s
+1320      
+|       ^~~~~~~~~~~~~~~
+24s
+1321
+make[2]: *** [CMakeFiles/device_fingerprint_static.dir/build.make:93: CMakeFiles/device_fingerprint_static.dir/src/crypto_utils.cpp.o] Error 1
+24s
+1322
+make[1]: *** [CMakeFiles/Makefile2:173: CMakeFiles/device_fingerprint_static.dir/all] Error 2
+24s
+1323
+make[1]: *** Waiting for unfinished jobs....
+24s
+1324
+make[2]: *** [CMakeFiles/device_fingerprint_shared.dir/build.make:93: CMakeFiles/device_fingerprint_shared.dir/src/crypto_utils.cpp.o] Error 1
+24s
+1325
+make[2]: *** Waiting for unfinished jobs....
+24s
+1326
+[ 20%] Building CXX object CMakeFiles/device_fingerprint_shared.dir/src/platform_detector.cpp.o
+24s
+1327
+In file included from /drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:9:
+25s
+1328
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:73:5: error: 'uint32_t' does not name a type
+25s
+1329   
+73 |     uint32_t physical_cores;        ///< 物理核心数
+25s
+1330      
+|     ^~~~~~~~
+25s
+1331
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:19:1: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1332   
+18 | #include <memory>
+25s
+1333  
++++ |+#include <cstdint>
+25s
+1334   
+19 | 
+25s
+1335
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:74:5: error: 'uint32_t' does not name a type
+25s
+1336   
+74 |     uint32_t logical_cores;         ///< 逻辑核心数
+25s
+1337      
+|     ^~~~~~~~
+25s
+1338
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:74:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1339
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:75:5: error: 'uint32_t' does not name a type
+25s
+1340   
+75 |     uint32_t cache_size;            ///< 缓存大小(KB)
+25s
+1341      
+|     ^~~~~~~~
+25s
+1342
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:75:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1343
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:76:5: error: 'uint64_t' does not name a type
+25s
+1344   
+76 |     uint64_t frequency;             ///< 频率(Hz)
+25s
+1345      
+|     ^~~~~~~~
+25s
+1346
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:76:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1347
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::CPUInfo::CPUInfo()':
+25s
+1348
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:81:17: error: class 'gaokao::platform::CPUInfo' does not have any field named 'physical_cores'
+25s
+1349   
+81 |     CPUInfo() : physical_cores(0), logical_cores(0), cache_size(0),
+25s
+1350      
+|                 ^~~~~~~~~~~~~~
+25s
+1351
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:81:36: error: class 'gaokao::platform::CPUInfo' does not have any field named 'logical_cores'
+25s
+1352   
+81 |     CPUInfo() : physical_cores(0), logical_cores(0), cache_size(0),
+25s
+1353      
+|                                    ^~~~~~~~~~~~~
+25s
+1354
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:81:54: error: class 'gaokao::platform::CPUInfo' does not have any field named 'cache_size'
+25s
+1355   
+81 |     CPUInfo() : physical_cores(0), logical_cores(0), cache_size(0),
+25s
+1356      
+|                                                      ^~~~~~~~~~
+25s
+1357
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:82:16: error: class 'gaokao::platform::CPUInfo' does not have any field named 'frequency'
+25s
+1358   
+82 |                frequency(0), architecture(Architecture::UNKNOWN) {}
+25s
+1359      
+|                ^~~~~~~~~
+25s
+1360
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1361
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:89:5: error: 'uint64_t' does not name a type
+25s
+1362   
+89 |     uint64_t total_physical;        ///< 总物理内存(字节)
+25s
+1363      
+|     ^~~~~~~~
+25s
+1364
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:89:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1365
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:90:5: error: 'uint64_t' does not name a type
+25s
+1366   
+90 |     uint64_t available_physical;    ///< 可用物理内存(字节)
+25s
+1367      
+|     ^~~~~~~~
+25s
+1368
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:90:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1369
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:91:5: error: 'uint64_t' does not name a type
+25s
+1370   
+91 |     uint64_t total_virtual;         ///< 总虚拟内存(字节)
+25s
+1371      
+|     ^~~~~~~~
+25s
+1372
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:91:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1373
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:92:5: error: 'uint64_t' does not name a type
+25s
+1374   
+92 |     uint64_t available_virtual;     ///< 可用虚拟内存(字节)
+25s
+1375      
+|     ^~~~~~~~
+25s
+1376
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:92:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1377
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:93:5: error: 'uint32_t' does not name a type
+25s
+1378   
+93 |     uint32_t memory_load;           ///< 内存使用率(百分比)
+25s
+1379      
+|     ^~~~~~~~
+25s
+1380
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:93:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1381
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:95:5: error: 'uint32_t' does not name a type
+25s
+1382   
+95 |     uint32_t memory_speed;          ///< 内存频率(MHz)
+25s
+1383      
+|     ^~~~~~~~
+25s
+1384
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:95:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1385
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::MemoryInfo::MemoryInfo()':
+25s
+1386
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:98:20: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'total_physical'
+25s
+1387   
+98 |     MemoryInfo() : total_physical(0), available_physical(0),
+25s
+1388      
+|                    ^~~~~~~~~~~~~~
+25s
+1389
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:98:39: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'available_physical'
+25s
+1390   
+98 |     MemoryInfo() : total_physical(0), available_physical(0),
+25s
+1391      
+|                                       ^~~~~~~~~~~~~~~~~~
+25s
+1392
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:99:19: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'total_virtual'
+25s
+1393   
+99 |                   total_virtual(0), available_virtual(0),
+25s
+1394      
+|                   ^~~~~~~~~~~~~
+25s
+1395
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:99:37: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'available_virtual'
+25s
+1396   
+99 |                   total_virtual(0), available_virtual(0),
+25s
+1397      
+|                                     ^~~~~~~~~~~~~~~~~
+25s
+1398
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:100:19: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'memory_load'
+25s
+1399  
+100 |                   memory_load(0), memory_speed(0) {}
+25s
+1400      
+|                   ^~~~~~~~~~~
+25s
+1401
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:100:35: error: class 'gaokao::platform::MemoryInfo' does not have any field named 'memory_speed'
+25s
+1402  
+100 |                   memory_load(0), memory_speed(0) {}
+25s
+1403      
+|                                   ^~~~~~~~~~~~
+25s
+1404
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1405
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:127:5: error: 'uint32_t' does not name a type
+25s
+1406  
+127 |     uint32_t bios_size;             ///< BIOS大小(KB)
+25s
+1407      
+|     ^~~~~~~~
+25s
+1408
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:127:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1409
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::BIOSInfo::BIOSInfo()':
+25s
+1410
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:130:18: error: class 'gaokao::platform::BIOSInfo' does not have any field named 'bios_size'
+25s
+1411  
+130 |     BIOSInfo() : bios_size(0) {}
+25s
+1412      
+|                  ^~~~~~~~~
+25s
+1413
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1414
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:143:5: error: 'uint64_t' does not name a type
+25s
+1415  
+143 |     uint64_t speed;                 ///< 连接速度(bps)
+25s
+1416      
+|     ^~~~~~~~
+25s
+1417
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:143:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1418
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::NetworkAdapterInfo::NetworkAdapterInfo()':
+25s
+1419
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:146:69: error: class 'gaokao::platform::NetworkAdapterInfo' does not have any field named 'speed'
+25s
+1420  
+146 |     NetworkAdapterInfo() : is_physical(false), is_connected(false), speed(0) {}
+25s
+1421      
+|                                                                     ^~~~~
+25s
+1422
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1423
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:157:5: error: 'uint64_t' does not name a type
+25s
+1424  
+157 |     uint64_t total_size;            ///< 总容量(字节)
+25s
+1425      
+|     ^~~~~~~~
+25s
+1426
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:157:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1427
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:158:5: error: 'uint64_t' does not name a type
+25s
+1428  
+158 |     uint64_t free_space;            ///< 可用空间(字节)
+25s
+1429      
+|     ^~~~~~~~
+25s
+1430
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:158:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1431
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:161:5: error: 'uint32_t' does not name a type
+25s
+1432  
+161 |     uint32_t rotation_rate;         ///< 转速(RPM，仅HDD)
+25s
+1433      
+|     ^~~~~~~~
+25s
+1434
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:161:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1435
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::StorageDeviceInfo::StorageDeviceInfo()':
+25s
+1436
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:163:27: error: class 'gaokao::platform::StorageDeviceInfo' does not have any field named 'total_size'
+25s
+1437  
+163 |     StorageDeviceInfo() : total_size(0), free_space(0),
+25s
+1438      
+|                           ^~~~~~~~~~
+25s
+1439
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:163:42: error: class 'gaokao::platform::StorageDeviceInfo' does not have any field named 'free_space'
+25s
+1440  
+163 |     StorageDeviceInfo() : total_size(0), free_space(0),
+25s
+1441      
+|                                          ^~~~~~~~~~
+25s
+1442
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:164:47: error: class 'gaokao::platform::StorageDeviceInfo' does not have any field named 'rotation_rate'
+25s
+1443  
+164 |                          is_removable(false), rotation_rate(0) {}
+25s
+1444      
+|                                               ^~~~~~~~~~~~~
+25s
+1445
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1446
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:174:5: error: 'uint32_t' does not name a type
+25s
+1447  
+174 |     uint32_t width;                 ///< 屏幕宽度
+25s
+1448      
+|     ^~~~~~~~
+25s
+1449
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:174:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1450
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:175:5: error: 'uint32_t' does not name a type
+25s
+1451  
+175 |     uint32_t height;                ///< 屏幕高度
+25s
+1452      
+|     ^~~~~~~~
+25s
+1453
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:175:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1454
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:176:5: error: 'uint32_t' does not name a type
+25s
+1455  
+176 |     uint32_t color_depth;           ///< 颜色深度
+25s
+1456      
+|     ^~~~~~~~
+25s
+1457
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:176:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1458
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:177:5: error: 'uint32_t' does not name a type
+25s
+1459  
+177 |     uint32_t refresh_rate;          ///< 刷新率(Hz)
+25s
+1460      
+|     ^~~~~~~~
+25s
+1461
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:177:5: note: 'uint32_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1462
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::DisplayDeviceInfo::DisplayDeviceInfo()':
+25s
+1463
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:180:27: error: class 'gaokao::platform::DisplayDeviceInfo' does not have any field named 'width'
+25s
+1464  
+180 |     DisplayDeviceInfo() : width(0), height(0), color_depth(0),
+25s
+1465      
+|                           ^~~~~
+25s
+1466
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:180:37: error: class 'gaokao::platform::DisplayDeviceInfo' does not have any field named 'height'
+25s
+1467  
+180 |     DisplayDeviceInfo() : width(0), height(0), color_depth(0),
+25s
+1468      
+|                                     ^~~~~~
+25s
+1469
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:180:48: error: class 'gaokao::platform::DisplayDeviceInfo' does not have any field named 'color_depth'
+25s
+1470  
+180 |     DisplayDeviceInfo() : width(0), height(0), color_depth(0),
+25s
+1471      
+|                                                ^~~~~~~~~~~
+25s
+1472
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:181:26: error: class 'gaokao::platform::DisplayDeviceInfo' does not have any field named 'refresh_rate'
+25s
+1473  
+181 |                          refresh_rate(0), is_primary(false) {}
+25s
+1474      
+|                          ^~~~~~~~~~~~
+25s
+1475
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1476
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:197:5: error: 'uint64_t' does not name a type
+25s
+1477  
+197 |     uint64_t uptime;                ///< 运行时间(秒)
+25s
+1478      
+|     ^~~~~~~~
+25s
+1479
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:197:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1480
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: In constructor 'gaokao::platform::OSInfo::OSInfo()':
+25s
+1481
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:200:52: error: class 'gaokao::platform::OSInfo' does not have any field named 'uptime'
+25s
+1482  
+200 |               architecture(Architecture::UNKNOWN), uptime(0) {}
+25s
+1483      
+|                                                    ^~~~~~
+25s
+1484
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h: At global scope:
+25s
+1485
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:385:5: error: 'uint64_t' does not name a type
+25s
+1486  
+385 |     uint64_t GetSystemUptime();
+25s
+1487      
+|     ^~~~~~~~
+25s
+1488
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:385:5: note: 'uint64_t' is defined in header '<cstdint>'; this is probably fixable by adding '#include <cstdint>'
+25s
+1489
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp: In member function 'gaokao::platform::DetectionError gaokao::platform::PlatformDetector::GetCPUInfo(gaokao::platform::CPUInfo&)':
+25s
+1490
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:221:26: error: 'struct gaokao::platform::CPUInfo' has no member named 'logical_cores'
+25s
+1491  
+221 |                 cpu_info.logical_cores++;
+25s
+1492      
+|                          ^~~~~~~~~~~~~
+25s
+1493
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:229:22: error: 'struct gaokao::platform::CPUInfo' has no member named 'physical_cores'
+25s
+1494  
+229 |             cpu_info.physical_cores = cpu_info.logical_cores / 2;
+25s
+1495      
+|                      ^~~~~~~~~~~~~~
+25s
+1496
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:229:48: error: 'struct gaokao::platform::CPUInfo' has no member named 'logical_cores'
+25s
+1497  
+229 |             cpu_info.physical_cores = cpu_info.logical_cores / 2;
+25s
+1498      
+|                                                ^~~~~~~~~~~~~
+25s
+1499
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp: In member function 'gaokao::platform::DetectionError gaokao::platform::PlatformDetector::GetMemoryInfo(gaokao::platform::MemoryInfo&)':
+25s
+1500
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:296:25: error: 'struct gaokao::platform::MemoryInfo' has no member named 'total_physical'
+25s
+1501  
+296 |             memory_info.total_physical = si.totalram * si.mem_unit;
+25s
+1502      
+|                         ^~~~~~~~~~~~~~
+25s
+1503
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:297:25: error: 'struct gaokao::platform::MemoryInfo' has no member named 'available_physical'
+25s
+1504  
+297 |             memory_info.available_physical = si.freeram * si.mem_unit;
+25s
+1505      
+|                         ^~~~~~~~~~~~~~~~~~
+25s
+1506
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:298:25: error: 'struct gaokao::platform::MemoryInfo' has no member named 'total_virtual'
+25s
+1507  
+298 |             memory_info.total_virtual = si.totalswap * si.mem_unit;
+25s
+1508      
+|                         ^~~~~~~~~~~~~
+25s
+1509
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:299:25: error: 'struct gaokao::platform::MemoryInfo' has no member named 'available_virtual'
+25s
+1510  
+299 |             memory_info.available_virtual = si.freeswap * si.mem_unit;
+25s
+1511      
+|                         ^~~~~~~~~~~~~~~~~
+25s
+1512
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:301:29: error: 'struct gaokao::platform::MemoryInfo' has no member named 'total_physical'
+25s
+1513  
+301 |             if (memory_info.total_physical > 0) {
+25s
+1514      
+|                             ^~~~~~~~~~~~~~
+25s
+1515
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:302:29: error: 'struct gaokao::platform::MemoryInfo' has no member named 'memory_load'
+25s
+1516  
+302 |                 memory_info.memory_load =
+25s
+1517      
+|                             ^~~~~~~~~~~
+25s
+1518
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:303:35: error: 'struct gaokao::platform::MemoryInfo' has no member named 'total_physical'
+25s
+1519  
+303 |                     ((memory_info.total_physical - memory_info.available_physical) * 100)
+25s
+1520      
+|                                   ^~~~~~~~~~~~~~
+25s
+1521
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:303:64: error: 'struct gaokao::platform::MemoryInfo' has no member named 'available_physical'
+25s
+1522  
+303 |                     ((memory_info.total_physical - memory_info.available_physical) * 100)
+25s
+1523      
+|                                                                ^~~~~~~~~~~~~~~~~~
+25s
+1524
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:304:35: error: 'struct gaokao::platform::MemoryInfo' has no member named 'total_physical'
+25s
+1525  
+304 |                     / memory_info.total_physical;
+25s
+1526      
+|                                   ^~~~~~~~~~~~~~
+25s
+1527
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp: In member function 'gaokao::platform::DetectionError gaokao::platform::PlatformDetector::GetOSInfo(gaokao::platform::OSInfo&)':
+25s
+1528
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:417:17: error: 'struct gaokao::platform::OSInfo' has no member named 'uptime'
+25s
+1529  
+417 |         os_info.uptime = GetSystemUptime();
+25s
+1530      
+|                 ^~~~~~
+25s
+1531
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:417:26: error: 'GetSystemUptime' was not declared in this scope
+25s
+1532  
+417 |         os_info.uptime = GetSystemUptime();
+25s
+1533      
+|                          ^~~~~~~~~~~~~~~
+25s
+1534
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp: In member function 'bool gaokao::platform::PlatformDetector::IsDebuggerPresent()':
+25s
+1535
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:536:20: error: 'PTRACE_TRACEME' was not declared in this scope
+25s
+1536  
+536 |         if (ptrace(PTRACE_TRACEME, 0, 1, 0) == -1) {
+25s
+1537      
+|                    ^~~~~~~~~~~~~~
+25s
+1538
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:536:13: error: 'ptrace' was not declared in this scope
+25s
+1539  
+536 |         if (ptrace(PTRACE_TRACEME, 0, 1, 0) == -1) {
+25s
+1540      
+|             ^~~~~~
+25s
+1541
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:539:16: error: 'PTRACE_DETACH' was not declared in this scope
+25s
+1542  
+539 |         ptrace(PTRACE_DETACH, 0, 1, 0);
+25s
+1543      
+|                ^~~~~~~~~~~~~
+25s
+1544
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:539:9: error: 'ptrace' was not declared in this scope
+25s
+1545  
+539 |         ptrace(PTRACE_DETACH, 0, 1, 0);
+25s
+1546      
+|         ^~~~~~
+25s
+1547
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp: At global scope:
+25s
+1548
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:565:10: error: no declaration matches 'uint64_t gaokao::platform::PlatformDetector::GetSystemUptime()'
+25s
+1549  
+565 | uint64_t PlatformDetector::GetSystemUptime() {
+25s
+1550      
+|          ^~~~~~~~~~~~~~~~
+25s
+1551
+/drone/src/cpp-modules/device-fingerprint/src/platform_detector.cpp:565:10: note: no functions named 'uint64_t gaokao::platform::PlatformDetector::GetSystemUptime()'
+25s
+1552
+/drone/src/cpp-modules/device-fingerprint/include/platform_detector.h:251:7: note: 'class gaokao::platform::PlatformDetector' defined here
+25s
+1553  
+251 | class PlatformDetector {
+25s
+1554      
+|       ^~~~~~~~~~~~~~~~
+25s
+1555
+make[2]: *** [CMakeFiles/device_fingerprint_shared.dir/build.make:107: CMakeFiles/device_fingerprint_shared.dir/src/platform_detector.cpp.o] Error 1
+25s
+1556
+make[1]: *** [CMakeFiles/Makefile2:205: CMakeFiles/device_fingerprint_shared.dir/all] Error 2
+25s
+1557
+make: *** [Makefile:166: all] Error 2
