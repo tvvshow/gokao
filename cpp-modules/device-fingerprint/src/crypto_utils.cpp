@@ -503,6 +503,7 @@ std::string EncodingUtils::HexEncode(const std::vector<uint8_t>& data, bool uppe
     return oss.str();
 }
 
+<<<<<<< HEAD
 bool EncodingUtils::HexDecode(const std::string& hex_string, std::vector<uint8_t>& data) {
     data.clear();
     
@@ -536,6 +537,8 @@ bool EncodingUtils::HexDecode(const std::string& hex_string, std::vector<uint8_t
     return true;
 }
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 std::vector<uint8_t> EncodingUtils::StringToBytes(const std::string& str) {
     return std::vector<uint8_t>(str.begin(), str.end());
 }
@@ -584,7 +587,11 @@ std::string RandomGenerator::GenerateUUID() {
     bytes[8] = (bytes[8] & 0x3F) | 0x80; // 变体10
     
     std::ostringstream oss;
+<<<<<<< HEAD
     oss << std::hex << std::setfill('0') << std::nouppercase;
+=======
+    oss << std::hex << std::setfill('0') << std::lowercase;
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     
     for (size_t i = 0; i < 16; ++i) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {

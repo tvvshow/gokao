@@ -226,20 +226,30 @@ server {
 # services/data-service/Dockerfile
 FROM golang:1.21-alpine AS builder
 
+<<<<<<< HEAD
 # 安装CGO依赖
 RUN apk add --no-cache gcc musl-dev
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+<<<<<<< HEAD
 # 注意：推荐服务需要CGO_ENABLED=1
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main .
 
 FROM alpine:latest
 # 安装运行时CGO依赖
 RUN apk --no-cache add ca-certificates tzdata gcc musl-dev
+=======
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates tzdata
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 WORKDIR /root/
 
 COPY --from=builder /app/main .

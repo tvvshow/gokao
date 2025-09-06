@@ -390,6 +390,7 @@ func TestSwagger_Index_And_DocJson_Accessible(t *testing.T) {
     if ct := w2.Header().Get("Content-Type"); !strings.Contains(strings.ToLower(ct), "application/json") {
         t.Fatalf("/swagger/doc.json unexpected content-type: %s", ct)
     }
+<<<<<<< HEAD
 }
 
 // TestDebugRoute verifies that the debug route is working
@@ -438,4 +439,6 @@ func TestProxyRoutes(t *testing.T) {
 	
 	// If we get here, it means the proxy logic was called
 	// We don't check the exact status code since it depends on the backend service
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 }

@@ -15,6 +15,10 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+<<<<<<< HEAD
+=======
+	pkgdatabase "gaokao/pkg/database"
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )
 
 // DB 数据库连接管理器
@@ -190,12 +194,15 @@ func (db *DB) migrate() error {
 		db.Logger.Warnf("创建扩展 pgcrypto 失败（可能权限不足）：%v", err)
 	}
 
+<<<<<<< HEAD
 	// 初始化迁移器
 	migrator := NewMigrator(db.PostgreSQL)
 	if err := migrator.SetupMigrationTable(); err != nil {
 		return fmt.Errorf("设置迁移表失败: %w", err)
 	}
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 定义所有需要迁移的模型
 	models := []interface{}{
 		&models.University{},

@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 module github.com/gaokaohub/gaokao/services/payment-service
+=======
+module github.com/gaokaohub/payment-service
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 go 1.21
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+<<<<<<< HEAD
 	github.com/gaokaohub/gaokao/services/payment-service/internal/adapters v0.0.0
 	github.com/gaokaohub/gaokao/services/payment-service/internal/config v0.0.0
 	github.com/gaokaohub/gaokao/services/payment-service/internal/database v0.0.0
@@ -17,6 +22,8 @@ require (
 	github.com/gaokaohub/pkg/database v0.0.0
 	github.com/gaokaohub/pkg/errors v0.0.0
 	github.com/gaokaohub/pkg/logger v0.0.0
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -76,6 +83,7 @@ replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
 replace github.com/gaokaohub/pkg/database => ../../pkg/database
 
 replace github.com/gaokaohub/pkg/logger => ../../pkg/logger
+<<<<<<< HEAD
 
 replace github.com/gaokaohub/gaokao/services/payment-service/internal/adapters => ./internal/adapters
 
@@ -94,3 +102,5 @@ replace github.com/gaokaohub/gaokao/services/payment-service/internal/repository
 replace github.com/gaokaohub/gaokao/services/payment-service/internal/service => ./internal/service
 
 replace github.com/gaokaohub/gaokao/services/payment-service/internal/services => ./internal/services
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

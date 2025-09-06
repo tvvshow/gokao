@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 version: '3.8'
 
 services:
@@ -16,22 +17,46 @@ services:
       - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
+=======
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15
+    ports:
+      - "5433:5432"
+    env_file:
+      - config/.env.development
+    environment:
+      - POSTGRES_DB=gaokao_db
+      - POSTGRES_USER=gaokao_user
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gaokao_user -d gaokao_db"]
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
       interval: 10s
       timeout: 5s
       retries: 5
 
+<<<<<<< HEAD
   # Redis缓存
   redis:
     image: redis:7-alpine
     container_name: gaokao_redis
     ports:
       - "6380:6379"
+=======
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
+<<<<<<< HEAD
       retries: 5
 
 volumes:
@@ -41,3 +66,53 @@ volumes:
 networks:
   default:
     name: gaokao_network
+=======
+      retries: 3
+
+  # 数据服务
+  data-service:
+    build: ./services/data-service
+    image: gaokao/data-service:dev
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - GIN_MODE=release
+      - ENABLE_SWAGGER=1
+      - DATABASE_URL=postgres://gaokao_user:gaokao_pass@postgres:5432/gaokao_db?sslmode=disable
+      - REDIS_URL=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # API 网关
+  api-gateway:
+    build: ./services/api-gateway
+    image: gaokao/api-gateway:dev
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - GIN_MODE=release
+      - ENABLE_SWAGGER=1
+      - DATA_SERVICE_URL=http://data-service:8082
+    depends_on:
+      - data-service
+
+  # 前端界面
+  frontend:
+    build: ./frontend
+    image: gaokao/frontend:dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  redis_data:
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

@@ -4,12 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+<<<<<<< HEAD
+=======
+	"path/filepath"
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+<<<<<<< HEAD
 	"github.com/sirupsen/logrus"
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )
 
 // Config 数据库配置
@@ -59,16 +66,23 @@ func NewConnection(config *Config) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+<<<<<<< HEAD
 	// 配置连接池 - 优化版本
+=======
+	// 配置连接池
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	db.SetMaxOpenConns(config.MaxOpenConns)
 	db.SetMaxIdleConns(config.MaxIdleConns)
 	db.SetConnMaxLifetime(config.ConnMaxLifetime)
 	db.SetConnMaxIdleTime(config.ConnMaxIdleTime)
 
+<<<<<<< HEAD
 	// 设置连接超时和重试策略
 	db.SetConnMaxLifetime(30 * time.Minute) // 连接最大生存时间
 	db.SetConnMaxIdleTime(5 * time.Minute)  // 连接最大空闲时间
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 测试连接
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -117,6 +131,7 @@ func HealthCheck(db *sqlx.DB) error {
 		return fmt.Errorf("no open database connections")
 	}
 
+<<<<<<< HEAD
 	// 检查连接池使用率
 	if stats.MaxOpenConnections > 0 {
 		usagePercentage := float64(stats.InUse) / float64(stats.MaxOpenConnections) * 100
@@ -187,6 +202,11 @@ func MonitorConnectionPool(db *sqlx.DB, logger *logrus.Logger) {
 	}
 }
 
+=======
+	return nil
+}
+
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 // Transaction 事务处理辅助函数
 func Transaction(db *sqlx.DB, fn func(*sqlx.Tx) error) error {
 	tx, err := db.Beginx()

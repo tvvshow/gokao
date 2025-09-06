@@ -2,10 +2,23 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
+<<<<<<< HEAD
 
 output:
   formats:
     - format: colored-line-number
+=======
+  skip-dirs:
+    - vendor
+    - bin
+    - .git
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_test\\.go$"
+
+output:
+  format: colored-line-number
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
   print-issued-lines: true
   print-linter-name: true
 
@@ -45,9 +58,20 @@ linters-settings:
     capital: false
   goimports:
     local-prefixes: github.com/gaokaohub
+<<<<<<< HEAD
   govet:
     enable:
       - shadow
+=======
+  golint:
+    min-confidence: 0
+  gomnd:
+    settings:
+      mnd:
+        checks: argument,case,condition,operation,return,assign
+  govet:
+    check-shadowing: true
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     settings:
       printf:
         funcs:
@@ -57,6 +81,11 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
   lll:
     line-length: 140
+<<<<<<< HEAD
+=======
+  maligned:
+    suggest-new: true
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
   misspell:
     locale: US
   nolintlint:
@@ -64,6 +93,7 @@ linters-settings:
     allow-unused: false
     require-explanation: false
     require-specific: false
+<<<<<<< HEAD
   revive:
     rules:
       - name: blank-imports
@@ -95,10 +125,22 @@ linters:
   # Enable only active and maintained linters
   enable:
     - bodyclose
+=======
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     - depguard
     - dogsled
     - dupl
     - errcheck
+<<<<<<< HEAD
+=======
+    - exportloopref
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     - exhaustive
     - funlen
     - gochecknoinits
@@ -107,6 +149,10 @@ linters:
     - gocyclo
     - gofmt
     - goimports
+<<<<<<< HEAD
+=======
+    - gomnd
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     - goprintffuncname
     - gosec
     - gosimple
@@ -119,11 +165,16 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
+<<<<<<< HEAD
+=======
+    - structcheck
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
+<<<<<<< HEAD
     - whitespace
     - revive
     - mnd
@@ -139,6 +190,16 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
+=======
+    - varcheck
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gomnd
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         - funlen
         - gocyclo
         - errcheck
@@ -146,7 +207,11 @@ issues:
         - gosec
     - path: cmd/
       linters:
+<<<<<<< HEAD
         - mnd
+=======
+        - gomnd
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     - linters:
         - lll
       source: "^//go:generate "
@@ -164,4 +229,8 @@ severity:
       severity: info
     - linters:
         - misspell
+<<<<<<< HEAD
       severity: warning
+=======
+      severity: warning
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

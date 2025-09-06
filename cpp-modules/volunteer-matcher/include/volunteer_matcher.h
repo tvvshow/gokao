@@ -23,8 +23,11 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+<<<<<<< HEAD
 #include <shared_mutex>
 #include "university_filter.h"
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 namespace volunteer_matcher {
 
@@ -159,6 +162,7 @@ struct PerformanceStats {
     std::atomic<uint64_t> memory_usage{0};        ///< 内存使用量(bytes)
     
     std::chrono::system_clock::time_point last_reset_time; ///< 上次重置时间
+<<<<<<< HEAD
     
     // 禁用拷贝构造和赋值操作（atomic不支持）
     PerformanceStats() = default;
@@ -166,6 +170,8 @@ struct PerformanceStats {
     PerformanceStats& operator=(const PerformanceStats&) = delete;
     PerformanceStats(PerformanceStats&&) = delete;
     PerformanceStats& operator=(PerformanceStats&&) = delete;
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 };
 
 /**
@@ -253,7 +259,11 @@ public:
      * @brief 获取性能统计
      * @return 性能统计信息
      */
+<<<<<<< HEAD
     void GetPerformanceStats(PerformanceStats& stats) const;
+=======
+    PerformanceStats GetPerformanceStats() const;
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     
     /**
      * @brief 重置性能统计
@@ -280,6 +290,7 @@ public:
      */
     std::string GetEngineStatus() const;
 
+<<<<<<< HEAD
     /**
      * @brief 构建筛选条件
      * @param student 学生信息
@@ -287,6 +298,8 @@ public:
      */
     FilterCriteria BuildFilterCriteria(const Student& student);
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 private:
     // 内部实现类（PIMPL模式）
     class Impl;
@@ -328,7 +341,16 @@ University ParseUniversityFromCSV(const std::string& csv_line);
  */
 Major ParseMajorFromCSV(const std::string& csv_line);
 
+<<<<<<< HEAD
 
+=======
+/**
+ * @brief 工具函数：构建筛选条件
+ * @param student 学生信息
+ * @return 筛选条件
+ */
+FilterCriteria BuildFilterCriteria(const Student& student);
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 /**
  * @brief 工具函数：为特定大学生成推荐

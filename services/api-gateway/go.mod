@@ -1,11 +1,18 @@
 module gaokao
 
+<<<<<<< HEAD
 go 1.23.0
+=======
+go 1.21
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 require (
 	github.com/gaokaohub/pkg/auth v0.0.0
 	github.com/gaokaohub/pkg/errors v0.0.0
+<<<<<<< HEAD
 	github.com/gaokaohub/pkg/middleware v0.0.0-00010101000000-000000000000
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -67,5 +74,8 @@ require (
 replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
 
 replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+<<<<<<< HEAD
 
 replace github.com/gaokaohub/pkg/middleware => ../../pkg/middleware
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

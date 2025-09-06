@@ -10,12 +10,18 @@ import (
 // University 院校模型
 type University struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+<<<<<<< HEAD
 	Code        string         `gorm:"not null;size:20;index:idx_universities_code" json:"code"`
 	Name        string         `gorm:"index:idx_universities_name;not null;size:200" json:"name"`
+=======
+	Code        string         `gorm:"not null;size:20;index" json:"code"`
+	Name        string         `gorm:"index;not null;size:200" json:"name"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	EnglishName string         `gorm:"size:300" json:"english_name,omitempty"`
 	Alias       string         `gorm:"size:500" json:"alias,omitempty"`
 	
 	// 基本信息
+<<<<<<< HEAD
 	Type          string `gorm:"size:50" json:"type"`
 	Level         string `gorm:"size:50" json:"level"`
 	Nature        string `gorm:"size:50" json:"nature"`
@@ -24,6 +30,16 @@ type University struct {
 	// 地理位置
 	Province     string `gorm:"size:50" json:"province"`
 	City         string `gorm:"size:50" json:"city"`
+=======
+	Type          string `gorm:"size:50;index" json:"type"`
+	Level         string `gorm:"size:50;index" json:"level"`
+	Nature        string `gorm:"size:50;index" json:"nature"`
+	Category      string `gorm:"size:100;index" json:"category,omitempty"`
+	
+	// 地理位置
+	Province     string `gorm:"size:50;index" json:"province"`
+	City         string `gorm:"size:50;index" json:"city"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	District     string `gorm:"size:50" json:"district,omitempty"`
 	Address      string `gorm:"size:500" json:"address,omitempty"`
 	PostalCode   string `gorm:"size:20" json:"postal_code,omitempty"`
@@ -44,7 +60,11 @@ type University struct {
 	AcademicianCount int        `json:"academician_count,omitempty"` // 院士数
 	
 	// 排名信息
+<<<<<<< HEAD
 	NationalRank     int     `json:"national_rank,omitempty"`
+=======
+	NationalRank     int     `gorm:"index" json:"national_rank,omitempty"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	ProvinceRank     int     `json:"province_rank,omitempty"`
 	QSRank           int     `json:"qs_rank,omitempty"`
 	USNewsRank       int     `json:"us_news_rank,omitempty"`
@@ -54,9 +74,15 @@ type University struct {
 	EmploymentScore  float64 `json:"employment_score,omitempty"`
 	
 	// 状态
+<<<<<<< HEAD
 	Status         string `gorm:"default:active;size:20" json:"status"`
 	IsActive       bool   `gorm:"default:true" json:"is_active"`
 	IsRecruiting   bool   `gorm:"default:true" json:"is_recruiting"`
+=======
+	Status         string `gorm:"default:active;size:20;index" json:"status"`
+	IsActive       bool   `gorm:"default:true;index" json:"is_active"`
+	IsRecruiting   bool   `gorm:"default:true;index" json:"is_recruiting"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	
 	// 审计字段
 	CreatedAt time.Time      `json:"created_at"`
@@ -71,6 +97,7 @@ type University struct {
 // Major 专业模型
 type Major struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+<<<<<<< HEAD
 	UniversityID  uuid.UUID      `gorm:"type:uuid;not null;index:idx_majors_university_id" json:"university_id"`
 	Code          string         `gorm:"size:20;index:idx_majors_code" json:"code"`
 	Name          string         `gorm:"index:idx_majors_name;not null;size:200" json:"name"`
@@ -83,6 +110,20 @@ type Major struct {
 	
 	// 学位信息
 	DegreeType    string `gorm:"size:50" json:"degree_type"`
+=======
+	UniversityID  uuid.UUID      `gorm:"type:uuid;not null;index" json:"university_id"`
+	Code          string         `gorm:"size:20;index" json:"code"`
+	Name          string         `gorm:"index;not null;size:200" json:"name"`
+	EnglishName   string         `gorm:"size:300" json:"english_name,omitempty"`
+	
+	// 专业分类
+	Category      string `gorm:"size:100;index" json:"category"`
+	Discipline    string `gorm:"size:100;index" json:"discipline"`
+	SubDiscipline string `gorm:"size:100;index" json:"sub_discipline,omitempty"`
+	
+	// 学位信息
+	DegreeType    string `gorm:"size:50;index" json:"degree_type"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	Duration      int    `json:"duration,omitempty"` // 学制年数
 	
 	// 专业详情
@@ -97,7 +138,11 @@ type Major struct {
 	TopEmployers       string  `gorm:"type:text" json:"top_employers,omitempty"` // JSON格式
 	
 	// 招生信息
+<<<<<<< HEAD
 	IsRecruiting      bool `gorm:"default:true" json:"is_recruiting"`
+=======
+	IsRecruiting      bool `gorm:"default:true;index" json:"is_recruiting"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	RecruitmentQuota  int  `json:"recruitment_quota,omitempty"`
 	
 	// 热度统计
@@ -106,8 +151,13 @@ type Major struct {
 	PopularityScore   float64 `json:"popularity_score,omitempty"`
 	
 	// 状态
+<<<<<<< HEAD
 	Status    string `gorm:"default:active;size:20" json:"status"`
 	IsActive  bool   `gorm:"default:true" json:"is_active"`
+=======
+	Status    string `gorm:"default:active;size:20;index" json:"status"`
+	IsActive  bool   `gorm:"default:true;index" json:"is_active"`
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	
 	// 审计字段
 	CreatedAt time.Time      `json:"created_at"`

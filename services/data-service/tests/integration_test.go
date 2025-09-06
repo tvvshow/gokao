@@ -88,7 +88,11 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	admissionHandler := handlers.NewAdmissionHandler(admissionService, logger)
 	searchHandler := handlers.NewSearchHandler(searchService, logger)
 	algorithmHandler := handlers.NewAlgorithmHandler(algorithmService, logger)
+<<<<<<< HEAD
 	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, dbManager, logger)
+=======
+	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, logger)
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 	// 创建路由
 	router := gin.New()

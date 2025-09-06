@@ -28,9 +28,20 @@ struct Student;
 struct University;
 struct Major;
 
+<<<<<<< HEAD
 // FeatureVector已在volunteer_matcher.h中定义
 // 使用前向声明
 struct FeatureVector;
+=======
+/**
+ * @brief 特征向量结构
+ */
+struct FeatureVector {
+    std::vector<double> features;           ///< 特征值
+    std::vector<std::string> feature_names; ///< 特征名称
+    double target;                          ///< 目标值(训练时使用)
+};
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 /**
  * @brief 预测结果

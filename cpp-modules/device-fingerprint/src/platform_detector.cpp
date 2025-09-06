@@ -31,7 +31,10 @@
     #include <sys/sysinfo.h>
     #include <sys/types.h>
     #include <sys/stat.h>
+<<<<<<< HEAD
     #include <sys/ptrace.h>
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     #include <ifaddrs.h>
     #include <net/if.h>
     #include <netinet/in.h>
@@ -657,6 +660,7 @@ bool QuickCheckDebugger() {
     return detector.IsDebuggerPresent();
 }
 
+<<<<<<< HEAD
 // 缺失方法的实现
 DetectionError PlatformDetector::GetMotherboardInfo(MotherboardInfo& motherboard_info) {
     if (!pimpl_->initialized_) {
@@ -832,5 +836,7 @@ std::string PlatformDetector::GetErrorDescription(DetectionError error) {
     }
 }
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 } // namespace platform
 } // namespace gaokao

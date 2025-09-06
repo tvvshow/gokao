@@ -37,12 +37,18 @@ LDFLAGS := -X main.Version=$(VERSION) \
            -X main.BuildTime=$(BUILD_TIME) \
            -X main.GitCommit=$(GIT_COMMIT)
 
+<<<<<<< HEAD
 # 注意：推荐服务强制要求CGO_ENABLED=1以启用真实的C++推荐引擎
 # 在生产构建中，我们仍然启用CGO
 ifeq ($(RELEASE),1)
     LDFLAGS += -s -w
     # CGO_ENABLED保持为1以支持推荐服务
     CGO_ENABLED := 1
+=======
+ifeq ($(RELEASE),1)
+    LDFLAGS += -s -w
+    CGO_ENABLED := 0
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 endif
 
 # 服务列表
@@ -103,6 +109,7 @@ build-go:
 	@echo "🔨 构建Go服务..."
 	@$(MKDIR) $(BIN_DIR) 2>/dev/null || true
 	@for service in $(SERVICES); do \
+<<<<<<< HEAD
 	echo "  构建 $service..."; \
 	cd services/$service && \
 	if [ "$service" = "user-service" ]; then \
@@ -118,6 +125,16 @@ build-go:
 	fi; \
 	cd ../..; \
 done
+=======
+		echo "  构建 $$service..."; \
+		cd services/$$service && \
+		CGO_ENABLED=$(CGO_ENABLED) go build \
+			-ldflags "$(LDFLAGS)" \
+			-o ../../$(BIN_DIR)/$$service$(EXE_EXT) \
+			. && \
+		cd ../..; \
+	done
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	@echo "✅ Go服务构建完成"
 
 .PHONY: build-frontend

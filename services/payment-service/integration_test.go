@@ -7,8 +7,13 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+<<<<<<< HEAD
 	"github.com/gaokaohub/gaokao/services/payment-service/internal/models"
 	"github.com/gaokaohub/gaokao/services/payment-service/internal/services"
+=======
+	"github.com/gaokaohub/payment-service/internal/models"
+	"github.com/gaokaohub/payment-service/internal/services"
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"github.com/go-redis/redis/v8"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"

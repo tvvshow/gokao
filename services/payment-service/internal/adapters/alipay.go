@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+<<<<<<< HEAD
 	"net/url"
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"os"
 	"strconv"
 	"time"
@@ -12,7 +15,11 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smartwalle/alipay/v3"
 
+<<<<<<< HEAD
 	"github.com/gaokaohub/gaokao/services/payment-service/internal/models"
+=======
+	"github.com/gaokaohub/payment-service/internal/models"
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )
 
 // AlipayAdapter 支付宝支付适配器
@@ -25,6 +32,7 @@ type AlipayAdapter struct {
 
 // AlipayConfig 支付宝配置
 type AlipayConfig struct {
+<<<<<<< HEAD
 	AppID      string `json:"app_id"`
 	PrivateKey string `json:"private_key"`
 	PublicKey  string `json:"public_key"`
@@ -37,12 +45,36 @@ type AlipayConfig struct {
 func NewAlipayAdapter(config AlipayConfig) (PaymentAdapter, error) {
 	// 创建支付宝客户端
 	client, err := alipay.New(config.AppID, config.PrivateKey, !config.IsProd)
+=======
+	AppID          string `json:"app_id"`
+	PrivateKeyPath string `json:"private_key_path"`
+	PublicKeyPath  string `json:"public_key_path"`
+	NotifyURL      string `json:"notify_url"`
+	ReturnURL      string `json:"return_url"`
+	GatewayURL     string `json:"gateway_url"`
+	IsSandbox      bool   `json:"is_sandbox"`
+}
+
+// NewAlipayAdapter 创建支付宝适配器
+func NewAlipayAdapter() (*AlipayAdapter, error) {
+	config, err := loadAlipayConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load alipay config: %w", err)
+	}
+
+	// 创建支付宝客户端
+	client, err := alipay.New(config.AppID, config.PrivateKeyPath, config.IsSandbox)
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	if err != nil {
 		return nil, fmt.Errorf("failed to create alipay client: %w", err)
 	}
 
 	// 加载支付宝公钥
+<<<<<<< HEAD
 	err = client.LoadAliPayPublicKey(config.PublicKey)
+=======
+	err = client.LoadAliPayPublicKey(config.PublicKeyPath)
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	if err != nil {
 		return nil, fmt.Errorf("failed to load alipay public key: %w", err)
 	}
@@ -272,6 +304,7 @@ func (a *AlipayAdapter) HandleCallback(ctx context.Context, request *http.Reques
 	return result, nil
 }
 
+<<<<<<< HEAD
 // CloseOrder 关闭订单
 func (a *AlipayAdapter) CloseOrder(ctx context.Context, orderNo string) error {
 	var request alipay.TradeClose
@@ -468,6 +501,22 @@ func (a *AlipayAdapter) QueryRefund(ctx context.Context, refundNo string) (*Refu
 // 辅助函数
 
 
+=======
+// 辅助函数
+
+// loadAlipayConfig 加载支付宝配置
+func loadAlipayConfig() (*AlipayConfig, error) {
+	return &AlipayConfig{
+		AppID:          getAlipayEnv("ALIPAY_APP_ID", ""),
+		PrivateKeyPath: getAlipayEnv("ALIPAY_PRIVATE_KEY_PATH", ""),
+		PublicKeyPath:  getAlipayEnv("ALIPAY_PUBLIC_KEY_PATH", ""),
+		NotifyURL:      getAlipayEnv("ALIPAY_NOTIFY_URL", ""),
+		ReturnURL:      getAlipayEnv("ALIPAY_RETURN_URL", ""),
+		GatewayURL:     getAlipayEnv("ALIPAY_GATEWAY_URL", "https://openapi.alipay.com/gateway.do"),
+		IsSandbox:      getAlipayEnv("ALIPAY_SANDBOX", "false") == "true",
+	}, nil
+}
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 // convertAlipayStatus 转换支付宝支付状态
 func convertAlipayStatus(alipayStatus string) string {

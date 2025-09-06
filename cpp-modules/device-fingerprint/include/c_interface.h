@@ -382,6 +382,7 @@ CErrorCode DeviceFingerprint_IsInitialized(int* is_initialized);
 CErrorCode DeviceFingerprint_GetSupportedPlatforms(char* platforms_buffer,
                                                    size_t buffer_size);
 
+<<<<<<< HEAD
 // 简化的C接口函数（用于示例和简单使用）
 typedef void DeviceFingerprintHandle;
 
@@ -425,6 +426,8 @@ char* device_fingerprint_get_system_info(DeviceFingerprintHandle* handle);
  */
 char* device_fingerprint_get_network_info(DeviceFingerprintHandle* handle);
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 #ifdef __cplusplus
 }
 #endif

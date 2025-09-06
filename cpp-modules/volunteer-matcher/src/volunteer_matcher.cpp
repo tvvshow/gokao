@@ -18,7 +18,10 @@
 #include <random>
 #include <thread>
 #include <future>
+<<<<<<< HEAD
 #include <shared_mutex>
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 #include <iomanip>
 #include <unordered_set>
 #include <json/json.h>
@@ -232,7 +235,11 @@ VolunteerPlan VolunteerMatcher::GenerateVolunteerPlan(const Student& student, in
         plan.generated_time = std::chrono::system_clock::now();
         
         // 第一步：智能筛选候选院校
+<<<<<<< HEAD
         FilterCriteria criteria = this->BuildFilterCriteria(student);
+=======
+        FilterCriteria criteria = BuildFilterCriteria(student);
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         auto filter_result = pimpl_->university_filter_->IntelligentFilter(student, max_volunteers * 3);
         
         if (filter_result.university_ids.empty()) {
@@ -312,7 +319,10 @@ std::vector<VolunteerPlan> VolunteerMatcher::BatchGenerateVolunteerPlans(
     // 使用线程池并行处理
     const int num_threads = std::min(static_cast<int>(students.size()), 
                                    static_cast<int>(std::thread::hardware_concurrency()));
+<<<<<<< HEAD
     (void)num_threads; // 避免未使用变量警告
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     std::vector<std::future<VolunteerPlan>> futures;
     
     for (const auto& student : students) {
@@ -362,6 +372,7 @@ VolunteerPlan VolunteerMatcher::OptimizeVolunteerPlan(
     return optimized_plan;
 }
 
+<<<<<<< HEAD
 void VolunteerMatcher::GetPerformanceStats(PerformanceStats& stats) const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
     stats.total_requests.store(performance_stats_.total_requests.load());
@@ -370,15 +381,24 @@ void VolunteerMatcher::GetPerformanceStats(PerformanceStats& stats) const {
     stats.max_response_time.store(performance_stats_.max_response_time.load());
     stats.memory_usage.store(performance_stats_.memory_usage.load());
     stats.last_reset_time = performance_stats_.last_reset_time;
+=======
+PerformanceStats VolunteerMatcher::GetPerformanceStats() const {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    return performance_stats_;
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 }
 
 void VolunteerMatcher::ResetPerformanceStats() {
     std::lock_guard<std::mutex> lock(stats_mutex_);
+<<<<<<< HEAD
     performance_stats_.total_requests.store(0);
     performance_stats_.successful_requests.store(0);
     performance_stats_.avg_response_time.store(0.0);
     performance_stats_.max_response_time.store(0.0);
     performance_stats_.memory_usage.store(0);
+=======
+    performance_stats_ = PerformanceStats{};
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     performance_stats_.last_reset_time = std::chrono::system_clock::now();
 }
 
@@ -404,8 +424,12 @@ std::string VolunteerMatcher::GetEngineStatus() const {
     status["majors_count"] = static_cast<int>(pimpl_->majors_.size());
     status["cache_size"] = static_cast<int>(pimpl_->plan_cache_.size());
     
+<<<<<<< HEAD
     PerformanceStats stats;
     GetPerformanceStats(stats);
+=======
+    auto stats = GetPerformanceStats();
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     status["performance"]["total_requests"] = static_cast<int>(stats.total_requests.load());
     status["performance"]["successful_requests"] = static_cast<int>(stats.successful_requests.load());
     status["performance"]["avg_response_time"] = stats.avg_response_time.load();
@@ -692,7 +716,11 @@ Major ParseMajorFromCSV(const std::string& csv_line) {
 /**
  * @brief 构建筛选条件
  */
+<<<<<<< HEAD
 FilterCriteria VolunteerMatcher::BuildFilterCriteria(const Student& student) {
+=======
+FilterCriteria BuildFilterCriteria(const Student& student) {
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     FilterCriteria criteria;
     
     // 分数范围：基于学生分数±50分
@@ -825,7 +853,11 @@ std::string GenerateRecommendationReason(
     }
     
     // 地理位置分析
+<<<<<<< HEAD
     bool location_match __attribute__((unused)) = false;
+=======
+    bool location_match = false;
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     for (const auto& preferred_city : student.preferred_cities) {
         if (preferred_city == university.city) {
             reason << "符合地理位置偏好(" << preferred_city << ")；";
@@ -835,7 +867,11 @@ std::string GenerateRecommendationReason(
     }
     
     // 专业匹配分析
+<<<<<<< HEAD
     bool major_match __attribute__((unused)) = false;
+=======
+    bool major_match = false;
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     for (const auto& preferred_major : student.preferred_majors) {
         if (preferred_major == major.name) {
             reason << "专业完全匹配(" << preferred_major << ")；";
@@ -864,6 +900,7 @@ std::string GenerateRecommendationReason(
         result = "综合条件较为匹配，建议关注。";
     } else {
         // 去除最后的分号
+<<<<<<< HEAD
         if (!result.empty() && result.back() == static_cast<char>(0xEF)) {
             // 处理UTF-8编码的中文分号
             if (result.size() >= 3 && 
@@ -871,6 +908,9 @@ std::string GenerateRecommendationReason(
                 result.erase(result.size()-3);
             }
         } else if (!result.empty() && result.back() == ';') {
+=======
+        if (result.back() == '；') {
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
             result.pop_back();
         }
         result += "。";
@@ -1056,7 +1096,10 @@ std::vector<std::string> GenerateOptimizationSuggestions(const VolunteerPlan& pl
     std::unordered_set<std::string> cities;
     std::unordered_set<std::string> provinces;
     for (const auto& rec : plan.recommendations) {
+<<<<<<< HEAD
         (void)rec; // 避免未使用变量警告
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         // 这里需要从大学信息中获取城市和省份信息
         // 简化处理，假设已有映射
     }

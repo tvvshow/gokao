@@ -75,10 +75,13 @@ func main() {
 	algorithmService := services.NewAlgorithmService(db, logger)
 	cacheService := services.NewCacheService(db, logger)
 	performanceService := services.NewPerformanceService(db, logger)
+<<<<<<< HEAD
 	migrationService := services.NewMigrationService(db, logger)
 	dataProcessingService := services.NewDataProcessingService(db, logger)
 	dataImportService := services.NewDataImportService(db, logger)
 	migrationService := services.NewMigrationService(db) // 新增迁移服务
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 	// 初始化处理器
 	universityHandler := handlers.NewUniversityHandler(universityService, logger)
@@ -87,9 +90,12 @@ func main() {
 	searchHandler := handlers.NewSearchHandler(searchService, logger)
 	algorithmHandler := handlers.NewAlgorithmHandler(algorithmService, logger)
 	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, db, logger)
+<<<<<<< HEAD
 	migrationHandler := handlers.NewMigrationHandler(db, migrationService, logger)
 	dataHandler := handlers.NewDataHandler(db, logger)
 	migrationHandler := handlers.NewMigrationHandler(db, migrationService, logger) // 新增迁移处理器
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 	// 创建Gin引擎
 	router := gin.New()
@@ -190,6 +196,7 @@ func main() {
 			performance.POST("/refresh-cache", performanceHandler.RefreshCache)
 			performance.POST("/warmup-cache", performanceHandler.WarmupCache)
 		}
+<<<<<<< HEAD
 
 		// 数据库迁移路由
 		migrations := apiV1.Group("/migrations")
@@ -205,6 +212,8 @@ func main() {
 			data.POST("/process", handlers.ProcessData) // 新增数据处理接口
 			data.POST("/import", handlers.ImportData)   // 新增数据导入接口
 		}
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	}
 
 	// Swagger文档
@@ -256,4 +265,8 @@ func main() {
 	}
 
 	logger.Info("数据服务已关闭")
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

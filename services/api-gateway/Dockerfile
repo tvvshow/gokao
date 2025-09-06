@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 
 # --- Builder stage ---
+<<<<<<< HEAD
 FROM golang:1.23.8-alpine AS builder
+=======
+FROM golang:1.21-alpine AS builder
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 WORKDIR /app
 
 # Enable Go modules and download deps first (better layer caching)

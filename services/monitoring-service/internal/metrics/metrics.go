@@ -2,7 +2,10 @@ package metrics
 
 import (
 	"context"
+<<<<<<< HEAD
 	"fmt"
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"runtime"
 	"time"
 
@@ -342,6 +345,7 @@ func (m *MetricsCollector) StartMetricsCollection(ctx context.Context, interval 
 		}
 	}
 }
+<<<<<<< HEAD
 
 // GetCPUUsage 获取CPU使用率
 func (m *MetricsCollector) GetCPUUsage(ctx context.Context) (float64, error) {
@@ -378,3 +382,5 @@ func (m *MetricsCollector) GetMetricByQuery(ctx context.Context, query string) (
 	// 这是一个简化的实现，实际应该连接到Prometheus服务器
 	return 0.0, fmt.Errorf("metric query not implemented: %s", query)
 }
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

@@ -73,9 +73,13 @@ public:
     double inference_timeout_ms_ = 10.0;
     int num_threads_ = std::thread::hardware_concurrency();
     
+<<<<<<< HEAD
     AIEngineImpl()
         : ort_env_(ORT_LOGGING_LEVEL_WARNING, "VolunteerMatcherAI")
     {
+=======
+    AIEngineImpl() : ort_env_(ORT_LOGGING_LEVEL_WARNING, "VolunteerMatcherAI") {
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         stats_.last_reset_time = std::chrono::system_clock::now();
         
         // 创建内存信息
@@ -123,11 +127,17 @@ public:
         if (pool) {
             std::lock_guard<std::mutex> lock(pool->mutex);
             pool->in_use = false;
+<<<<<<< HEAD
 #ifdef ENABLE_ONNX_RUNTIME
             // 清理tensor（避免内存泄漏）
             pool->input_tensors.clear();
             pool->output_tensors.clear();
 #endif
+=======
+            // 清理tensor（避免内存泄漏）
+            pool->input_tensors.clear();
+            pool->output_tensors.clear();
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         }
     }
     
@@ -168,7 +178,10 @@ public:
     }
     
     void ExtractModelMetadata() {
+<<<<<<< HEAD
 #ifdef ENABLE_ONNX_RUNTIME
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         if (!session_) return;
         
         Ort::AllocatorWithDefaultOptions allocator;
@@ -204,7 +217,10 @@ public:
             auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
             output_shapes_.push_back(tensor_info.GetShape());
         }
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     }
     
     std::vector<float> PrepareInputTensor(const FeatureVector& features) {

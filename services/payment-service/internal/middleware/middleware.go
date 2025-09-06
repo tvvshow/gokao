@@ -10,7 +10,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/time/rate"
+<<<<<<< HEAD
 	"github.com/gaokaohub/gaokao/services/payment-service/internal/config"
+=======
+	"github.com/gaokaohub/payment-service/internal/config"
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )
 
 // CORS 跨域中间件

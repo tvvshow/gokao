@@ -16,7 +16,10 @@
 #include <vector>
 #include <map>
 #include <memory>
+<<<<<<< HEAD
 #include <cstdint>
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 namespace gaokao {
 namespace platform {

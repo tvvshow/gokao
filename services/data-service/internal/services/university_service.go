@@ -78,8 +78,11 @@ type UniversityListResponse struct {
 
 // GetUniversityByID 根据ID获取院校详情
 func (s *UniversityService) GetUniversityByID(ctx context.Context, id string) (*models.University, error) {
+<<<<<<< HEAD
 	startTime := time.Now()
 	
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 尝试从缓存获取
 	cacheKey := fmt.Sprintf("university:id:%s", id)
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
@@ -88,9 +91,12 @@ func (s *UniversityService) GetUniversityByID(ctx context.Context, id string) (*
 			var university models.University
 			if err := json.Unmarshal([]byte(cached), &university); err == nil {
 				s.logger.Debugf("从缓存获取院校: %s", id)
+<<<<<<< HEAD
 				
 				// 记录缓存命中性能
 				s.logQueryPerformance("GetUniversityByID", "cache_hit", time.Since(startTime), 1)
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 				return &university, nil
 			}
 		} else if err != redis.Nil {
@@ -115,6 +121,7 @@ func (s *UniversityService) GetUniversityByID(ctx context.Context, id string) (*
 		s.db.Redis.Set(ctx, cacheKey, data, s.db.Config.CacheDefaultTTL).Err()
 	}
 
+<<<<<<< HEAD
 	// 记录数据库查询性能
 	s.logQueryPerformance("GetUniversityByID", "database", time.Since(startTime), 1)
 
@@ -214,6 +221,11 @@ func (s *UniversityService) logQueryPerformance(method, source string, duration 
 	}
 }
 
+=======
+	return &university, nil
+}
+
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 // GetUniversityByCode 根据代码获取院校详情
 func (s *UniversityService) GetUniversityByCode(ctx context.Context, code string) (*models.University, error) {
 	// 尝试从缓存获取
@@ -250,8 +262,11 @@ func (s *UniversityService) GetUniversityByCode(ctx context.Context, code string
 
 // ListUniversities 获取院校列表
 func (s *UniversityService) ListUniversities(ctx context.Context, params UniversityQueryParams) (*UniversityListResponse, error) {
+<<<<<<< HEAD
 	startTime := time.Now()
 	
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 验证分页参数
 	if params.Page < 1 {
 		params.Page = 1
@@ -270,9 +285,12 @@ func (s *UniversityService) ListUniversities(ctx context.Context, params Univers
 			var response UniversityListResponse
 			if err := json.Unmarshal([]byte(cached), &response); err == nil {
 				s.logger.Debugf("从缓存获取院校列表")
+<<<<<<< HEAD
 				
 				// 记录缓存命中性能
 				s.logQueryPerformance("ListUniversities", "cache_hit", time.Since(startTime), len(response.Universities))
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 				return &response, nil
 			}
 		} else if err != redis.Nil {
@@ -326,9 +344,12 @@ func (s *UniversityService) ListUniversities(ctx context.Context, params Univers
 		s.db.Redis.Set(ctx, cacheKey, data, s.db.Config.CacheDefaultTTL).Err()
 	}
 
+<<<<<<< HEAD
 	// 记录数据库查询性能
 	s.logQueryPerformance("ListUniversities", "database", time.Since(startTime), len(universities))
 
+=======
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	return response, nil
 }
 
@@ -542,6 +563,7 @@ func (s *UniversityService) applyUniversityFilters(query *gorm.DB, params Univer
 		query.Where("is_recruiting = ?", *params.IsRecruiting)
 	}
 	
+<<<<<<< HEAD
 	// 文本搜索 - 优化查询性能
 	if params.Name != "" {
 		// 优先使用精确匹配，利用索引
@@ -550,6 +572,18 @@ func (s *UniversityService) applyUniversityFilters(query *gorm.DB, params Univer
 	if params.Keyword != "" {
 		// 使用全文搜索索引，避免ILIKE全表扫描
 		query.Where("to_tsvector('chinese', name || ' ' || COALESCE(alias, '') || ' ' || COALESCE(description, '')) @@ plainto_tsquery('chinese', ?)", params.Keyword)
+=======
+	// 文本搜索 - 最后执行，避免影响索引使用
+	if params.Name != "" {
+		// 优先尝试精确匹配，再使用模糊匹配
+		query.Where("(name = ? OR name ILIKE ?)", params.Name, "%"+params.Name+"%")
+	}
+	if params.Keyword != "" {
+		keyword := "%" + params.Keyword + "%"
+		// 使用全文搜索索引优化关键词查询
+		query.Where("(to_tsvector('chinese', name || ' ' || COALESCE(alias, '') || ' ' || COALESCE(description, '')) @@ plainto_tsquery('chinese', ?) OR name ILIKE ? OR alias ILIKE ? OR description ILIKE ?)", 
+			params.Keyword, keyword, keyword, keyword)
+>>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	}
 }
 
