@@ -77,9 +77,12 @@ router.beforeEach((to, from, next) => {
   
   // 检查是否需要登录
   if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     if (!token) {
-      next('/login')
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
       return
     }
   }

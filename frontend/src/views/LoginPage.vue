@@ -87,10 +87,21 @@
                 <el-input
                   v-model="registerForm.password"
                   type="password"
-                  placeholder="请输入密码"
+                  placeholder="请输入密码（至少8位，包含大小写字母和数字）"
                   prefix-icon="Lock"
                   show-password
                 />
+                <div v-if="registerForm.password" class="password-strength">
+                  <el-progress 
+                    :percentage="passwordStrength.score * 25" 
+                    :color="passwordStrengthColor"
+                    :show-text="false"
+                    :stroke-width="4"
+                  />
+                  <span class="strength-text" :style="{ color: passwordStrengthColor }">
+                    {{ passwordStrength.message }}
+                  </span>
+                </div>
               </el-form-item>
               <el-form-item prop="confirmPassword">
                 <el-input
@@ -133,11 +144,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { 
+  createPasswordValidator, 
+  validatePasswordStrength,
+  sanitizeFormData,
+  createSafeTextValidator
+} from '@/utils/validators'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -166,10 +183,25 @@ const registerForm = reactive({
   confirmPassword: ''
 })
 
+// 密码强度计算
+const passwordStrength = computed(() => {
+  return validatePasswordStrength(registerForm.password)
+})
+
+// 密码强度颜色
+const passwordStrengthColor = computed(() => {
+  const score = passwordStrength.value.score
+  if (score <= 1) return '#f56c6c'
+  if (score === 2) return '#e6a23c'
+  if (score === 3) return '#409eff'
+  return '#67c23a'
+})
+
 // 验证规则
 const loginRules: FormRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { validator: createSafeTextValidator('用户名'), trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -180,7 +212,9 @@ const loginRules: FormRules = {
 const registerRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度为3-20个字符', trigger: 'blur' }
+    { min: 3, max: 20, message: '用户名长度为3-20个字符', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_\u4e00-\u9fa5]+$/, message: '用户名只能包含字母、数字、下划线和中文', trigger: 'blur' },
+    { validator: createSafeTextValidator('用户名'), trigger: 'blur' }
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -192,7 +226,7 @@ const registerRules: FormRules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { validator: createPasswordValidator(8), trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -217,11 +251,15 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     
     loginLoading.value = true
-    const result = await userStore.login(loginForm)
+    // Sanitize form data before sending
+    const sanitizedForm = sanitizeFormData(loginForm)
+    const result = await userStore.login(sanitizedForm)
     
     if (result.success) {
       ElMessage.success('登录成功')
-      router.push('/')
+      // Check for redirect query parameter
+      const redirect = router.currentRoute.value.query.redirect as string
+      router.push(redirect || '/')
     } else {
       ElMessage.error(result.message || '登录失败')
     }
@@ -245,7 +283,9 @@ const handleRegister = async () => {
     await registerFormRef.value.validate()
     
     registerLoading.value = true
-    const result = await userStore.register(registerForm)
+    // Sanitize form data before sending
+    const sanitizedForm = sanitizeFormData(registerForm)
+    const result = await userStore.register(sanitizedForm)
     
     if (result.success) {
       ElMessage.success('注册成功，请登录')
@@ -335,5 +375,22 @@ const guestLogin = () => {
   .login-header h1 {
     font-size: 20px;
   }
+}
+
+/* 密码强度指示器 */
+.password-strength {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.password-strength .el-progress {
+  flex: 1;
+}
+
+.strength-text {
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>

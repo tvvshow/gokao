@@ -64,9 +64,6 @@ export const recommendationApi = {
     data: Blob
     message?: string
   }> {
-    return api.post('/api/v1/recommendations/export', 
-      { recommendations }, 
-      { responseType: 'blob' }
-    )
+    return api.post('/api/v1/recommendations/export', { recommendations })
   }
 }

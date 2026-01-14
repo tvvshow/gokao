@@ -321,6 +321,7 @@ import {
 } from '@element-plus/icons-vue'
 import RecommendationCard from '@/components/RecommendationCard.vue'
 import { useRecommendationStore } from '@/stores/recommendation'
+import { recommendationApi } from '@/api/recommendation'
 import type { StudentInfo, Recommendation } from '@/types/recommendation'
 
 const router = useRouter()

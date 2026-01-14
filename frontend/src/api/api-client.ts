@@ -1,12 +1,15 @@
 import { ElMessage } from 'element-plus'
-<<<<<<< HEAD
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+import axios from 'axios'
+import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import router from '@/router'
 
 // API基础配置 - 连接到API Gateway
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const API_TIMEOUT = 10000
+
+// Token存储键名
+const TOKEN_KEY = 'auth_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
 
 // 统一API响应格式
 interface ApiResponse<T = any> {
@@ -16,11 +19,22 @@ interface ApiResponse<T = any> {
   total?: number
 }
 
+// Token刷新响应格式
+interface RefreshTokenResponse {
+  success: boolean
+  data: {
+    token: string
+    refreshToken?: string
+  }
+  message?: string
+}
+
 // API客户端类
 class ApiClient {
-<<<<<<< HEAD
   private axiosInstance: AxiosInstance
   private baseURL: string
+  private isRefreshing: boolean = false
+  private refreshSubscribers: Array<(token: string) => void> = []
 
   constructor(baseURL: string, timeout: number = 10000) {
     this.baseURL = baseURL
@@ -35,7 +49,7 @@ class ApiClient {
     // 请求拦截器 - 添加Bearer Token
     this.axiosInstance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('auth_token')
+        const token = localStorage.getItem(TOKEN_KEY)
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -46,16 +60,115 @@ class ApiClient {
       }
     )
 
-    // 响应拦截器 - 统一错误处理
+    // 响应拦截器 - 统一错误处理和Token刷新
     this.axiosInstance.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
-        return this.handleResponse(response.data)
+        return response
       },
-      (error) => {
+      async (error) => {
+        const originalRequest = error.config
+
+        // 处理401错误 - Token过期
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          // 如果是刷新Token的请求失败，直接跳转登录
+          if (originalRequest.url?.includes('/auth/refresh')) {
+            this.handleAuthFailure()
+            return Promise.reject(error)
+          }
+
+          // 尝试刷新Token
+          if (!this.isRefreshing) {
+            this.isRefreshing = true
+            originalRequest._retry = true
+
+            try {
+              const newToken = await this.refreshToken()
+              if (newToken) {
+                // 通知所有等待的请求
+                this.onRefreshed(newToken)
+                // 重试原始请求
+                originalRequest.headers.Authorization = `Bearer ${newToken}`
+                return this.axiosInstance(originalRequest)
+              }
+            } catch (refreshError) {
+              this.handleAuthFailure()
+              return Promise.reject(refreshError)
+            } finally {
+              this.isRefreshing = false
+            }
+          } else {
+            // 等待Token刷新完成
+            return new Promise((resolve) => {
+              this.subscribeTokenRefresh((token: string) => {
+                originalRequest.headers.Authorization = `Bearer ${token}`
+                resolve(this.axiosInstance(originalRequest))
+              })
+            })
+          }
+        }
+
         this.handleError(error)
         return Promise.reject(error)
       }
     )
+  }
+
+  // 刷新Token
+  private async refreshToken(): Promise<string | null> {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+    if (!refreshToken) {
+      return null
+    }
+
+    try {
+      const response = await axios.post<RefreshTokenResponse>(
+        `${this.baseURL}/api/v1/users/auth/refresh`,
+        { refreshToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+
+      if (response.data.success && response.data.data.token) {
+        const newToken = response.data.data.token
+        localStorage.setItem(TOKEN_KEY, newToken)
+        
+        // 如果返回了新的refreshToken，也更新
+        if (response.data.data.refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.data.refreshToken)
+        }
+        
+        return newToken
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  // 订阅Token刷新
+  private subscribeTokenRefresh(callback: (token: string) => void) {
+    this.refreshSubscribers.push(callback)
+  }
+
+  // 通知所有订阅者Token已刷新
+  private onRefreshed(token: string) {
+    this.refreshSubscribers.forEach((callback) => callback(token))
+    this.refreshSubscribers = []
+  }
+
+  // 处理认证失败 - 清除Token并跳转登录页
+  private handleAuthFailure() {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    ElMessage.error('登录已过期，请重新登录')
+    
+    // 跳转到登录页，保存当前路径用于登录后跳回
+    const currentPath = router.currentRoute.value.fullPath
+    if (currentPath !== '/login') {
+      router.push({
+        path: '/login',
+        query: { redirect: currentPath }
+      })
+    }
   }
 
   private async request<T>(url: string, options: any = {}): Promise<ApiResponse<T>> {
@@ -64,44 +177,8 @@ class ApiClient {
         url,
         ...options,
       })
-      return response.data
+      return this.handleResponse(response.data)
     } catch (error: any) {
-=======
-  private baseURL: string
-  private timeout: number
-
-  constructor(baseURL: string, timeout: number = 10000) {
-    this.baseURL = baseURL
-    this.timeout = timeout
-  }
-
-  private async request<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
-
-    try {
-      const response = await fetch(`${this.baseURL}${url}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        this.handleHttpError(response.status)
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return this.handleResponse(data)
-    } catch (error: any) {
-      clearTimeout(timeoutId)
-      this.handleError(error)
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
       throw error
     }
   }
@@ -117,7 +194,7 @@ class ApiClient {
   private handleHttpError(status: number) {
     switch (status) {
       case 401:
-        ElMessage.error('登录已过期，请重新登录')
+        // 401已在拦截器中处理，这里不重复提示
         break
       case 403:
         ElMessage.error('权限不足')
@@ -134,30 +211,25 @@ class ApiClient {
   }
 
   private handleError(error: any) {
-<<<<<<< HEAD
     if (error.code === 'ECONNABORTED') {
       ElMessage.error('请求超时')
     } else if (error.response) {
       // Axios响应错误
       const status = error.response.status
-      this.handleHttpError(status)
+      // 401已在拦截器中处理
+      if (status !== 401) {
+        this.handleHttpError(status)
+      }
     } else if (error.request) {
       // 网络错误
       ElMessage.error('网络连接失败')
     } else {
       // 其他错误
       ElMessage.error('请求发生错误')
-=======
-    if (error.name === 'AbortError') {
-      ElMessage.error('请求超时')
-    } else if (!error.message.includes('HTTP error')) {
-      ElMessage.error('网络连接失败')
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     }
   }
 
   async get<T>(url: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-<<<<<<< HEAD
     return this.request<T>(url, { method: 'GET', params })
   }
 
@@ -167,25 +239,6 @@ class ApiClient {
 
   async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(url, { method: 'PUT', data })
-=======
-    const searchParams = params ? new URLSearchParams(params).toString() : ''
-    const fullUrl = searchParams ? `${url}?${searchParams}` : url
-    return this.request<T>(fullUrl, { method: 'GET' })
-  }
-
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(url, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    })
-  }
-
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(url, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    })
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
   }
 
   async delete<T>(url: string): Promise<ApiResponse<T>> {
@@ -225,6 +278,29 @@ export const api = {
 
   // 健康检查
   health: () => apiClient.get('/api/v1/data/health'),
+}
+
+// 导出Token管理工具
+export const tokenManager = {
+  setToken(token: string, refreshToken?: string) {
+    localStorage.setItem(TOKEN_KEY, token)
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    }
+  },
+  
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY)
+  },
+  
+  clearTokens() {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+  },
+  
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem(TOKEN_KEY)
+  }
 }
 
 export default api
