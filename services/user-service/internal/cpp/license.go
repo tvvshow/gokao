@@ -127,7 +127,7 @@ func (l *LicenseService) GenerateLicense(deviceID string, expiresAt time.Time, p
 		return "", l.convertError(result)
 	}
 
-	baseLicense := C.GoString((*C.char)(unsafe.Pointer(&licenseBuffer[0])))
+	_ = C.GoString((*C.char)(unsafe.Pointer(&licenseBuffer[0])))
 
 	// 扩展许可证信息
 	licenseInfo := &LicenseInfo{

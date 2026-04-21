@@ -233,9 +233,18 @@ func (sm *SecurityMiddleware) validateToken(tokenString string) (*JWTClaims, err
 			return nil, fmt.Errorf("invalid issuer")
 		}
 
-		// 验证受众
-		if sm.config.JWTAudience != "" && !claims.VerifyAudience(sm.config.JWTAudience, true) {
-			return nil, fmt.Errorf("invalid audience")
+		// 验证受众（jwt/v5 中 Audience 是 ClaimStrings 类型）
+		if sm.config.JWTAudience != "" {
+			validAudience := false
+			for _, aud := range claims.Audience {
+				if aud == sm.config.JWTAudience {
+					validAudience = true
+					break
+				}
+			}
+			if !validAudience {
+				return nil, fmt.Errorf("invalid audience")
+			}
 		}
 
 		// 验证过期时间

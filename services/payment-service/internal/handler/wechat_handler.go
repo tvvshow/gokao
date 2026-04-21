@@ -8,15 +8,9 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-<<<<<<< HEAD
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/wechat"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/models"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/services"
-=======
-	"github.com/gaokaohub/payment-service/internal/wechat"
-	"github.com/gaokaohub/payment-service/internal/models"
-	"github.com/gaokaohub/payment-service/internal/services"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	"github.com/oktetopython/gaokao/services/payment-service/internal/wechat"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
 )
 
 // WeChatPayHandler 微信支付处理器

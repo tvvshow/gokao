@@ -112,7 +112,6 @@ type PaymentAdapterFactory interface {
 	GetAdapter(channel string) (PaymentAdapter, error)
 }
 
-<<<<<<< HEAD
 // NewAlipayConfigFromAdapterConfig 从AdapterConfig创建支付宝配置
 func NewAlipayConfigFromAdapterConfig(config AdapterConfig) AlipayConfig {
 	return AlipayConfig{
@@ -140,35 +139,20 @@ func NewWechatPayConfigFromAdapterConfig(config AdapterConfig) WechatPayConfig {
 
 // AdapterConfig 适配器配置
 type AdapterConfig struct {
-	AppID         string `json:"app_id"`
-	MchID         string `json:"mch_id"`
-	APIKey        string `json:"api_key"`
-	PrivateKey    string `json:"private_key"`
-	PublicKey     string `json:"public_key"`
-	CertPath      string `json:"cert_path"`
-	KeyPath       string `json:"key_path"`
-	SerialNumber  string `json:"serial_number"`
-	NotifyURL     string `json:"notify_url"`
-	ReturnURL     string `json:"return_url"`
-	SignType      string `json:"sign_type"`
-	IsProd        bool   `json:"is_prod"`
-	Sandbox       bool   `json:"sandbox"`
-	Debug         bool   `json:"debug"`
-=======
-// AdapterConfig 适配器配置
-type AdapterConfig struct {
-	AppID      string `json:"app_id"`
-	MchID      string `json:"mch_id"`
-	APIKey     string `json:"api_key"`
-	PrivateKey string `json:"private_key"`
-	PublicKey  string `json:"public_key"`
-	NotifyURL  string `json:"notify_url"`
-	ReturnURL  string `json:"return_url"`
-	SignType   string `json:"sign_type"`
-	IsProd     bool   `json:"is_prod"`
-	Sandbox    bool   `json:"sandbox"`
-	Debug      bool   `json:"debug"`
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	AppID        string `json:"app_id"`
+	MchID        string `json:"mch_id"`
+	APIKey       string `json:"api_key"`
+	PrivateKey   string `json:"private_key"`
+	PublicKey    string `json:"public_key"`
+	CertPath     string `json:"cert_path"`
+	KeyPath      string `json:"key_path"`
+	SerialNumber string `json:"serial_number"`
+	NotifyURL    string `json:"notify_url"`
+	ReturnURL    string `json:"return_url"`
+	SignType     string `json:"sign_type"`
+	IsProd       bool   `json:"is_prod"`
+	Sandbox      bool   `json:"sandbox"`
+	Debug        bool   `json:"debug"`
 }
 
 // NotifyResponse 异步通知响应

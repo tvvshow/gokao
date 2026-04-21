@@ -1,52 +1,67 @@
 <template>
-  <footer class="app-footer">
+  <footer class="app-footer" role="contentinfo">
     <div class="footer-content">
       <div class="footer-section">
-        <h3>产品服务</h3>
-        <ul>
+        <h3 id="footer-products">产品服务</h3>
+        <ul aria-labelledby="footer-products">
           <li><a href="/universities">院校查询</a></li>
           <li><a href="/majors">专业分析</a></li>
           <li><a href="/recommendation">智能推荐</a></li>
           <li><a href="/analysis">数据分析</a></li>
         </ul>
       </div>
-      
+
       <div class="footer-section">
-        <h3>用户服务</h3>
-        <ul>
-          <li><a href="/membership">会员服务</a></li>
+        <h3 id="footer-user-services">用户服务</h3>
+        <ul aria-labelledby="footer-user-services">
+          <!-- <li><a href="/membership">会员服务</a></li> 暂时隐藏，支付功能待开发 -->
           <li><a href="/profile">个人中心</a></li>
           <li><a href="#help">帮助中心</a></li>
           <li><a href="#faq">常见问题</a></li>
         </ul>
       </div>
-      
+
       <div class="footer-section">
-        <h3>关于我们</h3>
-        <ul>
+        <h3 id="footer-about">关于我们</h3>
+        <ul aria-labelledby="footer-about">
           <li><a href="#about">公司介绍</a></li>
           <li><a href="#contact">联系我们</a></li>
           <li><a href="#privacy">隐私政策</a></li>
           <li><a href="#terms">服务条款</a></li>
         </ul>
       </div>
-      
+
       <div class="footer-section contact-info">
-        <h3>联系方式</h3>
-        <p><el-icon><phone /></el-icon> 400-888-8888</p>
-        <p><el-icon><message /></el-icon> support@gaokaohub.com</p>
-        <p><el-icon><location /></el-icon> 北京市海淀区中关村大街</p>
-        <div class="social-links">
-          <el-button circle>
-            <el-icon><ChatDotSquare /></el-icon>
+        <h3 id="footer-contact">联系方式</h3>
+        <p>
+          <el-icon aria-hidden="true"><phone /></el-icon>
+          <a href="tel:400-888-8888" aria-label="客服电话：400-888-8888"
+            >400-888-8888</a
+          >
+        </p>
+        <p>
+          <el-icon aria-hidden="true"><message /></el-icon>
+          <a
+            href="mailto:support@gaokaohub.com"
+            aria-label="客服邮箱：support@gaokaohub.com"
+            >support@gaokaohub.com</a
+          >
+        </p>
+        <p>
+          <el-icon aria-hidden="true"><location /></el-icon>
+          北京市海淀区中关村大街
+        </p>
+        <div class="social-links" role="group" aria-label="社交媒体链接">
+          <el-button circle aria-label="微信公众号">
+            <el-icon aria-hidden="true"><ChatDotSquare /></el-icon>
           </el-button>
-          <el-button circle>
-            <el-icon><Share /></el-icon>
+          <el-button circle aria-label="分享到社交媒体">
+            <el-icon aria-hidden="true"><Share /></el-icon>
           </el-button>
         </div>
       </div>
     </div>
-    
+
     <div class="footer-bottom">
       <div class="copyright">
         <p>&copy; 2023 高考志愿填报助手. All rights reserved.</p>
@@ -57,7 +72,13 @@
 </template>
 
 <script setup lang="ts">
-import { Phone, Message, Location, ChatDotSquare, Share } from '@element-plus/icons-vue'
+import {
+  Phone,
+  Message,
+  Location,
+  ChatDotSquare,
+  Share,
+} from '@element-plus/icons-vue';
 </script>
 
 <style scoped>
@@ -152,7 +173,7 @@ import { Phone, Message, Location, ChatDotSquare, Share } from '@element-plus/ic
     padding: 30px 15px;
     gap: 20px;
   }
-  
+
   .footer-section {
     text-align: center;
   }

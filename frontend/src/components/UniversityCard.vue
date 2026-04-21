@@ -1,10 +1,14 @@
 <template>
-  <el-card class="university-card" shadow="hover" @click="$emit('view', university.id)">
+  <el-card
+    class="university-card"
+    shadow="hover"
+    @click="$emit('view', university.id)"
+  >
     <template #header>
       <div class="card-header">
         <div class="university-basic">
           <img
-            :src="university.logo || '/default-logo.png'"
+            :src="university.logo || '/default-logo.svg'"
             :alt="university.name"
             class="university-logo"
             @error="handleImageError"
@@ -62,11 +66,15 @@
       <div class="score-info">
         <div class="score-item">
           <span class="label">理科分数线</span>
-          <span class="value science">{{ university.minScoreScience || '--' }}</span>
+          <span class="value science">{{
+            university.minScoreScience || '--'
+          }}</span>
         </div>
         <div class="score-item">
           <span class="label">文科分数线</span>
-          <span class="value liberal">{{ university.minScoreLiberalArts || '--' }}</span>
+          <span class="value liberal">{{
+            university.minScoreLiberalArts || '--'
+          }}</span>
         </div>
       </div>
 
@@ -79,7 +87,10 @@
         >
           {{ feature }}
         </el-tag>
-        <span v-if="university.features && university.features.length > 3" class="more-features">
+        <span
+          v-if="university.features && university.features.length > 3"
+          class="more-features"
+        >
           +{{ university.features.length - 3 }}
         </span>
       </div>
@@ -102,7 +113,11 @@
 
     <template #footer>
       <div class="card-footer">
-        <el-button type="primary" size="small" @click.stop="$emit('view', university.id)">
+        <el-button
+          type="primary"
+          size="small"
+          @click.stop="$emit('view', university.id)"
+        >
           查看详情
         </el-button>
         <el-button size="small" @click.stop="viewAdmissionData">
@@ -114,52 +129,52 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router';
 import {
   Star,
   StarFilled,
   ScaleToOriginal,
   Location,
-  Trophy
-} from '@element-plus/icons-vue'
-import type { University } from '@/types/university'
+  Trophy,
+} from '@element-plus/icons-vue';
+import type { University } from '@/types/university';
 
 interface Props {
-  university: University
+  university: University;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const emit = defineEmits<{
-  view: [id: string]
-  compare: [university: University]
-  favorite: [university: University]
-}>()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _emit = defineEmits<{
+  view: [id: string];
+  compare: [university: University];
+  favorite: [university: University];
+}>();
 
-const router = useRouter()
+const router = useRouter();
 
 // 获取标签类型
 const getTagType = (level: string) => {
   const levelTypes: Record<string, string> = {
     '985工程': 'danger',
     '211工程': 'warning',
-    '双一流': 'success',
-    '普通本科': 'info'
-  }
-  return levelTypes[level] || 'info'
-}
+    双一流: 'success',
+    普通本科: 'info',
+  };
+  return levelTypes[level] || 'info';
+};
 
 // 处理图片加载错误
 const handleImageError = (event: Event) => {
-  const target = event.target as HTMLImageElement
-  target.src = '/default-logo.png'
-}
+  const target = event.target as HTMLImageElement;
+  target.src = '/default-logo.svg';
+};
 
 // 查看录取数据
 const viewAdmissionData = () => {
-  router.push(`/analysis?university=${props.university.id}`)
-}
+  router.push(`/analysis?university=${props.university.id}`);
+};
 </script>
 
 <style scoped>
@@ -341,18 +356,18 @@ const viewAdmissionData = () => {
   .university-name {
     font-size: 14px;
   }
-  
+
   .location-rank {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .score-info {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .score-item {
     flex-direction: row;
     justify-content: space-between;

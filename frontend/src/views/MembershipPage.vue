@@ -76,12 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Check, Close } from '@element-plus/icons-vue'
-
-const router = useRouter()
+import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
+import { Check, Close } from '@element-plus/icons-vue';
+import type { MembershipPlanItem } from '@/types/payment';
 
 // 会员套餐
 const membershipPlans = ref([
@@ -92,12 +90,7 @@ const membershipPlans = ref([
     period: '永久',
     featured: false,
     buttonText: '当前版本',
-    features: [
-      '基础院校查询',
-      '简单数据分析',
-      '每日10次查询',
-      '基础推荐功能'
-    ]
+    features: ['基础院校查询', '简单数据分析', '每日10次查询', '基础推荐功能'],
   },
   {
     id: 'basic',
@@ -112,8 +105,8 @@ const membershipPlans = ref([
       'AI智能推荐',
       '历史趋势分析',
       '专业就业报告',
-      '优先客服支持'
-    ]
+      '优先客服支持',
+    ],
   },
   {
     id: 'premium',
@@ -128,10 +121,10 @@ const membershipPlans = ref([
       '定制化推荐报告',
       '实时数据更新',
       '多轮志愿模拟',
-      '专属客服经理'
-    ]
-  }
-])
+      '专属客服经理',
+    ],
+  },
+]);
 
 // 功能对比
 const featureComparison = ref([
@@ -141,18 +134,19 @@ const featureComparison = ref([
   { feature: '历史趋势分析', free: false, basic: true, premium: true },
   { feature: '就业数据报告', free: false, basic: true, premium: true },
   { feature: '一对一咨询', free: false, basic: false, premium: true },
-  { feature: '定制化报告', free: false, basic: false, premium: true }
-])
+  { feature: '定制化报告', free: false, basic: false, premium: true },
+]);
 
-const selectPlan = (plan: any) => {
+const selectPlan = (plan: MembershipPlanItem) => {
   if (plan.id === 'free') {
-    ElMessage.info('您当前使用的是免费版')
-    return
+    ElMessage.info('您当前使用的是免费版');
+    return;
   }
-  
-  ElMessage.success(`选择了${plan.name}，正在跳转到支付页面...`)
+
+  // TODO: 支付功能开发中
+  ElMessage.info('支付功能开发中，敬请期待');
   // 这里可以跳转到支付页面
-}
+};
 </script>
 
 <style scoped>
@@ -173,7 +167,7 @@ const selectPlan = (plan: any) => {
 }
 
 .page-title {
-  font-size: 32px;
+  font-size: 28px;
   color: #2c3e50;
   margin-bottom: 12px;
 }
@@ -190,11 +184,11 @@ const selectPlan = (plan: any) => {
 .plan-card {
   height: 100%;
   transition: all 0.3s ease;
+  margin-bottom: 20px;
 }
 
 .plan-card.featured {
   border: 2px solid #667eea;
-  transform: scale(1.05);
 }
 
 .plan-card:hover {
@@ -206,7 +200,7 @@ const selectPlan = (plan: any) => {
 }
 
 .plan-name {
-  font-size: 24px;
+  font-size: 20px;
   color: #2c3e50;
   margin-bottom: 16px;
 }
@@ -224,7 +218,7 @@ const selectPlan = (plan: any) => {
 }
 
 .amount {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: #667eea;
   margin: 0 4px;
@@ -246,11 +240,13 @@ const selectPlan = (plan: any) => {
   align-items: center;
   margin-bottom: 12px;
   color: #2c3e50;
+  font-size: 14px;
 }
 
 .plan-features li .el-icon {
   color: #67c23a;
   margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .featured-btn {
@@ -266,6 +262,65 @@ const selectPlan = (plan: any) => {
   text-align: center;
   margin-bottom: 30px;
   color: #2c3e50;
-  font-size: 28px;
+  font-size: 24px;
+}
+
+/* Responsive design */
+@media (min-width: 768px) {
+  .page-title {
+    font-size: 32px;
+  }
+
+  .plan-name {
+    font-size: 24px;
+  }
+
+  .amount {
+    font-size: 36px;
+  }
+
+  .plan-card.featured {
+    transform: scale(1.05);
+  }
+
+  .comparison-section h2 {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 991px) {
+  .plans-section :deep(.el-col) {
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    margin-bottom: 20px;
+  }
+
+  .plan-card.featured {
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .page-header {
+    margin-bottom: 30px;
+  }
+
+  .plans-section {
+    margin-bottom: 40px;
+  }
+
+  .comparison-section {
+    margin-top: 40px;
+    overflow-x: auto;
+  }
+
+  .comparison-section :deep(.el-table) {
+    min-width: 500px;
+  }
 }
 </style>

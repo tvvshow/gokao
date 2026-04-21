@@ -1,66 +1,171 @@
-// 高校信息接口
-export interface University {
-  id: number
-  code: string
-  name: string
-  province: string
-  city: string
-  type: string
-  level: string
-  national_rank: number
-  is_active: boolean
-  website?: string
-  description?: string
-}
+/**
+ * API types - consolidated from api.ts and api-params.ts
+ */
 
-// 专业信息接口
-export interface Major {
-  id: number
-  university_id: number
-  code: string
-  name: string
-  category: string
-  is_active: boolean
-}
+import type { Recommendation, StudentInfo } from './recommendation';
 
-// 录取数据接口
-export interface AdmissionData {
-  id: number
-  university_id: number
-  major_id: number
-  year: number
-  province: string
-  min_score: number
-  avg_score: number
-  max_score: number
-  min_rank: number
-  avg_rank: number
-  max_rank: number
-}
+// Re-export domain entity types from specialized type files
+export type {
+  University,
+  UniversitySearchParams,
+  UniversityDetail,
+  Major,
+  AdmissionData,
+} from './university';
 
-// 搜索参数接口
-export interface UniversitySearchParams {
-  name?: string
-  province?: string
-  type?: string
-  level?: string
-  page?: number
-  limit?: number
-}
+// ============ API Infrastructure Types ============
 
 // 统计信息接口
 export interface UniversityStatistics {
-  total: number
-  985_count: number
-  211_count: number
-  provinces: string[]
-  types: string[]
+  total: number;
+  count985: number;
+  count211: number;
+  provinces: string[];
+  types: string[];
 }
 
-// API响应格式
-export interface ApiResponse<T = any> {
-  success: boolean
-  data: T
-  message: string
-  total?: number
+// ============ Request Parameter Types ============
+
+// Generic pagination parameters
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  pageSize?: number;
+  page_size?: number;
+}
+
+// University list parameters
+export interface UniversityListParams extends PaginationParams {
+  name?: string;
+  province?: string;
+  type?: string;
+  level?: string;
+  minScore?: number;
+  maxScore?: number;
+}
+
+// Major list parameters
+export interface MajorListParams extends PaginationParams {
+  name?: string;
+  category?: string;
+  universityId?: number;
+}
+
+// Admission data parameters
+export interface AdmissionListParams extends PaginationParams {
+  universityId?: number;
+  majorId?: number;
+  year?: number;
+  province?: string;
+}
+
+// Recommendation save data
+export interface RecommendationSaveData {
+  name: string;
+  studentInfo: StudentInfo;
+  recommendations: Recommendation[];
+}
+
+// User login data
+export interface LoginData {
+  username: string;
+  password: string;
+}
+
+// User register data
+export interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+// ============ API Infrastructure Types ============
+
+// Axios request options
+export interface RequestOptions {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  params?: Record<string, unknown>;
+  data?: unknown;
+  headers?: Record<string, string>;
+}
+
+// API error response
+export interface ApiError {
+  code: string;
+  message: string;
+  status?: number;
+  details?: Record<string, unknown>;
+}
+
+// Generic API response (unified from api-client.ts and services/api.ts)
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  code?: number;
+  data: T;
+  message?: string;
+  total?: number;
+  timestamp?: string;
+  request_id?: string;
+}
+
+// ============ UI Component Types ============
+
+// Membership plan type - re-exported from payment.ts
+export type { MembershipPlan, MembershipPlanItem } from './payment';
+
+// Compare table row type
+export interface CompareTableRow {
+  field: string;
+  [universityId: string]: string | number | undefined;
+}
+
+// Tab change event type
+export interface TabChangeEvent {
+  paneName: string;
+  props?: {
+    name?: string;
+    label?: string;
+  };
+}
+
+// Form rule type (Element Plus compatible)
+export interface FormRule {
+  required?: boolean;
+  message?: string;
+  trigger?: string | string[];
+  type?: string;
+  min?: number;
+  max?: number;
+  validator?: (
+    rule: FormRule,
+    value: string,
+    callback: (error?: Error) => void
+  ) => void;
+}
+
+// Column configuration for responsive tables
+export interface ColumnConfig {
+  prop: string;
+  label: string;
+  width?: number | string;
+  minWidth?: number | string;
+  fixed?: boolean | 'left' | 'right';
+  sortable?: boolean;
+  formatter?: (row: unknown, column: unknown, cellValue: unknown) => string;
+}
+
+// Home page statistics data
+export interface HomeStatistics {
+  universityCount: number;
+  majorCount: number;
+  userCount: number;
+  accuracyRate: number;
+}
+
+// Statistics API response
+export interface StatisticsResponse {
+  success: boolean;
+  data: HomeStatistics;
+  message: string;
 }

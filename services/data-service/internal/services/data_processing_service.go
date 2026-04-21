@@ -126,7 +126,7 @@ func (s *DataProcessingService) ProcessMajorData(data []byte) error {
 
 // ProcessAdmissionData 处理录取数据
 func (s *DataProcessingService) ProcessAdmissionData(data []byte) error {
-	var admissions []models.Admission
+	var admissions []models.AdmissionData
 	if err := json.Unmarshal(data, &admissions); err != nil {
 		return fmt.Errorf("解析录取数据失败: %w", err)
 	}
@@ -146,7 +146,7 @@ func (s *DataProcessingService) ProcessAdmissionData(data []byte) error {
 	// 处理每个录取数据
 	for _, admission := range admissions {
 		// 检查是否已存在
-		var existing models.Admission
+		var existing models.AdmissionData
 		result := tx.Where("university_id = ? AND major_id = ? AND year = ? AND province = ?", 
 			admission.UniversityID, admission.MajorID, admission.Year, admission.Province).First(&existing)
 		

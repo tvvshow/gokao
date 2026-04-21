@@ -2,14 +2,12 @@ package services
 
 import (
 	"data-service/internal/database"
-	"data-service/internal/models"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 // DataImportService 数据导入服务

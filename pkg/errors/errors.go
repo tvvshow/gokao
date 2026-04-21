@@ -44,7 +44,7 @@ const (
 
 // ErrorResponse 统一错误响应结构
 type ErrorResponse struct {
-	Error            ErrorCode     `json:"error"`
+	Code             ErrorCode     `json:"error"`
 	Message          string        `json:"message"`
 	Details          interface{}   `json:"details,omitempty"`
 	RequestID        string        `json:"request_id,omitempty"`
@@ -63,7 +63,7 @@ type FieldError struct {
 
 // Error 实现error接口
 func (e ErrorResponse) Error() string {
-	return fmt.Sprintf("%s: %s", e.Error, e.Message)
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
 // ErrorMapping 错误码到HTTP状态码的映射
@@ -128,7 +128,7 @@ func NewError(code ErrorCode, message string, details interface{}) *ErrorRespons
 	}
 
 	return &ErrorResponse{
-		Error:   code,
+		Code:    code,
 		Message: message,
 		Details: details,
 	}
@@ -200,7 +200,7 @@ func HandleError(c *gin.Context, err error, logger *logrus.Logger) {
 	}
 
 	// 设置HTTP状态码
-	statusCode := ErrorMapping[errorResp.Error]
+	statusCode := ErrorMapping[errorResp.Code]
 	if statusCode == 0 {
 		statusCode = http.StatusInternalServerError
 	}
@@ -307,7 +307,7 @@ func AbortWithError(c *gin.Context, err *ErrorResponse) {
 // IsError 检查错误是否为特定错误码
 func IsError(err error, code ErrorCode) bool {
 	if resp, ok := err.(*ErrorResponse); ok {
-		return resp.Error == code
+		return resp.Code == code
 	}
 	return false
 }

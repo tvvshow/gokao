@@ -1,18 +1,9 @@
 package errors
 
 import (
-<<<<<<< HEAD
 	"log"
 	"net/http"
 	"runtime"
-=======
-	"context"
-	"encoding/json"
-	"log"
-	"net/http"
-	"runtime"
-	"strings"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"time"
 
 	"github.com/gin-gonic/gin"

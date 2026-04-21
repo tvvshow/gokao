@@ -208,7 +208,6 @@ Desktop.ini
 *.dylib
 *.test
 *.out
-go.work
 vendor/
 
 # C++ specific
@@ -288,6 +287,13 @@ logstash/
 # Large files
 gaokao.rar
 gaokaohub_-ai-college-application-assistant.zip
+*.dmg
+
+# Loose root artifacts
+log.txt
+image.png
+coverage.out
+test_ci_trigger.txt
 
 # Tooling directories
 .iflow/
@@ -297,3 +303,4 @@ gaokaohub_-ai-college-application-assistant.zip
 .trae/
 .ai-rules/
 .augment/
+.ace-tool/

@@ -25,8 +25,8 @@
         >
           <template #header>
             <div class="university-header">
-              <img 
-                :src="university.logo || '/default-logo.png'" 
+              <img
+                :src="university.logo || '/default-logo.svg'"
                 :alt="university.name"
                 class="university-logo"
               />
@@ -40,9 +40,9 @@
       </el-table>
 
       <!-- 雷达图对比 -->
-      <div class="radar-chart" style="margin-top: 20px;">
+      <div class="radar-chart" style="margin-top: 20px">
         <h3>综合对比雷达图</h3>
-        <div id="radarChart" style="height: 400px;"></div>
+        <div id="radarChart" style="height: 400px"></div>
       </div>
     </div>
 
@@ -61,34 +61,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import type { University } from '@/types/university'
+import { ref, computed, watch } from 'vue';
+import type { University } from '@/types/university';
 
 interface Props {
-  modelValue: boolean
-  universities: University[]
+  modelValue: boolean;
+  universities: University[];
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  clear: []
-}>()
+  'update:modelValue': [value: boolean];
+  clear: [];
+}>();
 
-const dialogVisible = ref(false)
+const dialogVisible = ref(false);
 
-// 监听 modelValue 变化
-watch(() => props.modelValue, (newVal) => {
-  dialogVisible.value = newVal
-})
+// 监听 modelValue 变化（immediate确保初始值同步）
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    dialogVisible.value = newVal;
+  },
+  { immediate: true }
+);
 
 watch(dialogVisible, (newVal) => {
-  emit('update:modelValue', newVal)
-})
+  emit('update:modelValue', newVal);
+});
 
 // 对比数据
 const comparisonData = computed(() => {
-  if (props.universities.length === 0) return []
+  if (props.universities.length === 0) return [];
 
   const fields = [
     { field: '院校类型', key: 'type' },
@@ -99,23 +103,32 @@ const comparisonData = computed(() => {
     { field: '在校生人数', key: 'studentCount' },
     { field: '专业数量', key: 'majorCount' },
     { field: '就业率', key: 'employmentRate' },
-    { field: '建校年份', key: 'founded' }
-  ]
+    { field: '建校年份', key: 'founded' },
+  ];
 
-  return fields.map(item => {
-    const row: any = { field: item.field }
-    props.universities.forEach(university => {
-      row[university.id] = university[item.key as keyof University] || '--'
-    })
-    return row
-  })
-})
+  return fields.map((item) => {
+    const row: Record<string, string | number | boolean | undefined> = {
+      field: item.field,
+    };
+    props.universities.forEach((university) => {
+      const value = university[item.key as keyof University];
+      if (value === undefined || value === null) {
+        row[university.id] = '--';
+      } else if (Array.isArray(value)) {
+        row[university.id] = value.join(', ');
+      } else {
+        row[university.id] = value as string | number | boolean;
+      }
+    });
+    return row;
+  });
+});
 
 // 导出对比报告
 const exportComparison = () => {
   // 实现导出功能
-  console.log('导出对比报告')
-}
+  console.log('导出对比报告');
+};
 </script>
 
 <style scoped>

@@ -3,18 +3,13 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/time/rate"
-<<<<<<< HEAD
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/config"
-=======
-	"github.com/gaokaohub/payment-service/internal/config"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
+	"github.com/oktetopython/gaokao/pkg/auth"
 )
 
 // CORS 跨域中间件
@@ -76,80 +71,12 @@ func RateLimit(cfg config.RateLimitConfig) gin.HandlerFunc {
 	}
 }
 
-// JWTClaims JWT声明
-type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-// Auth JWT认证中间件
+// Auth JWT认证中间件 (已废弃 - 请使用 pkg/auth)
+// DEPRECATED: Use github.com/oktetopython/gaokao/pkg/auth.AuthMiddleware instead
 func Auth(cfg config.JWTConfig) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "missing authorization header",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
-			return
-		}
-
-		// 检查Bearer前缀
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid authorization header format",
-				"code":  "INVALID_TOKEN_FORMAT",
-			})
-			c.Abort()
-			return
-		}
-
-		// 解析JWT token
-		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(cfg.Secret), nil
-		})
-
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token",
-				"code":  "INVALID_TOKEN",
-			})
-			c.Abort()
-			return
-		}
-
-		if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-			// 检查token是否过期
-			if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "token expired",
-					"code":  "TOKEN_EXPIRED",
-				})
-				c.Abort()
-				return
-			}
-
-			// 将用户信息设置到上下文
-			c.Set("user_id", claims.UserID)
-			c.Set("username", claims.Username)
-			c.Set("role", claims.Role)
-			c.Next()
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token claims",
-				"code":  "INVALID_TOKEN_CLAIMS",
-			})
-			c.Abort()
-			return
-		}
-	}
+	// 使用共享的认证中间件
+	authMiddleware := auth.NewAuthMiddleware(cfg.Secret)
+	return authMiddleware.RequireAuth()
 }
 
 // AdminOnly 管理员权限中间件

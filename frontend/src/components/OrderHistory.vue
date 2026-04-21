@@ -13,25 +13,21 @@
           <option value="expired">已过期</option>
           <option value="refunded">已退款</option>
         </select>
-        <input 
-          v-model="startDate" 
-          type="date" 
+        <input
+          v-model="startDate"
+          type="date"
           @change="fetchOrders"
           placeholder="开始日期"
         />
-        <input 
-          v-model="endDate" 
-          type="date" 
+        <input
+          v-model="endDate"
+          type="date"
           @change="fetchOrders"
           placeholder="结束日期"
         />
       </div>
       <div class="orders-list">
-        <div 
-          v-for="order in orders" 
-          :key="order.order_no"
-          class="order-item"
-        >
+        <div v-for="order in orders" :key="order.order_no" class="order-item">
           <div class="order-header">
             <div class="order-no">订单号: {{ order.order_no }}</div>
             <div class="order-status" :class="order.status">
@@ -49,7 +45,9 @@
             </div>
             <div class="detail-row">
               <span class="label">支付方式:</span>
-              <span class="value">{{ getPaymentChannelText(order.payment_channel) }}</span>
+              <span class="value">{{
+                getPaymentChannelText(order.payment_channel)
+              }}</span>
             </div>
             <div class="detail-row">
               <span class="label">创建时间:</span>
@@ -65,15 +63,15 @@
             </div>
           </div>
           <div class="order-actions">
-            <button 
-              v-if="order.status === 'pending'" 
+            <button
+              v-if="order.status === 'pending'"
               @click="cancelOrder(order.order_no)"
               class="cancel-btn"
             >
               取消订单
             </button>
-            <button 
-              v-if="order.status === 'paid'" 
+            <button
+              v-if="order.status === 'paid'"
               @click="getInvoice(order.order_no)"
               class="invoice-btn"
             >
@@ -83,15 +81,15 @@
         </div>
       </div>
       <div class="pagination">
-        <button 
-          :disabled="currentPage === 1" 
+        <button
+          :disabled="currentPage === 1"
           @click="changePage(currentPage - 1)"
         >
           上一页
         </button>
         <span>第 {{ currentPage }} 页，共 {{ totalPages }} 页</span>
-        <button 
-          :disabled="currentPage === totalPages" 
+        <button
+          :disabled="currentPage === totalPages"
           @click="changePage(currentPage + 1)"
         >
           下一页
@@ -102,98 +100,101 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { usePaymentStore } from '@/stores/payment'
-import type { PaymentOrder } from '@/types/payment'
+import { ref, computed, onMounted } from 'vue';
+import { usePaymentStore } from '@/stores/payment';
+import type { PaymentOrder } from '@/types/payment';
 
-const paymentStore = usePaymentStore()
+const paymentStore = usePaymentStore();
 
-const orders = ref<PaymentOrder[]>([])
-const loading = ref<boolean>(false)
-const filterStatus = ref<string>('')
-const startDate = ref<string>('')
-const endDate = ref<string>('')
-const currentPage = ref<number>(1)
-const pageSize = ref<number>(10)
-const total = ref<number>(0)
+const orders = ref<PaymentOrder[]>([]);
+const loading = ref<boolean>(false);
+const filterStatus = ref<string>('');
+const startDate = ref<string>('');
+const endDate = ref<string>('');
+const currentPage = ref<number>(1);
+const pageSize = ref<number>(10);
+const total = ref<number>(0);
 
 const totalPages = computed(() => {
-  return Math.ceil(total.value / pageSize.value)
-})
+  return Math.ceil(total.value / pageSize.value);
+});
 
 onMounted(() => {
-  fetchOrders()
-})
+  fetchOrders();
+});
 
 const fetchOrders = async () => {
-  loading.value = true
+  loading.value = true;
   try {
     const response = await paymentStore.getOrderList({
       page: currentPage.value,
       page_size: pageSize.value,
       status: filterStatus.value,
       start_time: startDate.value,
-      end_time: endDate.value
-    })
-    orders.value = response.orders
-    total.value = response.total
+      end_time: endDate.value,
+    });
+    orders.value = response.orders;
+    total.value = response.total;
   } catch (error) {
-    console.error('获取订单列表失败:', error)
+    console.error('获取订单列表失败:', error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'pending': '待支付',
-    'paid': '已支付',
-    'canceled': '已取消',
-    'expired': '已过期',
-    'refunded': '已退款',
-    'refunding': '退款中'
-  }
-  return statusMap[status] || status
-}
+    pending: '待支付',
+    paid: '已支付',
+    canceled: '已取消',
+    expired: '已过期',
+    refunded: '已退款',
+    refunding: '退款中',
+  };
+  return statusMap[status] || status;
+};
 
-const getPaymentChannelText = (channel: string) => {
+const getPaymentChannelText = (channel: string | undefined) => {
+  if (!channel) return '';
   const channelMap: Record<string, string> = {
-    'alipay': '支付宝',
-    'wechat': '微信支付',
-    'unionpay': '银联支付'
-  }
-  return channelMap[channel] || channel
-}
+    alipay: '支付宝',
+    wechat: '微信支付',
+    unionpay: '银联支付',
+  };
+  return channelMap[channel] || channel;
+};
 
-const formatDate = (date: string | null) => {
-  if (!date) return ''
-  return new Date(date).toLocaleString('zh-CN')
-}
+const formatDate = (date: string | null | undefined) => {
+  if (!date) return '';
+  return new Date(date).toLocaleString('zh-CN');
+};
 
-const cancelOrder = async (orderNo: string) => {
+const cancelOrder = async (orderNo: string | undefined) => {
+  if (!orderNo) return;
   try {
-    await paymentStore.cancelOrder(orderNo)
+    await paymentStore.cancelOrder(orderNo);
     // 重新获取订单列表
-    fetchOrders()
+    fetchOrders();
   } catch (error) {
-    console.error('取消订单失败:', error)
+    console.error('取消订单失败:', error);
   }
-}
+};
 
-const getInvoice = async (orderNo: string) => {
+const getInvoice = async (orderNo: string | undefined) => {
+  if (!orderNo) return;
   try {
-    const invoice = await paymentStore.getInvoice(orderNo)
-    console.log('发票信息:', invoice)
+    const invoice = await paymentStore.getInvoice(orderNo);
+    console.log('发票信息:', invoice);
     // 这里可以显示发票详情或下载发票
   } catch (error) {
-    console.error('获取发票失败:', error)
+    console.error('获取发票失败:', error);
   }
-}
+};
 
 const changePage = (page: number) => {
-  currentPage.value = page
-  fetchOrders()
-}
+  currentPage.value = page;
+  fetchOrders();
+};
 </script>
 
 <style scoped>
@@ -208,7 +209,8 @@ const changePage = (page: number) => {
   color: #333;
 }
 
-.loading, .no-orders {
+.loading,
+.no-orders {
   text-align: center;
   padding: 40px;
   color: #666;
@@ -314,7 +316,8 @@ const changePage = (page: number) => {
   gap: 10px;
 }
 
-.cancel-btn, .invoice-btn {
+.cancel-btn,
+.invoice-btn {
   padding: 6px 12px;
   border: none;
   border-radius: 4px;

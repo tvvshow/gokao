@@ -1,54 +1,3 @@
-<<<<<<< HEAD
-# CMakeLists.txt for Volunteer Matcher C++ Module
-
-cmake_minimum_required(VERSION 3.12)
-project(VolunteerMatcher)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# 设置ONNX Runtime路径（根据实际安装路径调整）
-set(ONNXRUNTIME_ROOT_DIR "/usr/local/onnxruntime")
-set(ONNXRUNTIME_INCLUDE_DIRS ${ONNXRUNTIME_ROOT_DIR}/include)
-set(ONNXRUNTIME_LIBRARIES ${ONNXRUNTIME_ROOT_DIR}/lib/libonnxruntime.so)
-
-# 设置JsonCpp路径
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(JSONCPP REQUIRED jsoncpp)
-
-# 包含目录
-include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-    ${ONNXRUNTIME_INCLUDE_DIRS}
-    ${JSONCPP_INCLUDE_DIRS}
-)
-
-# 源文件
-file(GLOB SOURCES "src/*.cpp")
-
-# 显式启用ONNX Runtime
-add_definitions(-DENABLE_ONNX_RUNTIME)
-
-# 创建共享库
-add_library(volunteer_matcher SHARED ${SOURCES})
-
-# 链接库
-target_link_libraries(volunteer_matcher 
-    ${ONNXRUNTIME_LIBRARIES}
-    ${JSONCPP_LIBRARIES}
-)
-
-# 安装规则
-install(TARGETS volunteer_matcher
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
-install(DIRECTORY include/ 
-    DESTINATION include
-    FILES_MATCHING PATTERN "*.h"
-=======
 # CMakeLists.txt for Volunteer Matcher Module
 # 高考志愿填报系统 - 志愿匹配算法引擎
 # @author 高考志愿填报系统开发团队
@@ -58,7 +7,7 @@ install(DIRECTORY include/
 cmake_minimum_required(VERSION 3.16)
 
 # 项目配置
-project(VolunteerMatcher 
+project(VolunteerMatcher
     VERSION 1.0.0
     DESCRIPTION "High-performance volunteer matching algorithm engine for Gaokao"
     LANGUAGES CXX
@@ -85,7 +34,7 @@ if(MSVC)
         /utf-8                 # UTF-8源文件编码
         /bigobj                # 大对象文件支持
     )
-    
+
     # Release优化选项
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(
@@ -98,13 +47,13 @@ if(MSVC)
         )
         add_link_options(/LTCG) # 链接时代码生成
     endif()
-    
+
     # 安全编译选项
     add_compile_options(
         /GS                     # 缓冲区安全检查
         /sdl                    # SDL检查
     )
-    
+
     # 预处理器定义
     add_compile_definitions(
         _CRT_SECURE_NO_WARNINGS # 禁用CRT安全警告
@@ -114,7 +63,7 @@ if(MSVC)
         _UNICODE
         _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
     )
-    
+
 else()
     # GCC/Clang选项
     add_compile_options(
@@ -125,7 +74,7 @@ else()
         -fPIC                   # 位置无关代码
         -march=native           # 针对当前CPU优化
     )
-    
+
     # Release优化选项
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(
@@ -137,7 +86,7 @@ else()
         )
         add_link_options(-flto)
     endif()
-    
+
     # Debug选项
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_compile_options(
@@ -148,43 +97,43 @@ else()
         )
         add_link_options(-fsanitize=address -fsanitize=undefined)
     endif()
-    
+
     # 安全编译选项
     add_compile_options(
         -fstack-protector-strong # 栈保护
         -D_FORTIFY_SOURCE=2     # 缓冲区溢出检查
     )
-    
+
     # 位置无关可执行文件
     add_link_options(-pie)
 endif()
 
 # 平台特定配置
 if(WIN32)
-    set(PLATFORM_LIBS 
-        ws2_32 
-        iphlpapi 
-        wbemuuid 
-        ole32 
+    set(PLATFORM_LIBS
+        ws2_32
+        iphlpapi
+        wbemuuid
+        ole32
         oleaut32
         psapi
         advapi32
     )
 elseif(UNIX AND NOT APPLE)
-    set(PLATFORM_LIBS 
-        pthread 
+    set(PLATFORM_LIBS
+        pthread
         dl
         m
     )
-    
+
     # Linux特定库
     find_library(RT_LIB rt)
     if(RT_LIB)
         list(APPEND PLATFORM_LIBS ${RT_LIB})
     endif()
-    
+
 elseif(APPLE)
-    set(PLATFORM_LIBS 
+    set(PLATFORM_LIBS
         "-framework CoreFoundation"
         "-framework IOKit"
         "-framework Security"
@@ -218,11 +167,11 @@ if(NOT JsonCpp_FOUND)
         set(JsonCpp_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
     else()
         # 尝试手动查找
-        find_path(JsonCpp_INCLUDE_DIRS json/json.h 
+        find_path(JsonCpp_INCLUDE_DIRS json/json.h
             PATHS /usr/include /usr/local/include /opt/local/include)
         find_library(JsonCpp_LIBRARIES NAMES jsoncpp libjsoncpp
             PATHS /usr/lib /usr/local/lib /opt/local/lib)
-        
+
         if(NOT JsonCpp_INCLUDE_DIRS OR NOT JsonCpp_LIBRARIES)
             message(FATAL_ERROR "JsonCpp not found! Please install libjsoncpp-dev or jsoncpp development packages.")
         endif()
@@ -420,22 +369,22 @@ if(BUILD_EXAMPLES)
     add_executable(volunteer_matcher_example
         examples/volunteer_matcher_example.cpp
     )
-    
+
     target_link_libraries(volunteer_matcher_example
         PRIVATE
             volunteer_matcher_static
     )
-    
+
     # C接口示例
     add_executable(c_interface_example
         examples/c_interface_example.c
     )
-    
+
     target_link_libraries(c_interface_example
         PRIVATE
             volunteer_matcher_shared
     )
-    
+
     set_target_properties(c_interface_example PROPERTIES
         C_STANDARD 99
         C_STANDARD_REQUIRED ON
@@ -445,7 +394,7 @@ endif()
 # 单元测试
 if(BUILD_TESTS)
     enable_testing()
-    
+
     # 主测试可执行文件
     add_executable(volunteer_matcher_tests
         tests/test_volunteer_matcher.cpp
@@ -453,7 +402,7 @@ if(BUILD_TESTS)
         tests/test_university_filter.cpp
         tests/test_risk_assessor.cpp
     )
-    
+
     if(GTest_FOUND)
         target_link_libraries(volunteer_matcher_tests
             PRIVATE
@@ -471,32 +420,32 @@ if(BUILD_TESTS)
                 gmock
         )
     endif()
-    
+
     # 添加测试
     add_test(
         NAME VolunteerMatcherUnitTests
         COMMAND volunteer_matcher_tests
     )
-    
+
     # 设置测试环境
     set_tests_properties(VolunteerMatcherUnitTests
         PROPERTIES
             TIMEOUT 600
             ENVIRONMENT "GTEST_OUTPUT=xml:${CMAKE_BINARY_DIR}/test_results.xml"
     )
-    
+
     # 集成测试
     add_executable(integration_tests
         tests/integration_test.cpp
     )
-    
+
     target_link_libraries(integration_tests
         PRIVATE
             volunteer_matcher_static
             GTest::gtest
             GTest::gtest_main
     )
-    
+
     add_test(
         NAME VolunteerMatcherIntegrationTests
         COMMAND integration_tests
@@ -510,13 +459,13 @@ if(BUILD_BENCHMARKS AND benchmark_FOUND)
         benchmarks/admission_predictor_benchmark.cpp
         benchmarks/university_filter_benchmark.cpp
     )
-    
+
     target_link_libraries(volunteer_matcher_benchmark
         PRIVATE
             volunteer_matcher_static
             benchmark::benchmark
     )
-    
+
     add_test(
         NAME VolunteerMatcherBenchmarks
         COMMAND volunteer_matcher_benchmark
@@ -532,7 +481,7 @@ if(BUILD_GO_BINDINGS)
         ${CMAKE_CURRENT_BINARY_DIR}/bindings/go/volunteer_matcher.go
         @ONLY
     )
-    
+
     # 生成CGO头文件
     add_custom_target(go_bindings ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -633,7 +582,7 @@ endif()
 find_program(CLANG_TIDY clang-tidy)
 if(CLANG_TIDY)
     add_custom_target(static-analysis
-        COMMAND ${CLANG_TIDY} 
+        COMMAND ${CLANG_TIDY}
                 ${SOURCE_FILES}
                 -p ${CMAKE_BINARY_DIR}
                 --config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy
@@ -650,7 +599,7 @@ if(DOXYGEN_FOUND)
         ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
         @ONLY
     )
-    
+
     add_custom_target(docs
         COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -715,5 +664,4 @@ add_custom_target(build-info ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Static Library: ${CMAKE_BINARY_DIR}/libvolunteer_matcher.a"
     COMMAND ${CMAKE_COMMAND} -E echo "Shared Library: ${CMAKE_BINARY_DIR}/libvolunteer_matcher.so"
     VERBATIM
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )

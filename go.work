@@ -1,0 +1,21 @@
+go 1.25.5
+
+use (
+	.
+	./pkg/auth
+	./pkg/database
+	./pkg/errors
+	./pkg/logger
+	./pkg/middleware
+	./pkg/models
+	./pkg/scripts
+	./pkg/utils
+	./services/api-gateway
+	./services/data-service
+	./services/monitoring-service
+	./services/monitoring-service/internal/alerts
+	./services/monitoring-service/internal/metrics
+	./services/payment-service
+	./services/recommendation-service
+	./services/user-service
+)

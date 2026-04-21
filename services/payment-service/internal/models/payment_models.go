@@ -60,10 +60,7 @@ type PaymentOrder struct {
 	ReturnURL      string          `json:"return_url"`
 	ClientIP       string          `json:"client_ip"`
 	Metadata       PaymentJSONB    `json:"metadata" gorm:"type:jsonb"`
-<<<<<<< HEAD
 	PaymentURL     string          `json:"payment_url"`
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt  `json:"deleted_at" gorm:"index"`

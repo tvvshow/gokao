@@ -10,7 +10,9 @@
         <div class="status-details">
           <div class="detail-item">
             <span class="label">到期时间:</span>
-            <span class="value">{{ formatDate(membershipStatus.end_time) }}</span>
+            <span class="value">{{
+              formatDate(membershipStatus.end_time)
+            }}</span>
           </div>
           <div class="detail-item">
             <span class="label">剩余天数:</span>
@@ -18,35 +20,49 @@
           </div>
           <div class="detail-item">
             <span class="label">自动续费:</span>
-            <span class="value">{{ membershipStatus.auto_renew ? '是' : '否' }}</span>
+            <span class="value">{{
+              membershipStatus.auto_renew ? '是' : '否'
+            }}</span>
           </div>
         </div>
         <div class="usage-stats">
           <div class="stat-item">
             <div class="stat-label">查询次数</div>
             <div class="stat-value">
-              {{ membershipStatus.used_queries }} / 
+              {{ membershipStatus.used_queries }} /
               <span v-if="membershipStatus.max_queries === -1">无限制</span>
               <span v-else>{{ membershipStatus.max_queries }}</span>
             </div>
             <div class="stat-bar">
-              <div 
-                class="stat-progress" 
-                :style="{ width: calculatePercentage(membershipStatus.used_queries, membershipStatus.max_queries) + '%' }"
+              <div
+                class="stat-progress"
+                :style="{
+                  width:
+                    calculatePercentage(
+                      membershipStatus.used_queries,
+                      membershipStatus.max_queries
+                    ) + '%',
+                }"
               ></div>
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-label">下载次数</div>
             <div class="stat-value">
-              {{ membershipStatus.used_downloads }} / 
+              {{ membershipStatus.used_downloads }} /
               <span v-if="membershipStatus.max_downloads === -1">无限制</span>
               <span v-else>{{ membershipStatus.max_downloads }}</span>
             </div>
             <div class="stat-bar">
-              <div 
-                class="stat-progress" 
-                :style="{ width: calculatePercentage(membershipStatus.used_downloads, membershipStatus.max_downloads) + '%' }"
+              <div
+                class="stat-progress"
+                :style="{
+                  width:
+                    calculatePercentage(
+                      membershipStatus.used_downloads,
+                      membershipStatus.max_downloads
+                    ) + '%',
+                }"
               ></div>
             </div>
           </div>
@@ -66,13 +82,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { usePaymentStore } from '@/stores/payment'
-import type { MembershipStatus } from '@/types/payment'
+import { ref, onMounted } from 'vue';
+import { usePaymentStore } from '@/stores/payment';
+import type { MembershipStatus } from '@/types/payment';
 
-const paymentStore = usePaymentStore()
+const paymentStore = usePaymentStore();
 
 const membershipStatus = ref<MembershipStatus>({
+  level: 'free',
+  isActive: false,
   is_vip: false,
   plan_code: '',
   plan_name: '',
@@ -84,51 +102,50 @@ const membershipStatus = ref<MembershipStatus>({
   used_downloads: 0,
   max_downloads: 0,
   features: {},
-  auto_renew: false
-})
+  auto_renew: false,
+});
 
 onMounted(async () => {
   try {
-    membershipStatus.value = await paymentStore.getMembershipStatus()
+    membershipStatus.value = await paymentStore.getMembershipStatus();
   } catch (error) {
-    console.error('获取会员状态失败:', error)
+    console.error('获取会员状态失败:', error);
   }
-})
+});
 
-const formatDate = (date: string | null) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN')
-}
+const formatDate = (date: string | null | undefined) => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('zh-CN');
+};
 
-const calculatePercentage = (used: number, max: number) => {
-  if (max === -1) return 0
-  if (max === 0) return 0
-  return Math.min(100, (used / max) * 100)
-}
+const calculatePercentage = (used: number | undefined, max: number | undefined) => {
+  if (!used || !max || max === -1 || max === 0) return 0;
+  return Math.min(100, (used / max) * 100);
+};
 
 const renewMembership = async () => {
   try {
     // 这里可以打开续费对话框或跳转到支付页面
-    console.log('续费会员')
+    console.log('续费会员');
   } catch (error) {
-    console.error('续费会员失败:', error)
+    console.error('续费会员失败:', error);
   }
-}
+};
 
 const cancelMembership = async () => {
   try {
-    await paymentStore.cancelMembership()
+    await paymentStore.cancelMembership();
     // 重新获取会员状态
-    membershipStatus.value = await paymentStore.getMembershipStatus()
+    membershipStatus.value = await paymentStore.getMembershipStatus();
   } catch (error) {
-    console.error('取消会员失败:', error)
+    console.error('取消会员失败:', error);
   }
-}
+};
 
 const goToPayment = () => {
   // 跳转到支付页面
-  console.log('跳转到支付页面')
-}
+  console.log('跳转到支付页面');
+};
 </script>
 
 <style scoped>
@@ -138,7 +155,8 @@ const goToPayment = () => {
   padding: 20px;
 }
 
-.vip-status h2, .non-vip-status h2 {
+.vip-status h2,
+.non-vip-status h2 {
   text-align: center;
   color: #333;
 }
@@ -226,7 +244,8 @@ const goToPayment = () => {
   gap: 10px;
 }
 
-.renew-btn, .cancel-btn {
+.renew-btn,
+.cancel-btn {
   flex: 1;
   padding: 10px;
   border: none;

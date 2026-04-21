@@ -7,11 +7,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	_ "github.com/lib/pq"
-<<<<<<< HEAD
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/config"
-=======
-	"github.com/gaokaohub/payment-service/internal/config"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
 )
 
 // Initialize 初始化数据库连接

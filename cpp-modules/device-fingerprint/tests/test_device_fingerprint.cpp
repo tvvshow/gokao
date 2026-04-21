@@ -502,10 +502,6 @@ TEST_F(PlatformDetectorTest, SystemUptime) {
     uint64_t uptime = detector_->GetSystemUptime();
     // 系统运行时间应该大于0（除非刚启动）
     // 这里不做严格检查，因为测试环境可能刚启动
-<<<<<<< HEAD
-    EXPECT_GE(uptime, 0); // 至少应该是0或更大
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 }
 
 // ============================================================================

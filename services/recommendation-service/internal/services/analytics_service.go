@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oktetopython/gaokao/recommendation-service/internal/handlers"
+	"github.com/oktetopython/gaokao/recommendation-service/internal/types"
 	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
 )
 
@@ -166,7 +166,7 @@ func NewQualityAnalyzer() *QualityAnalyzer {
 }
 
 // NewAnalyticsService 创建分析服务
-func NewAnalyticsService(bridge cppbridge.HybridRecommendationBridge) handlers.AnalyticsService {
+func NewAnalyticsService(bridge cppbridge.HybridRecommendationBridge) types.AnalyticsService {
 	service := &analyticsService{
 		bridge:           bridge,
 		metricsCollector: NewMetricsCollector(),
@@ -181,25 +181,25 @@ func NewAnalyticsService(bridge cppbridge.HybridRecommendationBridge) handlers.A
 }
 
 // GetRecommendationStats 获取推荐统计数据
-func (s *analyticsService) GetRecommendationStats(userID string, startTime, endTime time.Time) (*handlers.RecommendationStats, error) {
+func (s *analyticsService) GetRecommendationStats(userID string, startTime, endTime time.Time) (*types.RecommendationStats, error) {
 	// 从指标收集器获取真实统计数据
 	return s.generateRealTimeStats(userID, startTime, endTime), nil
 }
 
 // GetSystemMetrics 获取系统指标
-func (s *analyticsService) GetSystemMetrics() (*handlers.SystemMetrics, error) {
+func (s *analyticsService) GetSystemMetrics() (*types.SystemMetrics, error) {
 	// 从实时监控器获取真实系统指标
 	return s.getRealTimeSystemMetrics(), nil
 }
 
 // GetUserBehaviorAnalysis 获取用户行为分析
-func (s *analyticsService) GetUserBehaviorAnalysis(userID string) (*handlers.UserBehaviorAnalysis, error) {
+func (s *analyticsService) GetUserBehaviorAnalysis(userID string) (*types.UserBehaviorAnalysis, error) {
 	// 从质量分析器获取真实用户行为分析
 	return s.getRealTimeUserBehaviorAnalysis(userID), nil
 }
 
 // GetAlgorithmPerformance 获取算法性能分析
-func (s *analyticsService) GetAlgorithmPerformance() (*handlers.AlgorithmPerformance, error) {
+func (s *analyticsService) GetAlgorithmPerformance() (*types.AlgorithmPerformance, error) {
 	// 从指标收集器获取真实算法性能数据
 	return s.getRealTimeAlgorithmPerformance(), nil
 }
@@ -593,7 +593,7 @@ func (s *analyticsService) calculateCurrentQPS() float64 {
 }
 
 // generateRealTimeStats 生成实时统计数据
-func (s *analyticsService) generateRealTimeStats(userID string, startTime, endTime time.Time) *handlers.RecommendationStats {
+func (s *analyticsService) generateRealTimeStats(userID string, startTime, endTime time.Time) *types.RecommendationStats {
 	s.metricsCollector.mu.RLock()
 	defer s.metricsCollector.mu.RUnlock()
 	
@@ -615,13 +615,13 @@ func (s *analyticsService) generateRealTimeStats(userID string, startTime, endTi
 		algorithmBreakdown[algorithm] = int(metrics.Requests)
 	}
 	
-	return &handlers.RecommendationStats{
+	return &types.RecommendationStats{
 		UserID:          userID,
 		TotalRequests:   int(s.metricsCollector.requestCount),
 		SuccessRate:     successRate,
 		AvgResponseTime: avgResponseTime,
 		AlgorithmBreakdown: algorithmBreakdown,
-		TimeRange: handlers.TimeRange{
+		TimeRange: types.TimeRange{
 			StartTime: startTime,
 			EndTime:   endTime,
 		},
@@ -630,7 +630,7 @@ func (s *analyticsService) generateRealTimeStats(userID string, startTime, endTi
 }
 
 // getRealTimeSystemMetrics 获取实时系统指标
-func (s *analyticsService) getRealTimeSystemMetrics() *handlers.SystemMetrics {
+func (s *analyticsService) getRealTimeSystemMetrics() *types.SystemMetrics {
 	s.realtimeMonitor.mu.RLock()
 	defer s.realtimeMonitor.mu.RUnlock()
 	
@@ -654,7 +654,7 @@ func (s *analyticsService) getRealTimeSystemMetrics() *handlers.SystemMetrics {
 	// 确定服务健康状态
 	serviceHealth := s.determineServiceHealth(latest, cacheHitRate)
 	
-	return &handlers.SystemMetrics{
+	return &types.SystemMetrics{
 		Timestamp:     latest.Timestamp,
 		CPUUsage:      latest.CPUUsage,
 		MemoryUsage:   latest.MemoryUsage,
@@ -669,7 +669,7 @@ func (s *analyticsService) getRealTimeSystemMetrics() *handlers.SystemMetrics {
 }
 
 // getRealTimeUserBehaviorAnalysis 获取实时用户行为分析
-func (s *analyticsService) getRealTimeUserBehaviorAnalysis(userID string) *handlers.UserBehaviorAnalysis {
+func (s *analyticsService) getRealTimeUserBehaviorAnalysis(userID string) *types.UserBehaviorAnalysis {
 	s.qualityAnalyzer.mu.RLock()
 	defer s.qualityAnalyzer.mu.RUnlock()
 	
@@ -685,7 +685,7 @@ func (s *analyticsService) getRealTimeUserBehaviorAnalysis(userID string) *handl
 	// 分析请求模式
 	requestPatterns := s.analyzeRequestPatterns(userID)
 	
-	return &handlers.UserBehaviorAnalysis{
+	return &types.UserBehaviorAnalysis{
 		UserID:            userID,
 		RequestPatterns:   requestPatterns,
 		PreferenceProfile: preferenceProfile,
@@ -696,7 +696,7 @@ func (s *analyticsService) getRealTimeUserBehaviorAnalysis(userID string) *handl
 }
 
 // getRealTimeAlgorithmPerformance 获取实时算法性能
-func (s *analyticsService) getRealTimeAlgorithmPerformance() *handlers.AlgorithmPerformance {
+func (s *analyticsService) getRealTimeAlgorithmPerformance() *types.AlgorithmPerformance {
 	s.metricsCollector.mu.RLock()
 	defer s.metricsCollector.mu.RUnlock()
 	
@@ -708,7 +708,7 @@ func (s *analyticsService) getRealTimeAlgorithmPerformance() *handlers.Algorithm
 	// 计算比较指标
 	comparisonMetrics := s.calculateComparisonMetrics(traditionalMetrics, aiMetrics, hybridMetrics)
 	
-	return &handlers.AlgorithmPerformance{
+	return &types.AlgorithmPerformance{
 		TraditionalAlgorithm: traditionalMetrics,
 		AIAlgorithm:         aiMetrics,
 		HybridAlgorithm:     hybridMetrics,
@@ -739,9 +739,9 @@ func (s *analyticsService) determineServiceHealth(snapshot SystemSnapshot, cache
 }
 
 // getTopRecommendations 获取热门推荐
-func (s *analyticsService) getTopRecommendations() []handlers.RecommendationItem {
+func (s *analyticsService) getTopRecommendations() []types.RecommendationItem {
 	// 从质量分析器获取热门推荐数据
-	return []handlers.RecommendationItem{
+	return []types.RecommendationItem{
 		{
 			SchoolID:    "school_001",
 			SchoolName:  "清华大学",
@@ -775,9 +775,9 @@ func (s *analyticsService) getUserRecommendations(userID string) []*Recommendati
 }
 
 // calculateEngagementMetrics 计算参与度指标
-func (s *analyticsService) calculateEngagementMetrics(recommendations []*RecommendationQualityData) handlers.EngagementMetrics {
+func (s *analyticsService) calculateEngagementMetrics(recommendations []*RecommendationQualityData) types.EngagementMetrics {
 	if len(recommendations) == 0 {
-		return handlers.EngagementMetrics{}
+		return types.EngagementMetrics{}
 	}
 	
 	clickThroughCount := 0
@@ -801,7 +801,7 @@ func (s *analyticsService) calculateEngagementMetrics(recommendations []*Recomme
 		avgRating = totalRating / float64(ratingCount)
 	}
 	
-	return handlers.EngagementMetrics{
+	return types.EngagementMetrics{
 		ClickThroughRate: clickThroughRate,
 		ViewTime:         125.5, // 简化实现
 		FavoriteRate:     0.08,  // 简化实现
@@ -811,13 +811,13 @@ func (s *analyticsService) calculateEngagementMetrics(recommendations []*Recomme
 }
 
 // buildPreferenceProfile 构建偏好档案
-func (s *analyticsService) buildPreferenceProfile(recommendations []*RecommendationQualityData) handlers.PreferenceProfile {
+func (s *analyticsService) buildPreferenceProfile(recommendations []*RecommendationQualityData) types.PreferenceProfile {
 	// 简化的偏好分析实现
-	return handlers.PreferenceProfile{
+	return types.PreferenceProfile{
 		PreferredSchools:   []string{"清华大学", "北京大学", "上海交通大学"},
 		PreferredMajors:    []string{"计算机科学与技术", "软件工程", "人工智能"},
 		PreferredLocations: []string{"北京", "上海", "深圳"},
-		ScoreRange: handlers.ScoreRange{
+		ScoreRange: types.ScoreRange{
 			MinScore: 580,
 			MaxScore: 650,
 		},
@@ -831,9 +831,9 @@ func (s *analyticsService) buildPreferenceProfile(recommendations []*Recommendat
 }
 
 // analyzeRequestPatterns 分析请求模式
-func (s *analyticsService) analyzeRequestPatterns(userID string) []handlers.RequestPattern {
+func (s *analyticsService) analyzeRequestPatterns(userID string) []types.RequestPattern {
 	// 简化的请求模式分析实现
-	return []handlers.RequestPattern{
+	return []types.RequestPattern{
 		{
 			TimeOfDay:   "morning",
 			Frequency:   45,
@@ -850,9 +850,9 @@ func (s *analyticsService) analyzeRequestPatterns(userID string) []handlers.Requ
 }
 
 // getUserFeedback 获取用户反馈
-func (s *analyticsService) getUserFeedback(userID string) []handlers.FeedbackItem {
+func (s *analyticsService) getUserFeedback(userID string) []types.FeedbackItem {
 	// 从质量分析器获取用户反馈
-	return []handlers.FeedbackItem{
+	return []types.FeedbackItem{
 		{
 			RecommendationID: "rec_001",
 			Rating:           4,
@@ -863,10 +863,10 @@ func (s *analyticsService) getUserFeedback(userID string) []handlers.FeedbackIte
 }
 
 // buildPerformanceMetrics 构建性能指标
-func (s *analyticsService) buildPerformanceMetrics(algorithm string) handlers.AnalyticsPerformanceMetrics {
+func (s *analyticsService) buildPerformanceMetrics(algorithm string) types.AnalyticsPerformanceMetrics {
 	metrics, exists := s.metricsCollector.algorithmMetrics[algorithm]
 	if !exists {
-		return handlers.AnalyticsPerformanceMetrics{}
+		return types.AnalyticsPerformanceMetrics{}
 	}
 	
 	var avgResponseTime float64
@@ -897,7 +897,7 @@ func (s *analyticsService) buildPerformanceMetrics(algorithm string) handlers.An
 		userSatisfaction = sum / float64(len(metrics.UserFeedback)) / 5.0 // 假设满分5分
 	}
 	
-	return handlers.AnalyticsPerformanceMetrics{
+	return types.AnalyticsPerformanceMetrics{
 		AvgResponseTime:  avgResponseTime,
 		SuccessRate:      successRate,
 		Accuracy:         avgAccuracy,
@@ -910,7 +910,7 @@ func (s *analyticsService) buildPerformanceMetrics(algorithm string) handlers.An
 }
 
 // calculateComparisonMetrics 计算比较指标
-func (s *analyticsService) calculateComparisonMetrics(traditional, ai, hybrid handlers.AnalyticsPerformanceMetrics) handlers.ComparisonMetrics {
+func (s *analyticsService) calculateComparisonMetrics(traditional, ai, hybrid types.AnalyticsPerformanceMetrics) types.ComparisonMetrics {
 	// 确定最佳算法
 	bestAlgorithm := "traditional"
 	bestScore := traditional.Accuracy
@@ -932,7 +932,7 @@ func (s *analyticsService) calculateComparisonMetrics(traditional, ai, hybrid ha
 		performanceGain = (bestScore - baseScore) / baseScore * 100
 	}
 	
-	return handlers.ComparisonMetrics{
+	return types.ComparisonMetrics{
 		BestPerforming:     bestAlgorithm,
 		PerformanceGain:    performanceGain,
 		RecommendationDiff: 8.3, // 简化实现

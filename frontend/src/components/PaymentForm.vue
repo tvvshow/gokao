@@ -2,25 +2,31 @@
   <div class="payment-form">
     <h2>选择会员套餐</h2>
     <div class="plan-selection">
-      <div 
-        v-for="plan in plans" 
+      <div
+        v-for="plan in plans"
         :key="plan.plan_code"
-        :class="['plan-card', { 'selected': selectedPlan === plan.plan_code }]"
+        :class="['plan-card', { selected: selectedPlan === plan.plan_code }]"
         @click="selectPlan(plan.plan_code)"
       >
         <h3>{{ plan.name }}</h3>
         <div class="price">¥{{ plan.price }}</div>
         <div class="duration">{{ plan.duration_days }}天</div>
         <ul class="features">
-          <li v-for="(value, feature) in plan.features" :key="feature">
-            <span v-if="value">✓</span>
+          <li v-for="(item, index) in normalizedFeatures(plan.features)" :key="index">
+            <span v-if="item.included">✓</span>
             <span v-else>✗</span>
-            {{ feature }}
+            {{ item.name }}
           </li>
         </ul>
         <div class="limits">
-          <div>查询次数: {{ plan.max_queries === -1 ? '无限制' : plan.max_queries }}</div>
-          <div>下载次数: {{ plan.max_downloads === -1 ? '无限制' : plan.max_downloads }}</div>
+          <div>
+            查询次数:
+            {{ plan.max_queries === -1 ? '无限制' : plan.max_queries }}
+          </div>
+          <div>
+            下载次数:
+            {{ plan.max_downloads === -1 ? '无限制' : plan.max_downloads }}
+          </div>
         </div>
       </div>
     </div>
@@ -28,10 +34,13 @@
     <div v-if="selectedPlan" class="payment-method">
       <h3>选择支付方式</h3>
       <div class="payment-options">
-        <button 
-          v-for="channel in paymentChannels" 
+        <button
+          v-for="channel in paymentChannels"
           :key="channel.value"
-          :class="['payment-btn', { 'selected': selectedPaymentChannel === channel.value }]"
+          :class="[
+            'payment-btn',
+            { selected: selectedPaymentChannel === channel.value },
+          ]"
           @click="selectPaymentChannel(channel.value)"
         >
           {{ channel.label }}
@@ -39,7 +48,7 @@
       </div>
     </div>
 
-    <button 
+    <button
       v-if="selectedPlan && selectedPaymentChannel"
       class="pay-button"
       @click="createOrder"
@@ -51,61 +60,84 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { usePaymentStore } from '@/stores/payment'
-import type { MembershipPlan } from '@/types/payment'
+import { ref, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
+import { usePaymentStore } from '@/stores/payment';
+import type { MembershipPlan } from '@/types/payment';
 
 interface PaymentChannel {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
-const paymentStore = usePaymentStore()
+const paymentStore = usePaymentStore();
 
-const plans = ref<MembershipPlan[]>([])
-const selectedPlan = ref<string>('')
-const selectedPaymentChannel = ref<string>('')
-const loading = ref<boolean>(false)
+const plans = ref<MembershipPlan[]>([]);
+const selectedPlan = ref<string>('');
+const selectedPaymentChannel = ref<string>('');
+const loading = ref<boolean>(false);
 
 const paymentChannels: PaymentChannel[] = [
   { value: 'alipay', label: '支付宝' },
   { value: 'wechat', label: '微信支付' },
-  { value: 'unionpay', label: '银联支付' }
-]
+  { value: 'unionpay', label: '银联支付' },
+];
 
 onMounted(async () => {
   try {
-    plans.value = await paymentStore.getMembershipPlans()
+    plans.value = await paymentStore.getMembershipPlans();
   } catch (error) {
-    console.error('获取会员套餐失败:', error)
+    console.error('获取会员套餐失败:', error);
   }
-})
+});
 
-const selectPlan = (planCode: string) => {
-  selectedPlan.value = planCode
-}
+const selectPlan = (planCode: string | undefined) => {
+  if (planCode) {
+    selectedPlan.value = planCode;
+  }
+};
 
 const selectPaymentChannel = (channel: string) => {
-  selectedPaymentChannel.value = channel
+  selectedPaymentChannel.value = channel;
+};
+
+// 统一处理 features 格式（支持数组或对象）
+interface FeatureItem {
+  name: string;
+  included: boolean;
 }
 
-const createOrder = async () => {
-  if (!selectedPlan.value || !selectedPaymentChannel.value) return
+const normalizedFeatures = (features: string[] | Record<string, boolean>): FeatureItem[] => {
+  if (Array.isArray(features)) {
+    // 数组格式：直接显示所有特性
+    return features.map(name => ({ name, included: true }));
+  } else {
+    // 对象格式：键为特性名，值为是否包含
+    return Object.entries(features).map(([name, included]) => ({ name, included: Boolean(included) }));
+  }
+};
 
-  loading.value = true
+const createOrder = async () => {
+  if (!selectedPlan.value || !selectedPaymentChannel.value) return;
+
+  // TODO: 支付功能开发中
+  ElMessage.info('支付功能开发中，敬请期待');
+  return;
+
+  loading.value = true;
   try {
     const order = await paymentStore.createOrder({
       plan_code: selectedPlan.value,
-      payment_channel: selectedPaymentChannel.value
-    })
-    console.log('订单创建成功:', order)
+      payment_channel: selectedPaymentChannel.value,
+    });
+    console.log('订单创建成功:', order);
     // 这里可以跳转到支付页面或显示支付二维码
   } catch (error) {
-    console.error('创建订单失败:', error)
+    console.error('创建订单失败:', error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>

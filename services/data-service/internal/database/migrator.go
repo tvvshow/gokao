@@ -70,13 +70,6 @@ func (m *Migrator) ApplyMigration(version, name, sql string) error {
 		}
 	}
 
-	// 记录迁移
-	migration := Migration{
-		Version: version,
-		Name:    name,
-		Applied: true,
-	}
-
 	// 使用原生SQL插入或更新
 	if count > 0 {
 		// 更新现有记录

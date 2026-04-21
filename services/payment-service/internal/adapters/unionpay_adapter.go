@@ -50,11 +50,7 @@ func NewUnionPayAdapter(config AdapterConfig) PaymentAdapter {
 	}
 
 	// 设置网关URL
-<<<<<<< HEAD
 	if !config.IsProd {
-=======
-	if config.Sandbox {
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		adapter.gatewayURL = "https://gateway.test.95516.com/gateway/api"
 	} else {
 		adapter.gatewayURL = "https://gateway.95516.com/gateway/api"

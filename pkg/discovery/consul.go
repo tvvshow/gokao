@@ -1,21 +1,13 @@
 package discovery
 
 import (
-<<<<<<< HEAD
-=======
-	"context"
-	"encoding/json"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
-<<<<<<< HEAD
 	"github.com/gin-gonic/gin"
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"github.com/hashicorp/consul/api"
 )
 
@@ -23,7 +15,6 @@ import (
 type ServiceDiscovery interface {
 	// RegisterService 注册服务到服务发现
 	RegisterService(serviceName, serviceID, address string, port int, tags []string) error
-<<<<<<< HEAD
 
 	// DeregisterService 从服务发现注销服务
 	DeregisterService(serviceID string) error
@@ -34,18 +25,6 @@ type ServiceDiscovery interface {
 	// WatchService 监听服务变化
 	WatchService(serviceName string, callback func(instances []*ServiceInstance))
 
-=======
-	
-	// DeregisterService 从服务发现注销服务
-	DeregisterService(serviceID string) error
-	
-	// DiscoverService 发现服务实例
-	DiscoverService(serviceName string) ([]*ServiceInstance, error)
-	
-	// WatchService 监听服务变化
-	WatchService(serviceName string, callback func(instances []*ServiceInstance))
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// HealthCheck 健康检查
 	HealthCheck(serviceID, checkID, notes string) error
 }
@@ -83,11 +62,7 @@ func NewConsulDiscovery(address string) (*ConsulDiscovery, error) {
 
 	return &ConsulDiscovery{
 		client:   client,
-<<<<<<< HEAD
 		config:   config,
-=======
-		config:  config,
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		services: make(map[string][]*ServiceInstance),
 		watchers: make(map[string][]func([]*ServiceInstance)),
 	}, nil
@@ -106,13 +81,8 @@ func (cd *ConsulDiscovery) RegisterService(serviceName, serviceID, address strin
 	// 添加健康检查
 	registration.Check = &api.AgentServiceCheck{
 		HTTP:                           fmt.Sprintf("http://%s:%d/health", address, port),
-<<<<<<< HEAD
 		Timeout:                        "5s",
 		Interval:                       "10s",
-=======
-		Timeout:                       "5s",
-		Interval:                      "10s",
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		DeregisterCriticalServiceAfter: "30s",
 	}
 

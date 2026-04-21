@@ -124,10 +124,6 @@ interface Recommendation {
 **文件**: `frontend/src/api/api-client.ts`
 **问题**: 存在未解决的Git合并冲突标记
 ```typescript
-<<<<<<< HEAD
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 ```
 **影响**: 代码无法正常编译运行
 **修复**: 立即解决合并冲突，选择正确的实现

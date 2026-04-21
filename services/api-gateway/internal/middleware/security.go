@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 
-	"github.com/gaokaohub/pkg/auth"
-	"github.com/gaokaohub/pkg/errors"
+	"github.com/oktetopython/gaokao/pkg/auth"
+	"github.com/oktetopython/gaokao/pkg/errors"
 )
 
 // SecurityConfig 安全配置
@@ -79,7 +79,7 @@ func (s *SecurityMiddleware) RateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if s.config.RateLimitEnabled && s.limiter != nil {
 			if !s.limiter.Allow() {
-				apiErr := errors.ErrTooManyRequests.WithRequestID(c.GetString("request_id"))
+				apiErr := errors.TooManyRequestsError(60).WithRequestID(c.GetString("request_id"))
 				c.JSON(http.StatusTooManyRequests, apiErr)
 				c.Abort()
 				return

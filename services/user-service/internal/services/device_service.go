@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"user-service/internal/models"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -454,21 +456,14 @@ func (s *DeviceService) getLicenseFeatures(licenseType string) []string {
 func (s *DeviceService) saveDeviceInfo(ctx context.Context, deviceInfo *DeviceInfo) error {
 	// 转换DeviceInfo到DeviceFingerprint模型
 	deviceFingerprint := models.DeviceFingerprint{
-		UserID:           uuid.UUID(deviceInfo.UserID),
+		UserID:           uuid.MustParse(fmt.Sprintf("%08x-0000-0000-0000-%012x", deviceInfo.UserID, deviceInfo.UserID)),
 		DeviceID:         deviceInfo.ID,
-		DeviceName:       deviceInfo.Fingerprint.DeviceName,
+		DeviceName:       deviceInfo.Fingerprint.Hostname,
 		DeviceType:       deviceInfo.Fingerprint.DeviceType,
-		Platform:         deviceInfo.Fingerprint.Platform,
-		Browser:          deviceInfo.Fingerprint.Browser,
-		BrowserVersion:   deviceInfo.Fingerprint.BrowserVersion,
-		OS:               deviceInfo.Fingerprint.OS,
+		Platform:         deviceInfo.Fingerprint.OSType,
+		OS:               deviceInfo.Fingerprint.OSType,
 		OSVersion:        deviceInfo.Fingerprint.OSVersion,
 		ScreenResolution: deviceInfo.Fingerprint.ScreenResolution,
-		Timezone:         deviceInfo.Fingerprint.Timezone,
-		Language:         deviceInfo.Fingerprint.Language,
-		UserAgent:        deviceInfo.Fingerprint.UserAgent,
-		IPAddress:        deviceInfo.Fingerprint.IPAddress,
-		Location:         deviceInfo.Fingerprint.Location,
 		IsActive:         true,
 		IsTrusted:        deviceInfo.SecurityStatus.SecurityLevel >= 80,
 		LastSeenAt:       &deviceInfo.LastSeen,
@@ -508,7 +503,7 @@ func (s *DeviceService) getStoredDeviceInfo(ctx context.Context, userID uint, de
 func (s *DeviceService) saveLicenseInfo(ctx context.Context, userID uint, deviceID string, licenseData string) error {
 	// 创建许可证记录
 	licenseRecord := models.DeviceLicense{
-		UserID:      uuid.UUID(userID),
+		UserID:       uuid.MustParse(fmt.Sprintf("%08x-0000-0000-0000-%012x", userID, userID)),
 		DeviceID:     deviceID,
 		LicenseData:  licenseData,
 		Status:       "active",

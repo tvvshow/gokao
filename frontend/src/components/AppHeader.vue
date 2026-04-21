@@ -6,25 +6,30 @@
         <div class="flex items-center space-x-4">
           <router-link to="/" class="flex items-center space-x-3 group">
             <div class="logo-container">
-              <GraduationCapIcon class="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors" />
+              <GraduationCapIcon
+                class="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors"
+              />
             </div>
             <div class="flex flex-col">
               <span class="text-xl font-bold text-gradient">高考志愿填报</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">智能推荐系统</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400"
+                >智能推荐系统</span
+              >
             </div>
           </router-link>
         </div>
 
         <!-- 导航菜单 -->
-        <nav class="hidden md:flex items-center space-x-1">
+        <nav class="hidden md:flex items-center space-x-1" aria-label="主导航">
           <router-link
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
             class="nav-link-modern"
-            :class="{ 'active': $route.path === item.path }"
+            :class="{ active: $route.path === item.path }"
+            :aria-current="$route.path === item.path ? 'page' : undefined"
           >
-            <component :is="item.icon" class="w-4 h-4" />
+            <component :is="item.icon" class="w-4 h-4" aria-hidden="true" />
             <span>{{ item.name }}</span>
           </router-link>
         </nav>
@@ -32,16 +37,24 @@
         <!-- 用户区域 -->
         <div class="flex items-center space-x-4">
           <!-- 通知按钮 -->
-          <button class="btn-icon" title="通知">
-            <BellIcon class="w-5 h-5" />
-            <span class="notification-badge">3</span>
+          <button
+            class="btn-icon"
+            title="通知"
+            aria-label="查看通知，有3条未读消息"
+          >
+            <BellIcon class="w-5 h-5" aria-hidden="true" />
+            <span class="notification-badge" aria-hidden="true">3</span>
           </button>
 
           <!-- 用户菜单 -->
           <template v-if="userStore.isLoggedIn">
             <el-dropdown @command="handleUserCommand" trigger="click">
               <div class="user-avatar-container">
-                <el-avatar :size="36" :src="userStore.user?.avatar" class="ring-2 ring-primary-200 dark:ring-primary-800">
+                <el-avatar
+                  :size="36"
+                  :src="userStore.user?.avatar"
+                  class="ring-2 ring-primary-200 dark:ring-primary-800"
+                >
                   {{ userStore.user?.username?.charAt(0) }}
                 </el-avatar>
                 <div class="status-indicator"></div>
@@ -53,23 +66,33 @@
                       {{ userStore.user?.username?.charAt(0) }}
                     </el-avatar>
                     <div class="ml-3">
-                      <div class="font-medium text-gray-900 dark:text-gray-100">{{ userStore.user?.username }}</div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">{{ userStore.user?.email || '用户' }}</div>
+                      <div class="font-medium text-gray-900 dark:text-gray-100">
+                        {{ userStore.user?.username }}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ userStore.user?.email || '用户' }}
+                      </div>
                     </div>
                   </div>
                   <el-dropdown-item command="profile" class="dropdown-item">
                     <UserIcon class="w-4 h-4" />
                     个人中心
                   </el-dropdown-item>
+                  <!-- 暂时隐藏会员中心，支付功能待开发
                   <el-dropdown-item command="membership" class="dropdown-item">
                     <CrownIcon class="w-4 h-4" />
                     会员中心
                   </el-dropdown-item>
+                  -->
                   <el-dropdown-item command="settings" class="dropdown-item">
                     <SettingsIcon class="w-4 h-4" />
                     设置
                   </el-dropdown-item>
-                  <el-dropdown-item command="logout" divided class="dropdown-item text-red-600">
+                  <el-dropdown-item
+                    command="logout"
+                    divided
+                    class="dropdown-item text-red-600"
+                  >
                     <LogOutIcon class="w-4 h-4" />
                     退出登录
                   </el-dropdown-item>
@@ -79,29 +102,44 @@
           </template>
           <template v-else>
             <router-link to="/login" class="btn btn-ghost">登录</router-link>
-            <router-link to="/register" class="btn btn-primary">注册</router-link>
+            <router-link to="/register" class="btn btn-primary"
+              >注册</router-link
+            >
           </template>
 
           <!-- 移动端菜单按钮 -->
-          <button @click="toggleMobileMenu" class="md:hidden btn-icon">
-            <MenuIcon v-if="!mobileMenuOpen" class="w-5 h-5" />
-            <XIcon v-else class="w-5 h-5" />
+          <button
+            @click="toggleMobileMenu"
+            class="md:hidden btn-icon"
+            :aria-label="mobileMenuOpen ? '关闭导航菜单' : '打开导航菜单'"
+            :aria-expanded="mobileMenuOpen"
+          >
+            <MenuIcon
+              v-if="!mobileMenuOpen"
+              class="w-5 h-5"
+              aria-hidden="true"
+            />
+            <XIcon v-else class="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       <!-- 移动端导航菜单 -->
       <transition name="mobile-menu">
-        <div v-if="mobileMenuOpen" class="md:hidden py-4 border-t border-gray-200 dark:border-gray-700">
-          <nav class="space-y-2">
+        <div
+          v-if="mobileMenuOpen"
+          class="md:hidden py-4 border-t border-gray-200 dark:border-gray-700"
+        >
+          <nav class="space-y-2" aria-label="移动端导航">
             <router-link
               v-for="item in navItems"
               :key="item.path"
               :to="item.path"
               class="mobile-nav-link"
+              :aria-current="$route.path === item.path ? 'page' : undefined"
               @click="closeMobileMenu"
             >
-              <component :is="item.icon" class="w-5 h-5" />
+              <component :is="item.icon" class="w-5 h-5" aria-hidden="true" />
               <span>{{ item.name }}</span>
             </router-link>
           </nav>
@@ -112,9 +150,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '@/stores/user';
 import {
   GraduationCapIcon,
   HomeIcon,
@@ -128,15 +166,14 @@ import {
   SettingsIcon,
   LogOutIcon,
   MenuIcon,
-  XIcon
-} from 'lucide-vue-next'
+  XIcon,
+} from 'lucide-vue-next';
 
-const route = useRoute()
-const router = useRouter()
-const userStore = useUserStore()
+const router = useRouter();
+const userStore = useUserStore();
 
 // 移动端菜单状态
-const mobileMenuOpen = ref(false)
+const mobileMenuOpen = ref(false);
 
 // 导航菜单项
 const navItems = [
@@ -145,34 +182,34 @@ const navItems = [
   { path: '/majors', name: '专业分析', icon: BookOpenIcon },
   { path: '/recommendation', name: '智能推荐', icon: SparklesIcon },
   { path: '/analysis', name: '数据分析', icon: BarChartIcon },
-  { path: '/membership', name: '会员服务', icon: CrownIcon }
-]
+  // { path: '/membership', name: '会员服务', icon: CrownIcon }, // 暂时隐藏，支付功能待开发
+];
 
 const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-}
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+};
 
 const closeMobileMenu = () => {
-  mobileMenuOpen.value = false
-}
+  mobileMenuOpen.value = false;
+};
 
 const handleUserCommand = (command: string) => {
   switch (command) {
     case 'profile':
-      router.push('/profile')
-      break
-    case 'membership':
-      router.push('/membership')
-      break
+      router.push('/profile');
+      break;
+    // case 'membership':  // 暂时隐藏，支付功能待开发
+    //   router.push('/membership');
+    //   break;
     case 'settings':
-      router.push('/settings')
-      break
+      router.push('/settings');
+      break;
     case 'logout':
-      userStore.logout()
-      router.push('/')
-      break
+      userStore.logout();
+      router.push('/');
+      break;
   }
-}
+};
 </script>
 
 <style scoped>

@@ -16,14 +16,9 @@ import (
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/option"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
-<<<<<<< HEAD
 	"github.com/wechatpay-apiv3/wechatpay-go/services/refunddomestic"
 
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/models"
-=======
-
-	"github.com/gaokaohub/payment-service/internal/models"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
 )
 
 // WechatPayAdapter 微信支付适配器
@@ -46,16 +41,7 @@ type WechatPayConfig struct {
 }
 
 // NewWechatPayAdapter 创建微信支付适配器
-<<<<<<< HEAD
 func NewWechatPayAdapter(config WechatPayConfig) (PaymentAdapter, error) {
-=======
-func NewWechatPayAdapter() (*WechatPayAdapter, error) {
-	config, err := loadWechatPayConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load wechat pay config: %w", err)
-	}
-
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 加载商户私钥
 	privateKey, err := loadPrivateKey(config.KeyPath)
 	if err != nil {
@@ -167,7 +153,6 @@ func (w *WechatPayAdapter) QueryOrder(ctx context.Context, orderID string) (*mod
 
 // RefundOrder 退款
 func (w *WechatPayAdapter) RefundOrder(ctx context.Context, refund *models.RefundRequest) (*models.RefundResponse, error) {
-<<<<<<< HEAD
 	// 创建退款请求
 	refundSvc := refunddomestic.RefundsApiService{Client: w.client}
 	
@@ -376,11 +361,6 @@ func (w *WechatPayAdapter) QueryRefund(ctx context.Context, refundNo string) (*R
 	// 这里根据微信支付API文档实现退款查询逻辑
 	// 注意：实际实现需要引入微信支付退款查询相关的SDK和服务
 	return nil, fmt.Errorf("wechat pay query refund not implemented yet")
-=======
-	// 微信支付退款API实现
-	// 这里需要根据微信支付API文档实现退款逻辑
-	return nil, fmt.Errorf("wechat pay refund not implemented yet")
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 }
 
 // HandleCallback 处理支付回调
@@ -429,22 +409,7 @@ func (w *WechatPayAdapter) HandleCallback(ctx context.Context, request *http.Req
 
 // 辅助函数
 
-<<<<<<< HEAD
 
-=======
-// loadWechatPayConfig 加载微信支付配置
-func loadWechatPayConfig() (*WechatPayConfig, error) {
-	return &WechatPayConfig{
-		AppID:        getEnv("WECHAT_APP_ID", ""),
-		MchID:        getEnv("WECHAT_MCH_ID", ""),
-		APIKey:       getEnv("WECHAT_API_KEY", ""),
-		CertPath:     getEnv("WECHAT_CERT_PATH", ""),
-		KeyPath:      getEnv("WECHAT_KEY_PATH", ""),
-		NotifyURL:    getEnv("WECHAT_NOTIFY_URL", ""),
-		SerialNumber: getEnv("WECHAT_SERIAL_NUMBER", ""),
-	}, nil
-}
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 // loadPrivateKey 加载私钥
 func loadPrivateKey(keyPath string) (*rsa.PrivateKey, error) {
@@ -519,7 +484,6 @@ func getStringValue(ptr *string) string {
 func (w *WechatPayAdapter) verifySignature(request *http.Request, body []byte) error {
 	// 微信支付签名验证逻辑
 	// 这里需要根据微信支付API文档实现签名验证
-<<<<<<< HEAD
 	
 	// 获取签名头部
 	signature := request.Header.Get("Wechatpay-Signature")
@@ -547,32 +511,6 @@ func (w *WechatPayAdapter) verifySignature(request *http.Request, body []byte) e
 	// 3. 如果匹配则返回nil，否则返回错误
 	
 	// 这里返回nil表示验证通过（简化处理）
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
-	return nil
-}
-
-// decryptResource 解密资源数据
-func (w *WechatPayAdapter) decryptResource(resource WechatPayResource) (*WechatPayResourceData, error) {
-	// 微信支付资源解密逻辑
-	// 这里需要根据微信支付API文档实现资源解密
-<<<<<<< HEAD
-	// 实际实现需要使用微信支付SDK的解密功能
-	
-	// 这里简化处理，直接解析资源数据
-	// 实际应该使用AES-GCM解密算法解密ciphertext
-	
-	// 假设资源数据已经解密，直接解析JSON
-	// 在实际项目中，这里应该调用微信支付SDK的解密方法
-	var resourceData WechatPayResourceData
-	
-	// 这里简化处理，实际应该解密ciphertext字段
-	// resourceData包含了解密后的支付结果数据
-	
-	return &resourceData, nil
-=======
-	return nil, fmt.Errorf("resource decryption not implemented yet")
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 }
 
 // getEnv 获取环境变量

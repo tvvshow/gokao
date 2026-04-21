@@ -2,336 +2,127 @@ package metrics
 
 import (
 	"context"
-<<<<<<< HEAD
 	"fmt"
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"runtime"
+	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/net"
 )
 
 // MetricsCollector 指标收集器
 type MetricsCollector struct {
-	// HTTP指标
-	httpRequestsTotal    *prometheus.CounterVec
-	httpRequestDuration  *prometheus.HistogramVec
-	httpRequestsInFlight prometheus.Gauge
-
-	// 业务指标
-	userRegistrations    prometheus.Counter
-	userLogins          prometheus.Counter
-	paymentTransactions *prometheus.CounterVec
-	membershipActivations prometheus.Counter
-	recommendationRequests prometheus.Counter
-
-	// 系统指标
-	cpuUsage    prometheus.Gauge
-	memoryUsage prometheus.Gauge
-	diskUsage   *prometheus.GaugeVec
-	networkIO   *prometheus.CounterVec
-
-	// 数据库指标
-	dbConnections     *prometheus.GaugeVec
-	dbQueryDuration   *prometheus.HistogramVec
-	dbQueriesTotal    *prometheus.CounterVec
-	dbConnectionsIdle prometheus.Gauge
-
-	// Redis指标
-	redisConnections  prometheus.Gauge
-	redisCommandsTotal *prometheus.CounterVec
-	redisKeyCount     prometheus.Gauge
-
-	// 应用指标
-	goroutineCount    prometheus.Gauge
-	gcDuration        prometheus.Histogram
-	heapSize          prometheus.Gauge
-	stackSize         prometheus.Gauge
+	cpuUsage      float64
+	memoryUsage   float64
+	dbConnections int
+	dbMaxConn     int
+	customMetrics map[string]float64
+	mu            sync.RWMutex
 }
 
-// NewMetricsCollector 创建指标收集器
+// NewMetricsCollector 创建新的指标收集器
 func NewMetricsCollector() *MetricsCollector {
-	return &MetricsCollector{
-		// HTTP指标
-		httpRequestsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "http_requests_total",
-				Help: "Total number of HTTP requests",
-			},
-			[]string{"method", "endpoint", "status_code"},
-		),
-		httpRequestDuration: promauto.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "http_request_duration_seconds",
-				Help:    "HTTP request duration in seconds",
-				Buckets: prometheus.DefBuckets,
-			},
-			[]string{"method", "endpoint"},
-		),
-		httpRequestsInFlight: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "http_requests_in_flight",
-				Help: "Number of HTTP requests currently being processed",
-			},
-		),
+	mc := &MetricsCollector{
+		customMetrics: make(map[string]float64),
+		dbMaxConn:     100, // 默认最大连接数
+	}
+	// 启动后台指标收集
+	go mc.collectMetrics()
+	return mc
+}
 
-		// 业务指标
-		userRegistrations: promauto.NewCounter(
-			prometheus.CounterOpts{
-				Name: "user_registrations_total",
-				Help: "Total number of user registrations",
-			},
-		),
-		userLogins: promauto.NewCounter(
-			prometheus.CounterOpts{
-				Name: "user_logins_total",
-				Help: "Total number of user logins",
-			},
-		),
-		paymentTransactions: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "payment_transactions_total",
-				Help: "Total number of payment transactions",
-			},
-			[]string{"status", "payment_method"},
-		),
-		membershipActivations: promauto.NewCounter(
-			prometheus.CounterOpts{
-				Name: "membership_activations_total",
-				Help: "Total number of membership activations",
-			},
-		),
-		recommendationRequests: promauto.NewCounter(
-			prometheus.CounterOpts{
-				Name: "recommendation_requests_total",
-				Help: "Total number of recommendation requests",
-			},
-		),
+// collectMetrics 后台收集系统指标
+func (mc *MetricsCollector) collectMetrics() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
-		// 系统指标
-		cpuUsage: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "system_cpu_usage_percent",
-				Help: "Current CPU usage percentage",
-			},
-		),
-		memoryUsage: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "system_memory_usage_percent",
-				Help: "Current memory usage percentage",
-			},
-		),
-		diskUsage: promauto.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "system_disk_usage_percent",
-				Help: "Current disk usage percentage",
-			},
-			[]string{"device", "mountpoint"},
-		),
-		networkIO: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "system_network_io_bytes_total",
-				Help: "Total network I/O in bytes",
-			},
-			[]string{"device", "direction"},
-		),
-
-		// 数据库指标
-		dbConnections: promauto.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "database_connections",
-				Help: "Number of database connections",
-			},
-			[]string{"database", "state"},
-		),
-		dbQueryDuration: promauto.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "database_query_duration_seconds",
-				Help:    "Database query duration in seconds",
-				Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5},
-			},
-			[]string{"database", "operation"},
-		),
-		dbQueriesTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "database_queries_total",
-				Help: "Total number of database queries",
-			},
-			[]string{"database", "operation", "status"},
-		),
-
-		// Redis指标
-		redisConnections: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "redis_connections",
-				Help: "Number of Redis connections",
-			},
-		),
-		redisCommandsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "redis_commands_total",
-				Help: "Total number of Redis commands",
-			},
-			[]string{"command", "status"},
-		),
-		redisKeyCount: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "redis_keys_count",
-				Help: "Number of keys in Redis",
-			},
-		),
-
-		// 应用指标
-		goroutineCount: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "go_goroutines",
-				Help: "Number of goroutines",
-			},
-		),
-		gcDuration: promauto.NewHistogram(
-			prometheus.HistogramOpts{
-				Name:    "go_gc_duration_seconds",
-				Help:    "Garbage collection duration in seconds",
-				Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1},
-			},
-		),
-		heapSize: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "go_heap_size_bytes",
-				Help: "Current heap size in bytes",
-			},
-		),
-		stackSize: promauto.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "go_stack_size_bytes",
-				Help: "Current stack size in bytes",
-			},
-		),
+	for range ticker.C {
+		mc.mu.Lock()
+		// 简化的CPU使用率估算
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		mc.memoryUsage = float64(m.Alloc) / float64(m.Sys) * 100
+		mc.mu.Unlock()
 	}
 }
 
-// RecordHTTPRequest 记录HTTP请求指标
-func (m *MetricsCollector) RecordHTTPRequest(method, endpoint, statusCode string, duration time.Duration) {
-	m.httpRequestsTotal.WithLabelValues(method, endpoint, statusCode).Inc()
-	m.httpRequestDuration.WithLabelValues(method, endpoint).Observe(duration.Seconds())
+// GetCPUUsage 获取CPU使用率
+func (mc *MetricsCollector) GetCPUUsage(ctx context.Context) (float64, error) {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	return mc.cpuUsage, nil
 }
 
-// IncHTTPRequestsInFlight 增加正在处理的HTTP请求数
-func (m *MetricsCollector) IncHTTPRequestsInFlight() {
-	m.httpRequestsInFlight.Inc()
+// GetMemoryUsage 获取内存使用率
+func (mc *MetricsCollector) GetMemoryUsage(ctx context.Context) (float64, error) {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	return mc.memoryUsage, nil
 }
 
-// DecHTTPRequestsInFlight 减少正在处理的HTTP请求数
-func (m *MetricsCollector) DecHTTPRequestsInFlight() {
-	m.httpRequestsInFlight.Dec()
+// GetDatabaseConnectionUsage 获取数据库连接使用率
+func (mc *MetricsCollector) GetDatabaseConnectionUsage(ctx context.Context) (float64, error) {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	if mc.dbMaxConn == 0 {
+		return 0, nil
+	}
+	return float64(mc.dbConnections) / float64(mc.dbMaxConn) * 100, nil
 }
 
-// RecordUserRegistration 记录用户注册
-func (m *MetricsCollector) RecordUserRegistration() {
-	m.userRegistrations.Inc()
+// GetMetricByQuery 通过查询获取指标值
+func (mc *MetricsCollector) GetMetricByQuery(ctx context.Context, query string) (float64, error) {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	if value, ok := mc.customMetrics[query]; ok {
+		return value, nil
+	}
+	return 0, fmt.Errorf("metric not found: %s", query)
 }
 
-// RecordUserLogin 记录用户登录
-func (m *MetricsCollector) RecordUserLogin() {
-	m.userLogins.Inc()
+// SetCPUUsage 设置CPU使用率
+func (mc *MetricsCollector) SetCPUUsage(usage float64) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	mc.cpuUsage = usage
 }
 
-// RecordPaymentTransaction 记录支付交易
-func (m *MetricsCollector) RecordPaymentTransaction(status, paymentMethod string) {
-	m.paymentTransactions.WithLabelValues(status, paymentMethod).Inc()
-}
-
-// RecordMembershipActivation 记录会员激活
-func (m *MetricsCollector) RecordMembershipActivation() {
-	m.membershipActivations.Inc()
-}
-
-// RecordRecommendationRequest 记录推荐请求
-func (m *MetricsCollector) RecordRecommendationRequest() {
-	m.recommendationRequests.Inc()
-}
-
-// RecordDatabaseQuery 记录数据库查询
-func (m *MetricsCollector) RecordDatabaseQuery(database, operation, status string, duration time.Duration) {
-	m.dbQueriesTotal.WithLabelValues(database, operation, status).Inc()
-	m.dbQueryDuration.WithLabelValues(database, operation).Observe(duration.Seconds())
+// SetMemoryUsage 设置内存使用率
+func (mc *MetricsCollector) SetMemoryUsage(usage float64) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	mc.memoryUsage = usage
 }
 
 // SetDatabaseConnections 设置数据库连接数
-func (m *MetricsCollector) SetDatabaseConnections(database, state string, count float64) {
-	m.dbConnections.WithLabelValues(database, state).Set(count)
+func (mc *MetricsCollector) SetDatabaseConnections(active, max int) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	mc.dbConnections = active
+	mc.dbMaxConn = max
 }
 
-// RecordRedisCommand 记录Redis命令
-func (m *MetricsCollector) RecordRedisCommand(command, status string) {
-	m.redisCommandsTotal.WithLabelValues(command, status).Inc()
+// SetCustomMetric 设置自定义指标
+func (mc *MetricsCollector) SetCustomMetric(name string, value float64) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	mc.customMetrics[name] = value
 }
 
-// SetRedisConnections 设置Redis连接数
-func (m *MetricsCollector) SetRedisConnections(count float64) {
-	m.redisConnections.Set(count)
-}
-
-// SetRedisKeyCount 设置Redis键数量
-func (m *MetricsCollector) SetRedisKeyCount(count float64) {
-	m.redisKeyCount.Set(count)
-}
-
-// CollectSystemMetrics 收集系统指标
-func (m *MetricsCollector) CollectSystemMetrics(ctx context.Context) error {
-	// CPU使用率
-	cpuPercent, err := cpu.PercentWithContext(ctx, time.Second, false)
-	if err == nil && len(cpuPercent) > 0 {
-		m.cpuUsage.Set(cpuPercent[0])
+// GetAllMetrics 获取所有指标
+func (mc *MetricsCollector) GetAllMetrics() map[string]float64 {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	result := make(map[string]float64)
+	result["cpu_usage"] = mc.cpuUsage
+	result["memory_usage"] = mc.memoryUsage
+	result["db_connection_usage"] = float64(mc.dbConnections) / float64(mc.dbMaxConn) * 100
+	for k, v := range mc.customMetrics {
+		result[k] = v
 	}
-
-	// 内存使用率
-	memInfo, err := mem.VirtualMemoryWithContext(ctx)
-	if err == nil {
-		m.memoryUsage.Set(memInfo.UsedPercent)
-	}
-
-	// 磁盘使用率
-	diskInfo, err := disk.PartitionsWithContext(ctx, false)
-	if err == nil {
-		for _, partition := range diskInfo {
-			usage, err := disk.UsageWithContext(ctx, partition.Mountpoint)
-			if err == nil {
-				m.diskUsage.WithLabelValues(partition.Device, partition.Mountpoint).Set(usage.UsedPercent)
-			}
-		}
-	}
-
-	// 网络I/O
-	netInfo, err := net.IOCountersWithContext(ctx, true)
-	if err == nil {
-		for _, netStat := range netInfo {
-			m.networkIO.WithLabelValues(netStat.Name, "sent").Add(float64(netStat.BytesSent))
-			m.networkIO.WithLabelValues(netStat.Name, "recv").Add(float64(netStat.BytesRecv))
-		}
-	}
-
-	return nil
-}
-
-// CollectGoMetrics 收集Go运行时指标
-func (m *MetricsCollector) CollectGoMetrics() {
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-
-	m.goroutineCount.Set(float64(runtime.NumGoroutine()))
-	m.heapSize.Set(float64(memStats.HeapAlloc))
-	m.stackSize.Set(float64(memStats.StackInuse))
+	return result
 }
 
 // StartMetricsCollection 启动指标收集
-func (m *MetricsCollector) StartMetricsCollection(ctx context.Context, interval time.Duration) {
+func (mc *MetricsCollector) StartMetricsCollection(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -340,47 +131,11 @@ func (m *MetricsCollector) StartMetricsCollection(ctx context.Context, interval 
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			m.CollectSystemMetrics(ctx)
-			m.CollectGoMetrics()
+			mc.mu.Lock()
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			mc.memoryUsage = float64(m.Alloc) / float64(m.Sys) * 100
+			mc.mu.Unlock()
 		}
 	}
 }
-<<<<<<< HEAD
-
-// GetCPUUsage 获取CPU使用率
-func (m *MetricsCollector) GetCPUUsage(ctx context.Context) (float64, error) {
-	cpuPercent, err := cpu.PercentWithContext(ctx, time.Second, false)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get CPU percent: %w", err)
-	}
-	if len(cpuPercent) == 0 {
-		return 0, fmt.Errorf("no CPU percent data available")
-	}
-	return cpuPercent[0], nil
-}
-
-// GetMemoryUsage 获取内存使用率
-func (m *MetricsCollector) GetMemoryUsage(ctx context.Context) (float64, error) {
-	memInfo, err := mem.VirtualMemoryWithContext(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get memory info: %w", err)
-	}
-	return memInfo.UsedPercent, nil
-}
-
-// GetDatabaseConnectionUsage 获取数据库连接使用率
-func (m *MetricsCollector) GetDatabaseConnectionUsage(ctx context.Context) (float64, error) {
-	// 这里需要从数据库连接池获取连接信息
-	// 由于监控服务没有直接的数据库连接，我们需要通过其他方式获取
-	// 暂时返回一个模拟值，实际实现需要从数据库服务获取
-	return 0.0, fmt.Errorf("database connection usage not implemented")
-}
-
-// GetMetricByQuery 根据查询语句获取指标
-func (m *MetricsCollector) GetMetricByQuery(ctx context.Context, query string) (float64, error) {
-	// 解析Prometheus查询语句并返回相应的指标值
-	// 这是一个简化的实现，实际应该连接到Prometheus服务器
-	return 0.0, fmt.Errorf("metric query not implemented: %s", query)
-}
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

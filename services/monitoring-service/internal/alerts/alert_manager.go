@@ -1,13 +1,8 @@
-<<<<<<< HEAD
-=======
-import "github.com/go-redis/redis/v8"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 package alerts
 
 import (
 	"bytes"
 	"context"
-<<<<<<< HEAD
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -15,20 +10,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/smtp"
-=======
-	"encoding/json"
-	"fmt"
-	"net/http"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
-<<<<<<< HEAD
 	"github.com/gaokao/monitoring-service/internal/metrics"
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 )
 
 // AlertLevel 告警级别
@@ -86,28 +73,18 @@ type NotificationChannel struct {
 type AlertManager struct {
 	redis    *redis.Client
 	logger   *zap.Logger
-<<<<<<< HEAD
 	metrics  *metrics.MetricsCollector
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	rules    map[string]*AlertRule
 	channels map[string]*NotificationChannel
 	mu       sync.RWMutex
 }
 
 // NewAlertManager 创建告警管理器
-<<<<<<< HEAD
 func NewAlertManager(redis *redis.Client, logger *zap.Logger, metrics *metrics.MetricsCollector) *AlertManager {
 	return &AlertManager{
 		redis:    redis,
 		logger:   logger,
 		metrics:  metrics,
-=======
-func NewAlertManager(redis *redis.Client, logger *zap.Logger) *AlertManager {
-	return &AlertManager{
-		redis:    redis,
-		logger:   logger,
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		rules:    make(map[string]*AlertRule),
 		channels: make(map[string]*NotificationChannel),
 	}
@@ -117,19 +94,11 @@ func NewAlertManager(redis *redis.Client, logger *zap.Logger) *AlertManager {
 func (am *AlertManager) AddRule(rule *AlertRule) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-<<<<<<< HEAD
 
 	rule.CreatedAt = time.Now()
 	rule.UpdatedAt = time.Now()
 	am.rules[rule.ID] = rule
 
-=======
-	
-	rule.CreatedAt = time.Now()
-	rule.UpdatedAt = time.Now()
-	am.rules[rule.ID] = rule
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	am.logger.Info("Alert rule added", zap.String("rule_id", rule.ID), zap.String("name", rule.Name))
 }
 
@@ -137,11 +106,7 @@ func (am *AlertManager) AddRule(rule *AlertRule) {
 func (am *AlertManager) RemoveRule(ruleID string) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	delete(am.rules, ruleID)
 	am.logger.Info("Alert rule removed", zap.String("rule_id", ruleID))
 }
@@ -150,11 +115,7 @@ func (am *AlertManager) RemoveRule(ruleID string) {
 func (am *AlertManager) AddChannel(channel *NotificationChannel) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	am.channels[channel.ID] = channel
 	am.logger.Info("Notification channel added", zap.String("channel_id", channel.ID), zap.String("type", channel.Type))
 }
@@ -163,11 +124,7 @@ func (am *AlertManager) AddChannel(channel *NotificationChannel) {
 func (am *AlertManager) RemoveChannel(channelID string) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	delete(am.channels, channelID)
 	am.logger.Info("Notification channel removed", zap.String("channel_id", channelID))
 }
@@ -176,108 +133,62 @@ func (am *AlertManager) RemoveChannel(channelID string) {
 func (am *AlertManager) TriggerAlert(ctx context.Context, alert *Alert) error {
 	alert.ID = generateAlertID()
 	alert.Timestamp = time.Now()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 存储告警到Redis
 	alertKey := fmt.Sprintf("alert:%s", alert.ID)
 	alertData, err := json.Marshal(alert)
 	if err != nil {
 		return fmt.Errorf("failed to marshal alert: %w", err)
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	err = am.redis.Set(ctx, alertKey, alertData, 24*time.Hour).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store alert: %w", err)
 	}
-<<<<<<< HEAD
 
 	// 发送通知
 	go am.sendNotifications(ctx, alert)
 
 	am.logger.Info("Alert triggered",
-=======
-	
-	// 发送通知
-	go am.sendNotifications(ctx, alert)
-	
-	am.logger.Info("Alert triggered", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		zap.String("alert_id", alert.ID),
 		zap.String("level", string(alert.Level)),
 		zap.String("title", alert.Title),
 	)
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	return nil
 }
 
 // ResolveAlert 解决告警
 func (am *AlertManager) ResolveAlert(ctx context.Context, alertID string) error {
 	alertKey := fmt.Sprintf("alert:%s", alertID)
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	alertData, err := am.redis.Get(ctx, alertKey).Result()
 	if err != nil {
 		return fmt.Errorf("failed to get alert: %w", err)
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	var alert Alert
 	err = json.Unmarshal([]byte(alertData), &alert)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal alert: %w", err)
 	}
-<<<<<<< HEAD
 
 	now := time.Now()
 	alert.Resolved = true
 	alert.ResolvedAt = &now
 
-=======
-	
-	now := time.Now()
-	alert.Resolved = true
-	alert.ResolvedAt = &now
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	updatedData, err := json.Marshal(alert)
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated alert: %w", err)
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	err = am.redis.Set(ctx, alertKey, updatedData, 24*time.Hour).Err()
 	if err != nil {
 		return fmt.Errorf("failed to update alert: %w", err)
 	}
-<<<<<<< HEAD
 
 	am.logger.Info("Alert resolved", zap.String("alert_id", alertID))
 
-=======
-	
-	am.logger.Info("Alert resolved", zap.String("alert_id", alertID))
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	return nil
 }
 
@@ -287,11 +198,7 @@ func (am *AlertManager) GetAlerts(ctx context.Context, limit int, offset int) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to get alert keys: %w", err)
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	var alerts []*Alert
 	for i, key := range keys {
 		if i < offset {
@@ -300,26 +207,17 @@ func (am *AlertManager) GetAlerts(ctx context.Context, limit int, offset int) ([
 		if len(alerts) >= limit {
 			break
 		}
-<<<<<<< HEAD
 
-=======
-		
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		alertData, err := am.redis.Get(ctx, key).Result()
 		if err != nil {
 			continue
 		}
-<<<<<<< HEAD
 
-=======
-		
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		var alert Alert
 		err = json.Unmarshal([]byte(alertData), &alert)
 		if err != nil {
 			continue
 		}
-<<<<<<< HEAD
 
 		alerts = append(alerts, &alert)
 	}
@@ -330,7 +228,7 @@ func (am *AlertManager) GetAlerts(ctx context.Context, limit int, offset int) ([
 // EvaluateRule 评估告警规则
 func (am *AlertManager) EvaluateRule(ctx context.Context, rule *AlertRule) (bool, float64, error) {
 	// 这里应该实现真实的指标查询逻辑
-	// 为了演示，我们使用模拟的指标值
+	// 为了演示,我们使用模拟的指标值
 	metricValue, err := am.getMetricValue(ctx, rule.Query)
 	if err != nil {
 		return false, 0, err
@@ -366,7 +264,7 @@ func (am *AlertManager) getMetricValue(ctx context.Context, query string) (float
 		}
 		return dbUsage, nil
 	default:
-		// 对于其他查询，尝试解析为Prometheus指标
+		// 对于其他查询,尝试解析为Prometheus指标
 		value, err := am.metrics.GetMetricByQuery(ctx, query)
 		if err != nil {
 			return 0, fmt.Errorf("failed to get metric by query %s: %w", query, err)
@@ -395,15 +293,6 @@ func (am *AlertManager) evaluateCondition(value, threshold float64, operator str
 	}
 }
 
-=======
-		
-		alerts = append(alerts, &alert)
-	}
-	
-	return alerts, nil
-}
-
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 // sendNotifications 发送通知
 func (am *AlertManager) sendNotifications(ctx context.Context, alert *Alert) {
 	am.mu.RLock()
@@ -414,11 +303,7 @@ func (am *AlertManager) sendNotifications(ctx context.Context, alert *Alert) {
 		}
 	}
 	am.mu.RUnlock()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	for _, channel := range channels {
 		go am.sendNotification(ctx, channel, alert)
 	}
@@ -429,21 +314,13 @@ func (am *AlertManager) shouldNotify(channel *NotificationChannel, level AlertLe
 	if len(channel.Filters) == 0 {
 		return true
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	for _, filter := range channel.Filters {
 		if filter == level {
 			return true
 		}
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	return false
 }
 
@@ -470,44 +347,26 @@ func (am *AlertManager) sendWebhookNotification(ctx context.Context, channel *No
 		am.logger.Error("Webhook URL not configured", zap.String("channel_id", channel.ID))
 		return
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	payload := map[string]interface{}{
 		"alert":   alert,
 		"channel": channel.Name,
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	data, err := json.Marshal(payload)
 	if err != nil {
 		am.logger.Error("Failed to marshal webhook payload", zap.Error(err))
 		return
 	}
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		am.logger.Error("Failed to create webhook request", zap.Error(err))
 		return
 	}
-<<<<<<< HEAD
 
 	req.Header.Set("Content-Type", "application/json")
 
-=======
-	
-	req.Header.Set("Content-Type", "application/json")
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -515,24 +374,14 @@ func (am *AlertManager) sendWebhookNotification(ctx context.Context, channel *No
 		return
 	}
 	defer resp.Body.Close()
-<<<<<<< HEAD
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		am.logger.Info("Webhook notification sent successfully",
-=======
-	
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		am.logger.Info("Webhook notification sent successfully", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 			zap.String("channel_id", channel.ID),
 			zap.String("alert_id", alert.ID),
 		)
 	} else {
-<<<<<<< HEAD
 		am.logger.Error("Webhook notification failed",
-=======
-		am.logger.Error("Webhook notification failed", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 			zap.String("channel_id", channel.ID),
 			zap.Int("status_code", resp.StatusCode),
 		)
@@ -541,7 +390,6 @@ func (am *AlertManager) sendWebhookNotification(ctx context.Context, channel *No
 
 // sendEmailNotification 发送邮件通知
 func (am *AlertManager) sendEmailNotification(ctx context.Context, channel *NotificationChannel, alert *Alert) {
-<<<<<<< HEAD
 	// 获取邮件配置
 	smtpHost, ok := channel.Config["smtp_host"].(string)
 	if !ok {
@@ -595,21 +443,16 @@ func (am *AlertManager) sendEmailNotification(ctx context.Context, channel *Noti
 	}
 
 	am.logger.Info("Email notification sent successfully",
-=======
-	// 邮件发送实现
-	am.logger.Info("Email notification sent", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		zap.String("channel_id", channel.ID),
 		zap.String("alert_id", alert.ID),
 	)
 }
 
-<<<<<<< HEAD
 // sendEmail 发送邮件
 func (am *AlertManager) sendEmail(smtpHost string, smtpPort int, username, password, from, to, subject, body string) error {
 	// 创建SMTP客户端
 	addr := fmt.Sprintf("%s:%d", smtpHost, smtpPort)
-	
+
 	// 创建认证信息
 	auth := smtp.PlainAuth("", username, password, smtpHost)
 
@@ -646,7 +489,7 @@ func (am *AlertManager) sendDingTalkNotification(ctx context.Context, channel *N
 		},
 	}
 
-	// 如果有签名密钥，添加签名
+	// 如果有签名密钥,添加签名
 	if secret != "" {
 		timestamp := time.Now().UnixNano() / 1e6
 		sign := am.generateDingTalkSign(secret, timestamp)
@@ -665,26 +508,19 @@ func (am *AlertManager) sendDingTalkNotification(ctx context.Context, channel *N
 	}
 
 	am.logger.Info("DingTalk notification sent successfully",
-=======
-// sendDingTalkNotification 发送钉钉通知
-func (am *AlertManager) sendDingTalkNotification(ctx context.Context, channel *NotificationChannel, alert *Alert) {
-	// 钉钉通知实现
-	am.logger.Info("DingTalk notification sent", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		zap.String("channel_id", channel.ID),
 		zap.String("alert_id", alert.ID),
 	)
 }
 
-<<<<<<< HEAD
 // generateDingTalkSign 生成钉钉签名
 func (am *AlertManager) generateDingTalkSign(secret string, timestamp int64) string {
 	stringToSign := fmt.Sprintf("%d\n%s", timestamp, secret)
-	
+
 	// 创建HMAC-SHA256哈希
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write([]byte(stringToSign))
-	
+
 	// Base64编码
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
@@ -718,18 +554,11 @@ func (am *AlertManager) sendWeChatNotification(ctx context.Context, channel *Not
 	}
 
 	am.logger.Info("WeChat notification sent successfully",
-=======
-// sendWeChatNotification 发送微信通知
-func (am *AlertManager) sendWeChatNotification(ctx context.Context, channel *NotificationChannel, alert *Alert) {
-	// 微信通知实现
-	am.logger.Info("WeChat notification sent", 
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 		zap.String("channel_id", channel.ID),
 		zap.String("alert_id", alert.ID),
 	)
 }
 
-<<<<<<< HEAD
 // sendWebhookRequest 发送Webhook请求
 func (am *AlertManager) sendWebhookRequest(url string, payload interface{}) error {
 	data, err := json.Marshal(payload)
@@ -758,8 +587,6 @@ func (am *AlertManager) sendWebhookRequest(url string, payload interface{}) erro
 	return nil
 }
 
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 // generateAlertID 生成告警ID
 func generateAlertID() string {
 	return fmt.Sprintf("alert_%d", time.Now().UnixNano())
@@ -779,11 +606,7 @@ func (am *AlertManager) LoadDefaultRules() {
 		Level:       AlertLevelWarning,
 		Enabled:     true,
 	})
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 内存使用率过高
 	am.AddRule(&AlertRule{
 		ID:          "memory_high_usage",
@@ -796,11 +619,7 @@ func (am *AlertManager) LoadDefaultRules() {
 		Level:       AlertLevelWarning,
 		Enabled:     true,
 	})
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// HTTP错误率过高
 	am.AddRule(&AlertRule{
 		ID:          "http_error_rate_high",
@@ -813,11 +632,7 @@ func (am *AlertManager) LoadDefaultRules() {
 		Level:       AlertLevelError,
 		Enabled:     true,
 	})
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	// 数据库连接数过高
 	am.AddRule(&AlertRule{
 		ID:          "db_connections_high",
@@ -830,8 +645,4 @@ func (am *AlertManager) LoadDefaultRules() {
 		Level:       AlertLevelCritical,
 		Enabled:     true,
 	})
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

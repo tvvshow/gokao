@@ -25,11 +25,15 @@
 
       <div class="stats-info">
         <div class="stat-item">
-          <div class="stat-value employment">{{ major.employmentRate || '--' }}%</div>
+          <div class="stat-value employment">
+            {{ major.employmentRate || '--' }}%
+          </div>
           <div class="stat-label">就业率</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value salary">{{ major.averageSalary || '--' }}k</div>
+          <div class="stat-value salary">
+            {{ major.averageSalary || '--' }}k
+          </div>
           <div class="stat-label">平均薪资</div>
         </div>
       </div>
@@ -41,7 +45,11 @@
 
     <template #footer>
       <div class="card-actions">
-        <el-button type="primary" size="small" @click.stop="$emit('view', major.id)">
+        <el-button
+          type="primary"
+          size="small"
+          @click.stop="$emit('view', major.id)"
+        >
           查看详情
         </el-button>
         <el-button size="small" @click.stop="viewEmploymentData">
@@ -53,24 +61,25 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import type { Major } from '@/types/university'
+import { useRouter } from 'vue-router';
+import type { Major } from '@/types/university';
 
 interface Props {
-  major: Major
+  major: Major;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const emit = defineEmits<{
-  view: [id: string]
-}>()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _emit = defineEmits<{
+  view: [id: string];
+}>();
 
-const router = useRouter()
+const router = useRouter();
 
 const viewEmploymentData = () => {
-  router.push(`/analysis?major=${props.major.id}`)
-}
+  router.push(`/analysis?major=${props.major.id}`);
+};
 </script>
 
 <style scoped>

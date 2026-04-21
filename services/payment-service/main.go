@@ -9,14 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/config"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/database"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/handlers"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/middleware"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/repository"
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/service"
-	"github.com/sirupsen/logrus"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/database"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/handlers"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/middleware"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/repository"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/service"
+
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // @title 高考志愿填报助手 - 支付服务

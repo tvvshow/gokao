@@ -19,12 +19,25 @@
               />
             </el-form-item>
             <el-form-item label="学科门类">
-              <el-select v-model="searchForm.category" placeholder="选择学科门类" clearable>
-                <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
+              <el-select
+                v-model="searchForm.category"
+                placeholder="选择学科门类"
+                clearable
+              >
+                <el-option
+                  v-for="category in categories"
+                  :key="category"
+                  :label="category"
+                  :value="category"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="学位类型">
-              <el-select v-model="searchForm.degree" placeholder="选择学位类型" clearable>
+              <el-select
+                v-model="searchForm.degree"
+                placeholder="选择学位类型"
+                clearable
+              >
                 <el-option label="学士" value="学士" />
                 <el-option label="硕士" value="硕士" />
                 <el-option label="博士" value="博士" />
@@ -70,13 +83,34 @@
 
       <!-- 专业列表 -->
       <div class="majors-grid">
-        <el-row :gutter="20" v-loading="loading">
-          <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="major in majors" :key="major.id">
+        <!-- Skeleton loading state -->
+        <SkeletonList
+          v-if="loading"
+          :count="pageSize"
+          :col-span="{ xs: 24, sm: 12, md: 8, lg: 6 }"
+          :lines="4"
+          avatar-size="0"
+          :show-header="false"
+        />
+
+        <!-- Actual content -->
+        <el-row v-else :gutter="20">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+            :lg="6"
+            v-for="major in majors"
+            :key="major.id"
+          >
             <MajorCard :major="major" @view="viewMajorDetail" />
           </el-col>
         </el-row>
 
-        <el-empty v-if="!loading && majors.length === 0" description="未找到匹配的专业" />
+        <el-empty
+          v-if="!loading && majors.length === 0"
+          description="未找到匹配的专业"
+        />
       </div>
 
       <!-- 分页 -->
@@ -94,97 +128,145 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import MajorCard from '@/components/MajorCard.vue'
-import type { Major } from '@/types/university'
-import { api } from '@/api/api-client'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import MajorCard from '@/components/MajorCard.vue';
+import { SkeletonList } from '@/components/common';
+import type { Major } from '@/types/university';
+import { api } from '@/api/api-client';
+import { ElMessage } from 'element-plus';
 
-const router = useRouter()
+const router = useRouter();
 
 const searchForm = reactive({
   name: '',
   category: '',
-  degree: ''
-})
+  degree: '',
+});
 
-const loading = ref(false)
-const majors = ref<Major[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = ref(12)
+const loading = ref(false);
+const majors = ref<Major[]>([]);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(12);
 
 // 统计数据
-const totalMajors = ref(1542)
-const hotMajors = ref(156)
-const avgEmploymentRate = ref(87.3)
-const avgSalary = ref(8.5)
+const totalMajors = ref(1542);
+const hotMajors = ref(156);
+const avgEmploymentRate = ref(87.3);
+const avgSalary = ref(8.5);
 
 const categories = ref([
-  '哲学', '经济学', '法学', '教育学', '文学', '历史学', 
-  '理学', '工学', '农学', '医学', '管理学', '艺术学'
-])
+  '哲学',
+  '经济学',
+  '法学',
+  '教育学',
+  '文学',
+  '历史学',
+  '理学',
+  '工学',
+  '农学',
+  '医学',
+  '管理学',
+  '艺术学',
+]);
+
+interface MajorSearchParams {
+  page: number;
+  page_size: number;
+  keyword?: string;
+  category?: string;
+}
 
 const handleSearch = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const params: any = {
+    const params: MajorSearchParams = {
       page: currentPage.value,
-      limit: pageSize.value,
-    }
+      page_size: pageSize.value, // 后端使用 page_size
+    };
 
     if (searchForm.name) {
-      params.keyword = searchForm.name
+      params.keyword = searchForm.name;
     }
     if (searchForm.category) {
-      params.category = searchForm.category
+      params.category = searchForm.category;
     }
 
-    const response = await api.majors.list(params)
-    majors.value = response.data
-    total.value = response.total || response.data.length
+    const response = await api.majors.list(params) as { data: Major[]; total?: number };
+    majors.value = response.data;
+    total.value = response.total || response.data.length;
 
     // 更新统计数据
-    totalMajors.value = response.total || response.data.length
+    totalMajors.value = response.total || response.data.length;
 
-    ElMessage.success(`找到 ${total.value} 个专业`)
+    ElMessage.success(`找到 ${total.value} 个专业`);
   } catch (error) {
-    console.error('获取专业数据失败:', error)
-    ElMessage.error('获取专业数据失败')
+    console.error('获取专业数据失败:', error);
+    ElMessage.error('获取专业数据失败');
     // 如果API失败，使用模拟数据作为备选
-    majors.value = generateMockMajors()
-    total.value = 120
+    majors.value = generateMockMajors();
+    total.value = 120;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleReset = () => {
-  Object.assign(searchForm, { name: '', category: '', degree: '' })
-  handleSearch()
-}
+  Object.assign(searchForm, { name: '', category: '', degree: '' });
+  handleSearch();
+};
 
 const handlePageChange = (page: number) => {
-  currentPage.value = page
-  handleSearch()
-}
+  currentPage.value = page;
+  handleSearch();
+};
 
 const viewMajorDetail = (majorId: string) => {
-  router.push(`/majors/${majorId}`)
-}
+  router.push(`/majors/${majorId}`);
+};
 
 // 生成模拟数据
 const generateMockMajors = (): Major[] => {
   const mockMajors = [
-    { name: '计算机科学与技术', category: '工学', employmentRate: 95.2, averageSalary: 12.5 },
-    { name: '软件工程', category: '工学', employmentRate: 94.8, averageSalary: 13.2 },
-    { name: '人工智能', category: '工学', employmentRate: 96.1, averageSalary: 15.8 },
-    { name: '数据科学与大数据技术', category: '工学', employmentRate: 93.5, averageSalary: 11.8 },
-    { name: '临床医学', category: '医学', employmentRate: 89.3, averageSalary: 9.2 },
-    { name: '金融学', category: '经济学', employmentRate: 91.7, averageSalary: 10.5 }
-  ]
-  
+    {
+      name: '计算机科学与技术',
+      category: '工学',
+      employmentRate: 95.2,
+      averageSalary: 12.5,
+    },
+    {
+      name: '软件工程',
+      category: '工学',
+      employmentRate: 94.8,
+      averageSalary: 13.2,
+    },
+    {
+      name: '人工智能',
+      category: '工学',
+      employmentRate: 96.1,
+      averageSalary: 15.8,
+    },
+    {
+      name: '数据科学与大数据技术',
+      category: '工学',
+      employmentRate: 93.5,
+      averageSalary: 11.8,
+    },
+    {
+      name: '临床医学',
+      category: '医学',
+      employmentRate: 89.3,
+      averageSalary: 9.2,
+    },
+    {
+      name: '金融学',
+      category: '经济学',
+      employmentRate: 91.7,
+      averageSalary: 10.5,
+    },
+  ];
+
   return mockMajors.map((major, index) => ({
     id: `major_${index + 1}`,
     name: major.name,
@@ -195,13 +277,13 @@ const generateMockMajors = (): Major[] => {
     employmentRate: major.employmentRate,
     averageSalary: major.averageSalary,
     isPopular: major.averageSalary > 12,
-    description: `${major.name}是一个充满挑战和机遇的专业...`
-  }))
-}
+    description: `${major.name}是一个充满挑战和机遇的专业...`,
+  }));
+};
 
 onMounted(() => {
-  handleSearch()
-})
+  handleSearch();
+});
 </script>
 
 <style scoped>

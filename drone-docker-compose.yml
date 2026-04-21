@@ -7,18 +7,18 @@ services:
     restart: always
     environment:
       # 服务器配置
-      - DRONE_SERVER_HOST=166.108.233.220
-      - DRONE_SERVER_PROTO=http
+      - DRONE_SERVER_HOST=${DRONE_SERVER_HOST}
+      - DRONE_SERVER_PROTO=${DRONE_SERVER_PROTO:-https}
 
       # GitHub 配置
       - DRONE_GITHUB_SERVER=https://github.com
-      - DRONE_GITHUB_CLIENT_ID=Ov23liNLo3pLvkuJvaol
-      - DRONE_GITHUB_CLIENT_SECRET=8976c7bd9894c2fb480276fa0b8a0149afa8c0d0
+      - DRONE_GITHUB_CLIENT_ID=${DRONE_GITHUB_CLIENT_ID}
+      - DRONE_GITHUB_CLIENT_SECRET=${DRONE_GITHUB_CLIENT_SECRET}
 
       # RPC 密钥和用户配置
-      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725
-      - DRONE_USER_CREATE=username:oktetopython,admin:true
-      - DRONE_USER_FILTER=oktetopython
+      - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
+      - DRONE_USER_CREATE=${DRONE_USER_CREATE}
+      - DRONE_USER_FILTER=${DRONE_USER_FILTER}
     volumes:
       - drone-data:/data
     ports:
@@ -35,10 +35,9 @@ services:
     environment:
       - DRONE_RPC_HOST=drone-server
       - DRONE_RPC_PROTO=http
-      - DRONE_RPC_SECRET=6b6c389c06c7e33f3eab00bf1b483725
-      - DRONE_RUNNER_NAME=my-runner
-      - DRONE_RUNNER_CAPACITY=2
-      # 🔧 修复重复CI/CD提交问题：只处理push事件
+      - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
+      - DRONE_RUNNER_NAME=${DRONE_RUNNER_NAME:-gaokao-runner}
+      - DRONE_RUNNER_CAPACITY=${DRONE_RUNNER_CAPACITY:-2}
       - DRONE_LIMIT_EVENTS=push
 
 volumes:

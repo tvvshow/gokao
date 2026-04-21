@@ -41,36 +41,6 @@ func (e *APIError) WriteJSON(w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(e)
 }
 
-// 预定义的错误类型
-var (
-	// 400 Bad Request
-	ErrBadRequest = New(http.StatusBadRequest, "请求参数错误", nil)
-	
-	// 401 Unauthorized
-	ErrUnauthorized = New(http.StatusUnauthorized, "未授权访问", nil)
-	
-	// 403 Forbidden
-	ErrForbidden = New(http.StatusForbidden, "禁止访问", nil)
-	
-	// 404 Not Found
-	ErrNotFound = New(http.StatusNotFound, "资源不存在", nil)
-	
-	// 409 Conflict
-	ErrConflict = New(http.StatusConflict, "资源冲突", nil)
-	
-	// 422 Unprocessable Entity
-	ErrValidation = New(http.StatusUnprocessableEntity, "数据验证失败", nil)
-	
-	// 429 Too Many Requests
-	ErrRateLimit = New(http.StatusTooManyRequests, "请求过于频繁", nil)
-	
-	// 500 Internal Server Error
-	ErrInternal = New(http.StatusInternalServerError, "服务器内部错误", nil)
-	
-	// 503 Service Unavailable
-	ErrServiceUnavailable = New(http.StatusServiceUnavailable, "服务暂时不可用", nil)
-)
-
 // BadRequest 创建400错误
 func BadRequest(message string, details interface{}) *APIError {
 	return New(http.StatusBadRequest, message, details)
@@ -99,6 +69,11 @@ func Conflict(message string, details interface{}) *APIError {
 // Validation 创建422错误
 func Validation(message string, details interface{}) *APIError {
 	return New(http.StatusUnprocessableEntity, message, details)
+}
+
+// RateLimit 创建429错误
+func RateLimit(message string, details interface{}) *APIError {
+	return New(http.StatusTooManyRequests, message, details)
 }
 
 // Internal 创建500错误

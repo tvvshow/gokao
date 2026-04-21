@@ -1,20 +1,36 @@
 <template>
-  <el-card class="recommendation-card" shadow="hover">
+  <el-card
+    class="recommendation-card"
+    shadow="hover"
+    :aria-label="`推荐院校：${recommendation.university.name}，${getTypeLabel(recommendation.type)}，录取概率${recommendation.admissionProbability}%`"
+  >
     <template #header>
       <div class="card-header">
-        <div class="rank-badge" :class="recommendation.type">
-          <span class="rank-number">#{{ index }}</span>
-          <span class="rank-type">{{ getTypeLabel(recommendation.type) }}</span>
+        <div
+          class="rank-badge"
+          :class="recommendation.type"
+          role="status"
+          :aria-label="`排名第${index}，${getTypeLabel(recommendation.type)}`"
+        >
+          <span class="rank-number" aria-hidden="true">#{{ index }}</span>
+          <span class="rank-type" aria-hidden="true">{{
+            getTypeLabel(recommendation.type)
+          }}</span>
         </div>
-        <div class="probability">
+        <div
+          class="probability"
+          role="status"
+          :aria-label="`录取概率${recommendation.admissionProbability}%`"
+        >
           <el-progress
             type="circle"
             :percentage="recommendation.admissionProbability"
             :width="50"
             :stroke-width="6"
             :color="getProgressColor(recommendation.admissionProbability)"
+            aria-hidden="true"
           />
-          <span class="probability-text">录取概率</span>
+          <span class="probability-text" aria-hidden="true">录取概率</span>
         </div>
       </div>
     </template>
@@ -22,24 +38,37 @@
     <div class="university-info">
       <div class="university-basic">
         <img
-          :src="recommendation.university.logo || '/default-logo.png'"
-          :alt="recommendation.university.name"
+          :src="recommendation.university.logo || '/default-logo.svg'"
+          :alt="`${recommendation.university.name}校徽`"
           class="university-logo"
         />
         <div class="university-details">
           <h3 class="university-name">{{ recommendation.university.name }}</h3>
-          <div class="university-meta">
-            <el-tag size="small" :type="getTagType(recommendation.university.level)">
+          <div class="university-meta" role="list" aria-label="院校标签">
+            <el-tag
+              size="small"
+              :type="getTagType(recommendation.university.level)"
+              role="listitem"
+            >
               {{ recommendation.university.level }}
             </el-tag>
-            <el-tag size="small" type="info">{{ recommendation.university.type }}</el-tag>
-            <el-tag size="small" :type="getRiskTagType(recommendation.riskLevel)">
+            <el-tag size="small" type="info" role="listitem">{{
+              recommendation.university.type
+            }}</el-tag>
+            <el-tag
+              size="small"
+              :type="getRiskTagType(recommendation.riskLevel)"
+              role="listitem"
+            >
               {{ getRiskLabel(recommendation.riskLevel) }}
             </el-tag>
           </div>
           <div class="location">
-            <el-icon><location /></el-icon>
-            <span>{{ recommendation.university.province }} {{ recommendation.university.city }}</span>
+            <el-icon aria-hidden="true"><location /></el-icon>
+            <span
+              >{{ recommendation.university.province }}
+              {{ recommendation.university.city }}</span
+            >
           </div>
         </div>
       </div>
@@ -72,7 +101,10 @@
           <p>{{ recommendation.recommendReason }}</p>
         </div>
 
-        <div class="suggested-majors" v-if="recommendation.suggestedMajors.length > 0">
+        <div
+          class="suggested-majors"
+          v-if="recommendation.suggestedMajors.length > 0"
+        >
           <h4>推荐专业</h4>
           <div class="majors-list">
             <el-tag
@@ -83,7 +115,10 @@
             >
               {{ major.name }} ({{ major.probability }}%)
             </el-tag>
-            <span v-if="recommendation.suggestedMajors.length > 3" class="more-majors">
+            <span
+              v-if="recommendation.suggestedMajors.length > 3"
+              class="more-majors"
+            >
               +{{ recommendation.suggestedMajors.length - 3 }}个专业
             </span>
           </div>
@@ -92,17 +127,30 @@
     </div>
 
     <template #footer>
-      <div class="card-actions">
-        <el-button size="small" @click="$emit('view', recommendation.university.id)">
+      <div class="card-actions" role="group" aria-label="院校操作">
+        <el-button
+          size="small"
+          @click="$emit('view', recommendation.university.id)"
+          :aria-label="`查看${recommendation.university.name}详情`"
+        >
           查看详情
         </el-button>
-        <el-button size="small" @click="$emit('compare', recommendation)">
+        <el-button
+          size="small"
+          @click="$emit('compare', recommendation)"
+          :aria-label="`将${recommendation.university.name}加入对比`"
+        >
           加入对比
         </el-button>
-        <el-button 
-          size="small" 
+        <el-button
+          size="small"
           :type="recommendation.university.isFavorite ? 'danger' : 'default'"
           @click="$emit('favorite', recommendation)"
+          :aria-label="
+            recommendation.university.isFavorite
+              ? `取消收藏${recommendation.university.name}`
+              : `收藏${recommendation.university.name}`
+          "
         >
           {{ recommendation.university.isFavorite ? '已收藏' : '收藏' }}
         </el-button>
@@ -112,88 +160,93 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Location } from '@element-plus/icons-vue'
-import type { Recommendation } from '@/types/recommendation'
+import { computed } from 'vue';
+import { Location } from '@element-plus/icons-vue';
+import type { Recommendation } from '@/types/recommendation';
 
 interface Props {
-  recommendation: Recommendation
-  index: number
+  recommendation: Recommendation;
+  index: number;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const emit = defineEmits<{
-  view: [universityId: string]
-  compare: [recommendation: Recommendation]
-  favorite: [recommendation: Recommendation]
-}>()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _emit = defineEmits<{
+  view: [universityId: string];
+  compare: [recommendation: Recommendation];
+  favorite: [recommendation: Recommendation];
+}>();
 
 // 计算匹配度星级
 const matchStars = computed(() => {
-  return Math.round(props.recommendation.matchScore / 20) // 转换为1-5星
-})
+  return Math.round(props.recommendation.matchScore / 20); // 转换为1-5星
+});
 
 // 获取类型标签
 const getTypeLabel = (type: string) => {
   const labels = {
     aggressive: '冲一冲',
     moderate: '稳一稳',
-    conservative: '保一保'
-  }
-  return labels[type as keyof typeof labels] || type
-}
+    conservative: '保一保',
+  };
+  return labels[type as keyof typeof labels] || type;
+};
 
 // 获取进度条颜色
 const getProgressColor = (percentage: number) => {
-  if (percentage >= 80) return '#67c23a'
-  if (percentage >= 60) return '#e6a23c'
-  if (percentage >= 40) return '#f56c6c'
-  return '#909399'
-}
+  if (percentage >= 80) return '#67c23a';
+  if (percentage >= 60) return '#e6a23c';
+  if (percentage >= 40) return '#f56c6c';
+  return '#909399';
+};
 
 // 获取标签类型
 const getTagType = (level: string) => {
   const types: Record<string, string> = {
     '985工程': 'danger',
     '211工程': 'warning',
-    '双一流': 'success',
-    '普通本科': 'info'
-  }
-  return types[level] || 'info'
-}
+    双一流: 'success',
+    普通本科: 'info',
+  };
+  return types[level] || 'info';
+};
 
 // 获取风险标签类型
 const getRiskTagType = (risk: string) => {
   const types = {
     low: 'success',
     medium: 'warning',
-    high: 'danger'
-  }
-  return types[risk as keyof typeof types] || 'info'
-}
+    high: 'danger',
+  };
+  return types[risk as keyof typeof types] || 'info';
+};
 
 // 获取风险标签
 const getRiskLabel = (risk: string) => {
   const labels = {
     low: '低风险',
     medium: '中风险',
-    high: '高风险'
-  }
-  return labels[risk as keyof typeof labels] || risk
-}
+    high: '高风险',
+  };
+  return labels[risk as keyof typeof labels] || risk;
+};
 
 // 获取最低分数
 const getMinScore = () => {
-  if (props.recommendation.historicalData.length === 0) return '--'
-  return Math.min(...props.recommendation.historicalData.map(d => d.minScore))
-}
+  if (props.recommendation.historicalData.length === 0) return '--';
+  return Math.min(
+    ...props.recommendation.historicalData.map((d) => d.minScore)
+  );
+};
 
 // 获取最高分数
 const getMaxScore = () => {
-  if (props.recommendation.historicalData.length === 0) return '--'
-  return Math.max(...props.recommendation.historicalData.map(d => d.maxScore))
-}
+  if (props.recommendation.historicalData.length === 0) return '--';
+  return Math.max(
+    ...props.recommendation.historicalData.map((d) => d.maxScore)
+  );
+};
 </script>
 
 <style scoped>

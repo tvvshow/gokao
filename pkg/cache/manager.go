@@ -8,10 +8,7 @@ import (
 	"sync"
 	"time"
 
-<<<<<<< HEAD
 	"github.com/gin-gonic/gin"
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	"github.com/redis/go-redis/v9"
 )
 

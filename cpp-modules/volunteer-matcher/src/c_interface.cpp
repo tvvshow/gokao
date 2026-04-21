@@ -447,12 +447,7 @@ CResult* GetPerformanceStats(VolunteerMatcherHandle* handle, CPerformanceStats* 
     }
     
     try {
-<<<<<<< HEAD
-        PerformanceStats performance_stats;
-        (*handle->matcher)->GetPerformanceStats(performance_stats);
-=======
         auto performance_stats = (*handle->matcher)->GetPerformanceStats();
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
         
         stats->total_requests = performance_stats.total_requests.load();
         stats->successful_requests = performance_stats.successful_requests.load();

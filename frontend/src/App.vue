@@ -5,16 +5,23 @@
 
     <!-- 主内容区域 -->
     <main class="flex-1 container-modern py-8">
-      <router-view v-slot="{ Component }">
-        <transition
-          name="page"
-          mode="out-in"
-          enter-active-class="animate-fade-in"
-          leave-active-class="animate-fade-out"
-        >
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <ErrorBoundary
+        fallback-title="页面加载出错"
+        fallback-message="抱歉，页面加载时发生了错误，请刷新重试"
+        @error="handlePageError"
+        @retry="handleRetry"
+      >
+        <router-view v-slot="{ Component }">
+          <transition
+            name="page"
+            mode="out-in"
+            enter-active-class="animate-fade-in"
+            leave-active-class="animate-fade-out"
+          >
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </ErrorBoundary>
     </main>
 
     <!-- 现代化页脚 -->
@@ -26,21 +33,37 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useDark, useToggle } from '@vueuse/core'
-import AppHeader from '@/components/AppHeader.vue'
-import AppFooter from '@/components/AppFooter.vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import { onMounted } from 'vue';
+import { useDark, useToggle } from '@vueuse/core';
+import { useRouter } from 'vue-router';
+import AppHeader from '@/components/AppHeader.vue';
+import AppFooter from '@/components/AppFooter.vue';
+import ThemeToggle from '@/components/ThemeToggle.vue';
+import { ErrorBoundary } from '@/components/common';
+
+const router = useRouter();
 
 // 暗色模式支持
-const isDark = useDark()
-const toggleDark = useToggle(isDark)
+const isDark = useDark();
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _toggleDark = useToggle(isDark);
+
+// Handle page-level errors
+const handlePageError = (error: Error) => {
+  console.error('Page error caught:', error);
+};
+
+// Handle retry action
+const handleRetry = () => {
+  // Reload current route
+  router.go(0);
+};
 
 // 初始化主题
 onMounted(() => {
   // 应用主题类到 html 元素
-  document.documentElement.classList.toggle('dark', isDark.value)
-})
+  document.documentElement.classList.toggle('dark', isDark.value);
+});
 </script>
 
 <style scoped>

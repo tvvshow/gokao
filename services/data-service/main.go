@@ -75,13 +75,7 @@ func main() {
 	algorithmService := services.NewAlgorithmService(db, logger)
 	cacheService := services.NewCacheService(db, logger)
 	performanceService := services.NewPerformanceService(db, logger)
-<<<<<<< HEAD
-	migrationService := services.NewMigrationService(db, logger)
-	dataProcessingService := services.NewDataProcessingService(db, logger)
-	dataImportService := services.NewDataImportService(db, logger)
-	migrationService := services.NewMigrationService(db) // 新增迁移服务
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	migrationService := services.NewMigrationService(db)
 
 	// 初始化处理器
 	universityHandler := handlers.NewUniversityHandler(universityService, logger)
@@ -90,12 +84,8 @@ func main() {
 	searchHandler := handlers.NewSearchHandler(searchService, logger)
 	algorithmHandler := handlers.NewAlgorithmHandler(algorithmService, logger)
 	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, db, logger)
-<<<<<<< HEAD
 	migrationHandler := handlers.NewMigrationHandler(db, migrationService, logger)
 	dataHandler := handlers.NewDataHandler(db, logger)
-	migrationHandler := handlers.NewMigrationHandler(db, migrationService, logger) // 新增迁移处理器
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 
 	// 创建Gin引擎
 	router := gin.New()
@@ -103,7 +93,7 @@ func main() {
 	// 注册中间件
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.Recovery(logger))
-	// 移除CORS中间件，因为请求通过API Gateway代理，由API Gateway处理CORS
+	router.Use(middleware.CORS()) // 启用CORS中间件，支持前端跨域请求
 	router.Use(middleware.Security())
 	router.Use(middleware.RateLimit(logger))
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))
@@ -127,8 +117,8 @@ func main() {
 		}
 	})
 
-	// API路由组 - 修复前端路径匹配
-	apiV1 := router.Group("/v1")
+	// API路由组 - 统一使用/api/v1前缀
+	apiV1 := router.Group("/api/v1")
 	{
 		// 院校路由
 		universities := apiV1.Group("/universities")
@@ -196,7 +186,6 @@ func main() {
 			performance.POST("/refresh-cache", performanceHandler.RefreshCache)
 			performance.POST("/warmup-cache", performanceHandler.WarmupCache)
 		}
-<<<<<<< HEAD
 
 		// 数据库迁移路由
 		migrations := apiV1.Group("/migrations")
@@ -209,11 +198,9 @@ func main() {
 		// 数据处理路由
 		data := apiV1.Group("/data")
 		{
-			data.POST("/process", handlers.ProcessData) // 新增数据处理接口
-			data.POST("/import", handlers.ImportData)   // 新增数据导入接口
+			data.POST("/process", dataHandler.ProcessData)
+			data.POST("/import", dataHandler.ImportData)
 		}
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 	}
 
 	// Swagger文档
@@ -265,8 +252,4 @@ func main() {
 	}
 
 	logger.Info("数据服务已关闭")
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc

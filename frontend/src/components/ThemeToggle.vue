@@ -1,9 +1,9 @@
 <template>
   <div class="fixed bottom-6 right-6 z-50">
     <button
-      @click="toggleTheme"
+      @click="handleToggle"
       class="btn-theme-toggle"
-      :class="{ 'dark': isDark }"
+      :class="{ dark: isDark }"
       :title="isDark ? '切换到亮色模式' : '切换到暗色模式'"
     >
       <transition name="icon" mode="out-in">
@@ -15,12 +15,16 @@
 </template>
 
 <script setup lang="ts">
-import { useDark, useToggle } from '@vueuse/core'
-import { SunIcon, MoonIcon } from 'lucide-vue-next'
+import { useDark, useToggle } from '@vueuse/core';
+import { SunIcon, MoonIcon } from 'lucide-vue-next';
 
 // 暗色模式状态
-const isDark = useDark()
-const toggleTheme = useToggle(isDark)
+const isDark = useDark();
+const toggleTheme = useToggle(isDark);
+
+const handleToggle = () => {
+  toggleTheme();
+};
 </script>
 
 <style scoped>

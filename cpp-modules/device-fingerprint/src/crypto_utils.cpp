@@ -503,42 +503,6 @@ std::string EncodingUtils::HexEncode(const std::vector<uint8_t>& data, bool uppe
     return oss.str();
 }
 
-<<<<<<< HEAD
-bool EncodingUtils::HexDecode(const std::string& hex_string, std::vector<uint8_t>& data) {
-    data.clear();
-    
-    // 检查字符串长度是否为偶数
-    if (hex_string.length() % 2 != 0) {
-        return false;
-    }
-    
-    data.reserve(hex_string.length() / 2);
-    
-    for (size_t i = 0; i < hex_string.length(); i += 2) {
-        std::string byte_string = hex_string.substr(i, 2);
-        
-        // 检查字符是否为有效的十六进制字符
-        for (char c : byte_string) {
-            if (!std::isxdigit(c)) {
-                data.clear();
-                return false;
-            }
-        }
-        
-        try {
-            uint8_t byte = static_cast<uint8_t>(std::stoul(byte_string, nullptr, 16));
-            data.push_back(byte);
-        } catch (const std::exception&) {
-            data.clear();
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-=======
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
 std::vector<uint8_t> EncodingUtils::StringToBytes(const std::string& str) {
     return std::vector<uint8_t>(str.begin(), str.end());
 }
@@ -587,11 +551,7 @@ std::string RandomGenerator::GenerateUUID() {
     bytes[8] = (bytes[8] & 0x3F) | 0x80; // 变体10
     
     std::ostringstream oss;
-<<<<<<< HEAD
-    oss << std::hex << std::setfill('0') << std::nouppercase;
-=======
     oss << std::hex << std::setfill('0') << std::lowercase;
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
     
     for (size_t i = 0; i < 16; ++i) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {

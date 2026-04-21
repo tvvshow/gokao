@@ -3,6 +3,7 @@ package handlers
 import (
 	"data-service/internal/database"
 	"data-service/internal/services"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

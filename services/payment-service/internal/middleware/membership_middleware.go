@@ -5,11 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-<<<<<<< HEAD
-	"github.com/gaokaohub/gaokao/services/payment-service/internal/services"
-=======
-	"github.com/gaokaohub/payment-service/internal/services"
->>>>>>> 0dd6b27ce36fbec25f47c1952ba01974d6d592bc
+	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
 )
 
 // MembershipMiddleware 会员权限中间件

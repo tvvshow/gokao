@@ -33,8 +33,13 @@
         <!-- 右侧内容 -->
         <el-col :span="18">
           <el-card class="content-card">
+            <!-- Loading state -->
+            <div v-if="loading" class="loading-state">
+              <el-skeleton :rows="6" animated />
+            </div>
+
             <!-- 个人信息 -->
-            <div v-if="activeMenu === 'profile'" class="profile-content">
+            <div v-else-if="activeMenu === 'profile'" class="profile-content">
               <h3>个人信息</h3>
               <el-form :model="userForm" label-width="100px">
                 <el-form-item label="用户名">
@@ -47,27 +52,39 @@
                   <el-input v-model="userForm.phone" />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary">保存修改</el-button>
+                  <el-button
+                    type="primary"
+                    :loading="saving"
+                    @click="saveProfile"
+                  >
+                    {{ saving ? '保存中...' : '保存修改' }}
+                  </el-button>
                 </el-form-item>
               </el-form>
             </div>
 
             <!-- 会员服务 -->
-            <div v-else-if="activeMenu === 'membership'" class="membership-content">
+            <div
+              v-else-if="activeMenu === 'membership'"
+              class="membership-content"
+            >
               <h3>会员服务</h3>
-              <p>会员功能正在开发中...</p>
+              <el-empty description="会员功能正在开发中..." />
             </div>
 
             <!-- 使用记录 -->
             <div v-else-if="activeMenu === 'history'" class="history-content">
               <h3>使用记录</h3>
-              <p>使用记录功能正在开发中...</p>
+              <el-empty description="使用记录功能正在开发中..." />
             </div>
 
             <!-- 我的收藏 -->
-            <div v-else-if="activeMenu === 'favorites'" class="favorites-content">
+            <div
+              v-else-if="activeMenu === 'favorites'"
+              class="favorites-content"
+            >
               <h3>我的收藏</h3>
-              <p>收藏功能正在开发中...</p>
+              <el-empty description="收藏功能正在开发中..." />
             </div>
           </el-card>
         </el-col>
@@ -77,20 +94,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { User, Star, Clock, Collection } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted } from 'vue';
+import { User, Star, Clock, Collection } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-const activeMenu = ref('profile')
+const activeMenu = ref('profile');
+const loading = ref(true);
+const saving = ref(false);
 
 const userForm = reactive({
   username: '测试用户',
   email: 'test@example.com',
-  phone: '13800138000'
-})
+  phone: '13800138000',
+});
 
-const handleMenuSelect = (key: string) => {
-  activeMenu.value = key
-}
+const handleMenuSelect = async (key: string) => {
+  loading.value = true;
+  activeMenu.value = key;
+  // Simulate loading data for each section
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  loading.value = false;
+};
+
+const saveProfile = async () => {
+  saving.value = true;
+  try {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    ElMessage.success('保存成功');
+  } finally {
+    saving.value = false;
+  }
+};
+
+onMounted(async () => {
+  // Simulate initial data loading
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  loading.value = false;
+});
 </script>
 
 <style scoped>
@@ -119,6 +160,10 @@ const handleMenuSelect = (key: string) => {
   min-height: 500px;
 }
 
+.loading-state {
+  padding: 40px;
+}
+
 .profile-content,
 .membership-content,
 .history-content,
@@ -132,5 +177,22 @@ const handleMenuSelect = (key: string) => {
 .favorites-content h3 {
   margin-bottom: 20px;
   color: #2c3e50;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .el-row {
+    flex-direction: column;
+  }
+
+  .el-col {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .menu-card {
+    margin-bottom: 20px;
+    min-height: auto;
+  }
 }
 </style>

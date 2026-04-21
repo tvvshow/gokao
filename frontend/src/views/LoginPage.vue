@@ -92,13 +92,16 @@
                   show-password
                 />
                 <div v-if="registerForm.password" class="password-strength">
-                  <el-progress 
-                    :percentage="passwordStrength.score * 25" 
+                  <el-progress
+                    :percentage="passwordStrength.score * 25"
                     :color="passwordStrengthColor"
                     :show-text="false"
                     :stroke-width="4"
                   />
-                  <span class="strength-text" :style="{ color: passwordStrengthColor }">
+                  <span
+                    class="strength-text"
+                    :style="{ color: passwordStrengthColor }"
+                  >
                     {{ passwordStrength.message }}
                   </span>
                 </div>
@@ -114,7 +117,8 @@
               </el-form-item>
               <el-form-item>
                 <el-checkbox v-model="agreeTerms">
-                  我已阅读并同意 <el-link type="primary">用户协议</el-link> 和 <el-link type="primary">隐私政策</el-link>
+                  我已阅读并同意 <el-link type="primary">用户协议</el-link> 和
+                  <el-link type="primary">隐私政策</el-link>
                 </el-checkbox>
               </el-form-item>
               <el-form-item>
@@ -134,7 +138,12 @@
 
         <div class="login-footer">
           <el-divider>或</el-divider>
-          <el-button type="info" size="large" style="width: 100%" @click="guestLogin">
+          <el-button
+            type="info"
+            size="large"
+            style="width: 100%"
+            @click="guestLogin"
+          >
             游客体验
           </el-button>
         </div>
@@ -144,35 +153,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
-import { useUserStore } from '@/stores/user'
-import { 
-  createPasswordValidator, 
+import { ref, reactive, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { useUserStore } from '@/stores/user';
+import {
+  createPasswordValidator,
   validatePasswordStrength,
   sanitizeFormData,
-  createSafeTextValidator
-} from '@/utils/validators'
+  createSafeTextValidator,
+} from '@/utils/validators';
 
-const router = useRouter()
-const userStore = useUserStore()
+const router = useRouter();
+const route = useRoute();
+const userStore = useUserStore();
 
-const activeTab = ref('login')
-const rememberMe = ref(false)
-const agreeTerms = ref(false)
-const loginLoading = ref(false)
-const registerLoading = ref(false)
+// 根据路由名称初始化激活标签页
+const activeTab = ref(route.name === 'Register' ? 'register' : 'login');
+const rememberMe = ref(false);
+const agreeTerms = ref(false);
+const loginLoading = ref(false);
+const registerLoading = ref(false);
 
-const loginFormRef = ref<FormInstance>()
-const registerFormRef = ref<FormInstance>()
+const loginFormRef = ref<FormInstance>();
+const registerFormRef = ref<FormInstance>();
 
 // 登录表单
 const loginForm = reactive({
   username: '',
-  password: ''
-})
+  password: '',
+});
 
 // 注册表单
 const registerForm = reactive({
@@ -180,131 +191,135 @@ const registerForm = reactive({
   email: '',
   phone: '',
   password: '',
-  confirmPassword: ''
-})
+  confirmPassword: '',
+});
 
 // 密码强度计算
 const passwordStrength = computed(() => {
-  return validatePasswordStrength(registerForm.password)
-})
+  return validatePasswordStrength(registerForm.password);
+});
 
 // 密码强度颜色
 const passwordStrengthColor = computed(() => {
-  const score = passwordStrength.value.score
-  if (score <= 1) return '#f56c6c'
-  if (score === 2) return '#e6a23c'
-  if (score === 3) return '#409eff'
-  return '#67c23a'
-})
+  const score = passwordStrength.value.score;
+  if (score <= 1) return '#f56c6c';
+  if (score === 2) return '#e6a23c';
+  if (score === 3) return '#409eff';
+  return '#67c23a';
+});
 
 // 验证规则
 const loginRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { validator: createSafeTextValidator('用户名'), trigger: 'blur' }
+    { validator: createSafeTextValidator('用户名'), trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ]
-}
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' },
+  ],
+};
 
 const registerRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 20, message: '用户名长度为3-20个字符', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_\u4e00-\u9fa5]+$/, message: '用户名只能包含字母、数字、下划线和中文', trigger: 'blur' },
-    { validator: createSafeTextValidator('用户名'), trigger: 'blur' }
+    {
+      pattern: /^[a-zA-Z0-9_\u4e00-\u9fa5]+$/,
+      message: '用户名只能包含字母、数字、下划线和中文',
+      trigger: 'blur',
+    },
+    { validator: createSafeTextValidator('用户名'), trigger: 'blur' },
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
   ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { validator: createPasswordValidator(8), trigger: 'blur' }
+    { validator: createPasswordValidator(8), trigger: 'blur' },
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
     {
       validator: (rule, value, callback) => {
         if (value !== registerForm.password) {
-          callback(new Error('两次输入的密码不一致'))
+          callback(new Error('两次输入的密码不一致'));
         } else {
-          callback()
+          callback();
         }
       },
-      trigger: 'blur'
-    }
-  ]
-}
+      trigger: 'blur',
+    },
+  ],
+};
 
 // 登录处理
 const handleLogin = async () => {
-  if (!loginFormRef.value) return
+  if (!loginFormRef.value) return;
 
   try {
-    await loginFormRef.value.validate()
-    
-    loginLoading.value = true
+    await loginFormRef.value.validate();
+
+    loginLoading.value = true;
     // Sanitize form data before sending
-    const sanitizedForm = sanitizeFormData(loginForm)
-    const result = await userStore.login(sanitizedForm)
-    
+    const sanitizedForm = sanitizeFormData(loginForm);
+    const result = await userStore.login(sanitizedForm);
+
     if (result.success) {
-      ElMessage.success('登录成功')
+      ElMessage.success('登录成功');
       // Check for redirect query parameter
-      const redirect = router.currentRoute.value.query.redirect as string
-      router.push(redirect || '/')
+      const redirect = router.currentRoute.value.query.redirect as string;
+      router.push(redirect || '/');
     } else {
-      ElMessage.error(result.message || '登录失败')
+      ElMessage.error(result.message || '登录失败');
     }
   } catch {
-    ElMessage.warning('请完善登录信息')
+    ElMessage.warning('请完善登录信息');
   } finally {
-    loginLoading.value = false
+    loginLoading.value = false;
   }
-}
+};
 
 // 注册处理
 const handleRegister = async () => {
-  if (!registerFormRef.value) return
+  if (!registerFormRef.value) return;
 
   if (!agreeTerms.value) {
-    ElMessage.warning('请同意用户协议和隐私政策')
-    return
+    ElMessage.warning('请同意用户协议和隐私政策');
+    return;
   }
 
   try {
-    await registerFormRef.value.validate()
-    
-    registerLoading.value = true
+    await registerFormRef.value.validate();
+
+    registerLoading.value = true;
     // Sanitize form data before sending
-    const sanitizedForm = sanitizeFormData(registerForm)
-    const result = await userStore.register(sanitizedForm)
-    
+    const sanitizedForm = sanitizeFormData(registerForm);
+    const result = await userStore.register(sanitizedForm);
+
     if (result.success) {
-      ElMessage.success('注册成功，请登录')
-      activeTab.value = 'login'
+      ElMessage.success('注册成功，请登录');
+      activeTab.value = 'login';
     } else {
-      ElMessage.error(result.message || '注册失败')
+      ElMessage.error(result.message || '注册失败');
     }
   } catch {
-    ElMessage.warning('请完善注册信息')
+    ElMessage.warning('请完善注册信息');
   } finally {
-    registerLoading.value = false
+    registerLoading.value = false;
   }
-}
+};
 
 // 游客登录
 const guestLogin = () => {
-  ElMessage.success('以游客身份进入系统')
-  router.push('/')
-}
+  ElMessage.success('以游客身份进入系统');
+  router.push('/');
+};
 </script>
 
 <style scoped>
@@ -371,7 +386,7 @@ const guestLogin = () => {
   .login-card {
     padding: 30px 20px;
   }
-  
+
   .login-header h1 {
     font-size: 20px;
   }
