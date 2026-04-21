@@ -70,16 +70,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 项目根目录/
-├── go.work                # Go Workspace (Go 1.25.5), 管理 14 个 module
+├── go.work                # Go Workspace (Go 1.25.5), 17 个 module
 ├── services/              # 微服务后端
 │   ├── api-gateway/       # API 网关，JWT 认证，限流，Swagger 文档
 │   ├── user-service/      # 用户管理，认证，设备指纹 (CGO)
 │   ├── data-service/      # 大学/专业数据，GORM + PostgreSQL/SQLite
 │   ├── payment-service/   # 支付处理（微信支付、支付宝、银联）
 │   ├── recommendation-service/  # AI 推荐引擎，CGO 桥接 C++
-│   ├── monitoring-service/      # 指标和告警
-│   ├── device-auth-service/     # 设备认证独立服务
-│   └── cpp-modules/             # 服务侧 C++ 桥接适配层
+│   └── monitoring-service/      # 指标和告警
 ├── pkg/                   # 共享包（每个子包均为独立 module，见 go.work）
 │   ├── auth/ errors/ middleware/ database/ cache/ discovery/ metrics/
 │   ├── api/ response/ health/ logger/ models/ utils/
@@ -112,7 +110,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Payment Service**: 集成多种支付方式
 - **Recommendation Service**: AI 推荐引擎，**强制** CGO 启用以调用 C++ 算法
 - **Monitoring Service**: 系统监控和告警
-- **Device Auth Service**: 设备认证独立服务
 
 ---
 

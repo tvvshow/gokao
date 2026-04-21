@@ -195,9 +195,9 @@ services:
       - "80:80"    # HTTP端口
       - "443:443"  # HTTPS端口
     environment:
-      - VITE_API_BASE_URL=https://gaokao.example.com
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
       - NODE_ENV=production
-      - VITE_HOST=gaokao.example.com
+      - VITE_HOST=${FRONTEND_DOMAIN:-localhost}
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro  # SSL证书目录
@@ -207,13 +207,13 @@ services:
     networks:
       - gaokao_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.gaokao.rule=Host(`gaokao.example.com`)"
+      - "traefik.http.routers.gaokao.rule=Host(`${FRONTEND_DOMAIN:-localhost}`)"
       - "traefik.http.routers.gaokao.entrypoints=web,websecure"
       - "traefik.http.routers.gaokao.tls=true"
 

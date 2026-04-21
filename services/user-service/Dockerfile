@@ -1,6 +1,6 @@
 # 多阶段构建
 # 第一阶段：构建阶段
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
@@ -21,7 +21,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # 第二阶段：运行阶段
-FROM alpine:latest
+FROM alpine:3.20
 
 # 安装ca-certificates和tzdata
 RUN apk --no-cache add ca-certificates tzdata
@@ -49,11 +49,11 @@ RUN chown -R appuser:appgroup /root
 USER appuser
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 8083
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8083/health || exit 1
 
 # 运行应用
 CMD ["./main"]

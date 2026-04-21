@@ -1,5 +1,5 @@
 # 多阶段构建
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
@@ -20,7 +20,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o payment-service main.go
 
 # 运行阶段
-FROM alpine:latest
+FROM alpine:3.20
 
 # 安装ca证书和时区数据
 RUN apk --no-cache add ca-certificates tzdata
