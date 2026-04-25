@@ -63,7 +63,7 @@ func (a *AlipayAdapter) CreateOrder(ctx context.Context, order *models.PaymentOr
 	request.ReturnURL = a.returnURL
 	request.Subject = order.Description
 	request.OutTradeNo = order.OrderNo
-	request.TotalAmount = fmt.Sprintf("%.2f", order.Amount)
+	request.TotalAmount = order.Amount.StringFixed(2)
 	request.ProductCode = "FAST_INSTANT_TRADE_PAY"
 
 	// 设置过期时间
