@@ -258,6 +258,19 @@ certs/
 *.pem
 *.key
 *.crt
+
+# Local AI/tooling metadata (do not commit)
+.codex/
+.agents/
+.kiro/
+.claude/
+.qoder/
+.iflow/
+.trae/
+.augment/
+.ace-tool/
+.ai-rules/
+.spec-workflow/
 *.csr
 *.p12
 *.pfx
