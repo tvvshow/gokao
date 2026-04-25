@@ -1,103 +1,99 @@
 # 高考志愿填报系统 (Gaokao)
 
-一个基于微服务的高考志愿推荐与数据查询系统，包含 Go 后端服务、Vue 3 前端，以及 C++ 推荐模块。
+高考志愿填报系统是一个多服务架构项目，提供志愿推荐、数据查询、用户与支付能力。后端基于 Go 微服务，前端基于 Vue 3，推荐能力包含 C++ 模块并通过 CGO 集成。
 
 ## 技术栈
 
-- 后端: Go 1.25 + Gin（多服务）
+- 后端: Go 1.25 + Gin
 - 前端: Vue 3 + TypeScript + Vite
-- 数据: PostgreSQL + Redis（data-service 集成 Elasticsearch）
-- 推荐: Go + CGO + C++ (`cpp-modules/`)
-- 运维: Docker Compose + Nginx + Prometheus
+- 数据层: PostgreSQL + Redis
+- 推荐模块: C++ (`cpp-modules/`) + CGO
+- 运维: Docker Compose + Nginx
 
-## 仓库结构
+## 目录结构
 
 ```text
-gaokao/
-├── services/                  # Go 微服务
-│   ├── api-gateway
-│   ├── data-service
-│   ├── user-service
-│   ├── payment-service
-│   ├── recommendation-service
-│   └── monitoring-service
-├── frontend/                  # Vue 3 前端
-├── cpp-modules/               # C++ 模块（设备指纹/推荐等）
-├── pkg/                       # 共享 Go 包
-├── docker/                    # Docker 相关文件
-├── docs/                      # 架构与审计文档
-├── Makefile
-└── docker-compose.yml
+services/                  # 业务微服务
+  api-gateway              # 统一入口与路由聚合
+  data-service             # 数据服务
+  user-service             # 用户服务
+  payment-service          # 支付服务
+  recommendation-service   # 推荐服务（含 C++ 能力集成）
+  monitoring-service       # 监控服务
+frontend/                  # Vue 3 前端
+pkg/                       # 共享 Go 模块
+cpp-modules/               # C++ 模块源码
+docker/                    # Docker 相关配置
+docs/                      # 架构与说明文档
 ```
 
-## 快速开始
+## 快速开始（推荐 Docker）
 
-### 1) 安装依赖
-
+1. 安装依赖
 ```bash
 make deps
 ```
 
-### 2) 启动基础设施与服务（Docker）
-
+2. 启动服务
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-默认端口（见 `docker-compose.yml`）:
-- 前端: `80`
-- API Gateway: `8080`
-- data-service: `8082`
-- user-service: `8083`
-- recommendation-service: `8084`
-- payment-service: `8085`
-- monitoring-service: `8086`
+3. 查看状态
+```bash
+docker compose ps
+```
 
-### 3) 本地开发（可选）
+默认端口:
+- Frontend: `80`
+- API Gateway: `8080`
+- Data Service: `8082`
+- User Service: `8083`
+- Recommendation Service: `8084`
+- Payment Service: `8085`
+- Monitoring Service: `8086`
+- PostgreSQL: `5433`
+- Redis: `6380`
+
+## 本地开发
 
 ```bash
-# 后端构建
+# 构建后端服务
 make build-go
 
 # 前端开发模式
 cd frontend && npm run dev
 ```
 
-## 构建与测试
+`go.work` 已注册共享包与服务模块，建议在仓库根目录执行 Go 命令以获得一致依赖解析行为。
+
+## 构建、测试与质量检查
 
 ```bash
-# 全量构建（Go + Frontend）
-make build
-
-# 全量测试（Go + Frontend）
-make test
-
-# 仅 Go 测试
-make test-go
-
-# 仅前端测试
-make test-frontend
+make build           # Go + Frontend 全量构建
+make test            # Go + Frontend 全量测试
+make test-go         # 仅 Go 测试
+make test-frontend   # 仅前端测试
 ```
 
 前端质量检查:
-
 ```bash
 cd frontend
 npm run lint
 npm run type-check
 ```
 
-## API 与文档
+## API 与 Swagger
 
-- API 网关入口: `http://localhost:8080`
-- 若修改了 `services/api-gateway` 接口注释，需更新 Swagger 文档（CI 会校验）:
+- 网关入口: `http://localhost:8080`
+- 当修改 `services/api-gateway` 接口注释后，需同步 Swagger:
 
 ```bash
 cd services/api-gateway
 go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
 ```
 
-## 贡献说明
+## 贡献规范
 
 提交前建议至少执行:
 
