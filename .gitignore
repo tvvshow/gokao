@@ -259,6 +259,10 @@ certs/
 *.key
 *.crt
 
+# Workflow directories (do not commit)
+.specify/
+specs/001-unify-pkg-modules/
+
 # Local AI/tooling metadata (do not commit)
 .codex/
 .agents/
