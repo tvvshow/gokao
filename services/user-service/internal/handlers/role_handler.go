@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"user-service/internal/models"
-	"user-service/internal/services"
+	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+	"github.com/oktetopython/gaokao/services/user-service/internal/services"
 )
 
 // RoleHandler 角色处理器

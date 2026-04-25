@@ -2,12 +2,12 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -19,28 +19,10 @@ type ConnectionPoolManager struct {
 	config              *PoolConfig
 }
 
-// PoolConfig 连接池配置
-type PoolConfig struct {
-	MaxIdleConns    int           `yaml:"max_idle_conns"`
-	MaxOpenConns    int           `yaml:"max_open_conns"`
-	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
-	ConnMaxIdleTime time.Duration `yaml:"conn_max_idle_time"`
-}
-
-// DefaultPoolConfig 默认连接池配置
-func DefaultPoolConfig() *PoolConfig {
-	return &PoolConfig{
-		MaxIdleConns:    10,
-		MaxOpenConns:    100,
-		ConnMaxLifetime: time.Hour,
-		ConnMaxIdleTime: 30 * time.Minute,
-	}
-}
-
 // NewConnectionPoolManager 创建新的连接池管理器
 func NewConnectionPoolManager(config *PoolConfig) *ConnectionPoolManager {
 	if config == nil {
-		config = DefaultPoolConfig()
+		config = NewDefaultPoolConfig()
 	}
 
 	return &ConnectionPoolManager{
@@ -170,14 +152,29 @@ func (m *ConnectionPoolManager) GetStats() map[string]interface{} {
 
 // createPostgresConnection 创建PostgreSQL连接
 func createPostgresConnection(dsn string, config *PoolConfig) (*gorm.DB, error) {
-	// 这里需要根据实际的GORM配置来创建连接
-	// 简化示例，实际实现需要完整的GORM配置
-	
-	// 模拟连接创建
-	time.Sleep(100 * time.Millisecond) // 模拟连接耗时
-	
-	// 实际实现中应该使用gorm.Open和配置连接池参数
-	return nil, fmt.Errorf("PostgreSQL connection creation not implemented")
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("open postgres with gorm failed: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("extract sql.DB from gorm failed: %w", err)
+	}
+
+	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
+	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
+	sqlDB.SetConnMaxIdleTime(config.ConnMaxIdleTime)
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(pingCtx); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("ping postgres failed: %w", err)
+	}
+
+	return db, nil
 }
 
 // createRedisConnection 创建Redis连接

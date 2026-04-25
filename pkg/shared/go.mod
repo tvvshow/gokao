@@ -1,4 +1,4 @@
-module github.com/gaokao/shared
+module github.com/oktetopython/gaokao/pkg/shared
 
 go 1.23.8
 

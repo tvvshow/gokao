@@ -1,4 +1,4 @@
-module github.com/gaokaohub/pkg/models
+module github.com/oktetopython/gaokao/pkg/models
 
 go 1.22
 

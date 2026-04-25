@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gaokao/pkg/scripts"
+	"github.com/oktetopython/gaokao/pkg/scripts"
 )
 
 // UniversityInfo 高校信息结构

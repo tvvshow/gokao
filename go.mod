@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/services/data-service
+module github.com/oktetopython/gaokao
 
 go 1.25.5
 
@@ -13,7 +13,7 @@ require (
 	gorm.io/gorm v1.30.2
 )
 
-replace github.com/gaokao/shared => ./pkg/shared
+replace github.com/oktetopython/gaokao/pkg/shared => ./pkg/shared
 
 replace github.com/oktetopython/gaokao/pkg/scripts => ./pkg/scripts
 

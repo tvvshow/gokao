@@ -109,6 +109,7 @@ services:
       - DATA_SERVICE_URL=http://data-service:8082
       - USER_SERVICE_URL=http://user-service:8083
       - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8084
+      - PAYMENT_SERVICE_URL=http://payment-service:8085
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-1000}
       - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION:-1}
@@ -160,11 +161,11 @@ services:
     networks:
       - gaokao_network
 
-  # 推荐服务
+  # 推荐服务 (C++ built inside Docker, not host-mounted)
   recommendation-service:
     build:
-      context: ./services/recommendation-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/recommendation-service/Dockerfile
     image: gaokao/recommendation-service:latest
     container_name: gaokao_recommendation_service
     ports:
@@ -175,11 +176,64 @@ services:
       - DATA_SERVICE_URL=http://data-service:8082
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ALGORITHM_TYPE=${ALGORITHM_TYPE:-hybrid}
+      - LD_LIBRARY_PATH=/usr/local/lib
+      - CPP_LIBRARY_PATH=/usr/local/lib/libvolunteer_matcher.so
     volumes:
       - ./logs:/app/logs
-      - ./cpp-modules:/app/cpp-modules
     depends_on:
       - data-service
+    restart: unless-stopped
+    networks:
+      - gaokao_network
+
+  # 支付服务
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    image: gaokao/payment-service:latest
+    container_name: gaokao_payment_service
+    ports:
+      - "8085:8085"
+    environment:
+      - PORT=8085
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-gaokao_db}
+      - DB_SSL_MODE=disable
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=2
+      - JWT_SECRET=${JWT_SECRET:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gaokao_network
+
+  # 监控服务
+  monitoring-service:
+    build:
+      context: ./services/monitoring-service
+      dockerfile: Dockerfile
+    image: gaokao/monitoring-service:latest
+    container_name: gaokao_monitoring_service
+    ports:
+      - "8086:8086"
+    environment:
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - gaokao_network

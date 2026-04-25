@@ -1,66 +1,60 @@
-# 构建阶段
+# 构建阶段：Go + C++ (CGO)
 FROM golang:1.25-alpine AS builder
 
-# 安装构建工具（CGO 链接 C++ 推荐引擎所需）
 RUN apk add --no-cache \
-    gcc \
-    g++ \
-    make \
-    git \
+    gcc g++ make cmake git \
+    openssl-dev jsoncpp-dev \
     linux-headers
 
-# 设置工作目录
 WORKDIR /app
 
-# 复制Go模块文件
-COPY go.mod go.sum ./
+COPY services/recommendation-service/go.mod services/recommendation-service/go.sum ./
 RUN go mod download
 
-# 复制源代码
-COPY . .
+# 构建 C++ 共享库
+COPY cpp-modules/volunteer-matcher /tmp/volunteer-matcher
+RUN cd /tmp/volunteer-matcher \
+    && mkdir -p build && cd build \
+    && cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_EXAMPLES=OFF \
+        -DBUILD_BENCHMARKS=OFF \
+        -DBUILD_GO_BINDINGS=OFF \
+    && make -j$(nproc)
 
-# 构建Go应用
-# 注意：libvolunteer_matcher.so 必须由宿主 cmake 预构建并通过 docker-compose
-# volumes 挂载到 /app/cpp-modules（见 docker-compose.yml）
-RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o recommendation-service .
+COPY services/recommendation-service ./
+
+# CGO: 通过 env vars 注入容器内路径，与源码 #cgo 指令互补
+RUN CGO_ENABLED=1 \
+    CGO_CFLAGS="-I/tmp/volunteer-matcher/include" \
+    CGO_LDFLAGS="-L/tmp/volunteer-matcher/build -lvolunteer_matcher -lstdc++ -Wl,-rpath,/usr/local/lib" \
+    go build -ldflags="-s -w" -o recommendation-service .
 
 # 运行阶段
 FROM alpine:3.20
 
-# 安装运行时依赖
 RUN apk add --no-cache \
-    libstdc++ \
-    libgcc \
-    ca-certificates \
-    tzdata \
-    curl
+    libstdc++ libgcc \
+    openssl jsoncpp \
+    ca-certificates tzdata curl
 
-# 设置时区
 ENV TZ=Asia/Shanghai
 
-# 创建应用用户
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# 设置工作目录
 WORKDIR /app
 
-# 从构建阶段复制二进制和配置
+COPY --from=builder /tmp/volunteer-matcher/build/libvolunteer_matcher.so /usr/local/lib/
 COPY --from=builder /app/recommendation-service .
 COPY --from=builder /app/config ./config
 
-# 创建必要的目录
-RUN mkdir -p logs && chown appuser:appgroup logs
-
-# 设置权限
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p logs && chown -R appuser:appgroup /app
 USER appuser
 
-# 暴露端口（与 docker-compose.yml 一致）
 EXPOSE 8084
 
-# 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8084/health || exit 1
 
-# 启动命令
 CMD ["./recommendation-service"]

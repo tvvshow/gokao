@@ -228,7 +228,7 @@ func (a *AlipayAdapter) HandleCallback(ctx context.Context, request *http.Reques
 	}
 
 	// 验证签名 - 新版SDK返回error，nil表示验证成功
-	if err := a.client.VerifySign(request.Form); err != nil {
+	if err := a.client.VerifySign(ctx, request.Form); err != nil {
 		return nil, fmt.Errorf("signature verification failed: %w", err)
 	}
 
@@ -342,7 +342,7 @@ func (a *AlipayAdapter) VerifyCallback(ctx context.Context, data []byte, signatu
 	}
 
 	// 验证签名 - 新版SDK返回error，nil表示验证成功
-	if err := a.client.VerifySign(form); err != nil {
+	if err := a.client.VerifySign(ctx, form); err != nil {
 		return nil, fmt.Errorf("signature verification failed: %w", err)
 	}
 

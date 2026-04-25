@@ -106,7 +106,7 @@ echo -e "\n${YELLOW}📦 验证Go模块...${NC}"
 # 检查共享包的go.mod文件
 for pkg in auth errors; do
     if [ -f "pkg/$pkg/go.mod" ]; then
-        check_item "pkg/$pkg go.mod 格式正确" "grep -q 'module github.com/gaokaohub/pkg/$pkg' 'pkg/$pkg/go.mod'"
+        check_item "pkg/$pkg go.mod 格式正确" "grep -q 'module github.com/oktetopython/gaokao/pkg/$pkg' 'pkg/$pkg/go.mod'"
     fi
 done
 

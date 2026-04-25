@@ -1,78 +1,118 @@
-# 高考志愿填报系统 (College Entrance Exam Application)
+# 高考志愿填报系统 (Gaokao)
 
-一个基于AI的高考志愿填报和职业规划助手系统，为中国高中学生、家长和老师提供智能化的大学申请解决方案。
+一个基于微服务的高考志愿推荐与数据查询系统，包含 Go 后端服务、Vue 3 前端，以及 C++ 推荐模块。
 
-## 系统架构
+## 技术栈
 
-- **后端**: FastAPI + Python (微服务架构)
-- **数据库**: PostgreSQL + Redis
-- **AI/ML**: XGBoost/LightGBM + 特征存储
-- **前端**: React/Next.js + Ant Design
-- **移动端**: Flutter
-- **高性能计算**: C++ gRPC服务
-- **基础设施**: Docker + Kubernetes
+- 后端: Go 1.25 + Gin（多服务）
+- 前端: Vue 3 + TypeScript + Vite
+- 数据: PostgreSQL + Redis（data-service 集成 Elasticsearch）
+- 推荐: Go + CGO + C++ (`cpp-modules/`)
+- 运维: Docker Compose + Nginx + Prometheus
 
-## 核心功能
+## 仓库结构
 
-- 🎯 AI智能推荐 (冲稳保方案生成)
-- 🏫 院校专业查询 (2700+高校, 1400+专业)
-- 📊 就业前景分析
-- 🎲 志愿模拟填报
-- 🔍 智能推荐 (就近、热门、潜力专业)
-- 📱 新高考政策支持 (3+1+2, 3+3模式)
-- 💬 社区互动功能
+```text
+gaokao/
+├── services/                  # Go 微服务
+│   ├── api-gateway
+│   ├── data-service
+│   ├── user-service
+│   ├── payment-service
+│   ├── recommendation-service
+│   └── monitoring-service
+├── frontend/                  # Vue 3 前端
+├── cpp-modules/               # C++ 模块（设备指纹/推荐等）
+├── pkg/                       # 共享 Go 包
+├── docker/                    # Docker 相关文件
+├── docs/                      # 架构与审计文档
+├── Makefile
+└── docker-compose.yml
+```
 
 ## 快速开始
 
-### 开发环境部署
+### 1) 安装依赖
 
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd college-entrance-exam-app
+make deps
+```
 
-# 启动开发环境
+### 2) 启动基础设施与服务（Docker）
+
+```bash
 docker-compose up -d
-
-# 运行数据库迁移
-python manage.py migrate
-
-# 启动开发服务器
-python manage.py runserver
 ```
 
-### 项目结构
+默认端口（见 `docker-compose.yml`）:
+- 前端: `80`
+- API Gateway: `8080`
+- data-service: `8082`
+- user-service: `8083`
+- recommendation-service: `8084`
+- payment-service: `8085`
+- monitoring-service: `8086`
 
+### 3) 本地开发（可选）
+
+```bash
+# 后端构建
+make build-go
+
+# 前端开发模式
+cd frontend && npm run dev
 ```
-college-entrance-exam-app/
-├── backend/                 # 后端服务
-│   ├── app/                # FastAPI应用
-│   ├── models/             # 数据模型
-│   ├── services/           # 业务逻辑服务
-│   ├── api/                # API路由
-│   └── ml/                 # 机器学习模块
-├── frontend/               # Web前端 (React/Next.js)
-├── mobile/                 # 移动端 (Flutter)
-├── cpp-scoring/            # C++高性能计算服务
-├── infrastructure/         # 基础设施配置
-│   ├── docker/            # Docker配置
-│   ├── k8s/               # Kubernetes配置
-│   └── monitoring/        # 监控配置
-└── docs/                   # 文档
+
+## 构建与测试
+
+```bash
+# 全量构建（Go + Frontend）
+make build
+
+# 全量测试（Go + Frontend）
+make test
+
+# 仅 Go 测试
+make test-go
+
+# 仅前端测试
+make test-frontend
 ```
-1.25.02
-## 开发指南
 
-详见 [开发文档](docs/development.md)
+前端质量检查:
 
-## 部署指南
+```bash
+cd frontend
+npm run lint
+npm run type-check
+```
 
-详见 [部署文档](docs/deployment.md)
+## API 与文档
 
-## 贡献指南
+- API 网关入口: `http://localhost:8080`
+- 若修改了 `services/api-gateway` 接口注释，需更新 Swagger 文档（CI 会校验）:
 
-详见 [贡献指南](docs/contributing.md)
+```bash
+cd services/api-gateway
+go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
+```
 
-## 许可证
+## 治理与约束
 
-MIT License
+- 项目宪章: `.specify/memory/constitution.md`
+- 约束协议: `docs/Gaokao_Constraint_Protocol_v1.0.md`
+- 所有变更需满足“最优秀原则 / 有即复用原则 / 不允许简化原则”，并通过质量闸门后合并。
+
+## 贡献说明
+
+提交前建议至少执行:
+
+```bash
+make test
+cd frontend && npm run lint && npm run type-check
+```
+
+提交信息建议采用 Conventional Commits，例如:
+- `fix(api-gateway): correct proxy prefix handling`
+- `feat(frontend): add recommendation filters`
+- `chore(ci): tighten swagger check`

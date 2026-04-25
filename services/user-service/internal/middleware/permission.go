@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"user-service/internal/models"
-	"user-service/internal/services"
+	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+	"github.com/oktetopython/gaokao/services/user-service/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/gaokaohub/pkg/auth"
+	"github.com/oktetopython/gaokao/pkg/auth"
 )
 
 // Permission 权限中间件

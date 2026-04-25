@@ -15,11 +15,11 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/oktetopython/gaokao/recommendation-service/internal/config"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/handlers"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/cache"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/services"
-	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/config"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/handlers"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
+	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // @title 高考志愿填报推荐服务 API
@@ -103,20 +103,6 @@ func main() {
 	// 创建路由器
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
-
-	// CORS中间件
-	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		
-		c.Next()
-	})
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {

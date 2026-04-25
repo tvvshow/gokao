@@ -17,7 +17,7 @@ export const userApi = {
     };
     message?: string;
   }> {
-    return api.post('/api/user/v1/users/auth/login', loginForm);
+    return api.post('/api/v1/users/auth/login', loginForm);
   },
 
   // 用户注册
@@ -25,7 +25,7 @@ export const userApi = {
     success: boolean;
     message?: string;
   }> {
-    return api.post('/api/user/v1/users/auth/register', registerForm);
+    return api.post('/api/v1/users/auth/register', registerForm);
   },
 
   // 获取用户信息
@@ -34,7 +34,7 @@ export const userApi = {
     data: User;
     message?: string;
   }> {
-    return api.get('/api/user/v1/users/profile');
+    return api.get('/api/v1/users/profile');
   },
 
   // 更新用户信息
@@ -43,7 +43,7 @@ export const userApi = {
     data: User;
     message?: string;
   }> {
-    return api.put('/api/user/v1/users/profile', userData);
+    return api.put('/api/v1/users/profile', userData);
   },
 
   // 获取会员信息
@@ -52,7 +52,7 @@ export const userApi = {
     data: MembershipInfo;
     message?: string;
   }> {
-    return api.get('/api/user/v1/users/membership');
+    return api.get('/api/v1/users/membership');
   },
 
   // 退出登录
@@ -60,6 +60,6 @@ export const userApi = {
     success: boolean;
     message?: string;
   }> {
-    return api.post('/api/user/v1/users/auth/logout');
+    return api.post('/api/v1/users/auth/logout');
   },
 };

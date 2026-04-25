@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/gaokao/pkg/scripts"
+	"github.com/oktetopython/gaokao/pkg/scripts"
 )
 
 // MOEUniversity 教育部官方高校数据结构

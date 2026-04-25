@@ -288,40 +288,40 @@ export const api = {
   download: <T = Blob>(url: string, data?: unknown) =>
     apiClient.download<T>(url, data),
 
-  // API routes - 统一路径：/api/{service}/api/v1/...
+  // API routes - 统一路径：/api/v1/{service}/...
   universities: {
     list: (params?: UniversityListParams) =>
       apiClient.get(
-        '/api/data/v1/universities',
+        '/api/v1/data/universities',
         params as Record<string, unknown>
       ),
-    get: (id: number) => apiClient.get(`/api/data/v1/universities/${id}`),
+    get: (id: number) => apiClient.get(`/api/v1/data/universities/${id}`),
     search: (params: UniversitySearchParams) =>
       apiClient.get(
-        '/api/data/v1/universities/search',
+        '/api/v1/data/universities/search',
         params as Record<string, unknown>
       ),
-    statistics: () => apiClient.get('/api/data/v1/universities/statistics'),
+    statistics: () => apiClient.get('/api/v1/data/universities/statistics'),
   },
 
   // Major related API
   majors: {
     list: (params?: MajorListParams) =>
-      apiClient.get('/api/data/v1/majors', params as Record<string, unknown>),
-    get: (id: number) => apiClient.get(`/api/data/v1/majors/${id}`),
+      apiClient.get('/api/v1/data/majors', params as Record<string, unknown>),
+    get: (id: number) => apiClient.get(`/api/v1/data/majors/${id}`),
   },
 
   // Admission data API
   admission: {
     list: (params?: AdmissionListParams) =>
       apiClient.get(
-        '/api/data/v1/admission/data',
+        '/api/v1/data/admission/data',
         params as Record<string, unknown>
       ),
   },
 
   // Health check
-  health: () => apiClient.get('/api/data/v1/health'),
+  health: () => apiClient.get('/api/v1/data/health'),
 };
 
 // 导出Token管理工具

@@ -1,4 +1,4 @@
-module github.com/gaokaohub/pkg/logger
+module github.com/oktetopython/gaokao/pkg/logger
 
 go 1.23.0
 

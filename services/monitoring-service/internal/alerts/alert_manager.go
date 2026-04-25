@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
-	"github.com/gaokao/monitoring-service/internal/metrics"
+	"github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics"
 )
 
 // AlertLevel 告警级别

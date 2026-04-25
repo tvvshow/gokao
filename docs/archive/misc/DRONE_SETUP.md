@@ -51,7 +51,7 @@ fossa_api_key: your_fossa_api_key
 ### 1. 启用仓库
 在Drone UI中：
 1. 登录到您的Drone实例
-2. 找到 `gaokaohub/gaokao` 仓库
+2. 找到 `oktetopython/gaokao` 仓库
 3. 点击"ACTIVATE"激活仓库
 4. 进入仓库设置页面
 
@@ -60,8 +60,8 @@ fossa_api_key: your_fossa_api_key
 
 ```bash
 # 在Drone UI中逐个添加，或使用CLI
-drone secret add gaokaohub/gaokao docker_username your_username
-drone secret add gaokaohub/gaokao docker_password your_password
+drone secret add oktetopython/gaokao docker_username your_username
+drone secret add oktetopython/gaokao docker_password your_password
 # ... 添加其他secrets
 ```
 
@@ -114,7 +114,7 @@ drone secret add gaokaohub/gaokao docker_password your_password
 ### 1. 立即激活
 ```bash
 # 如果有drone CLI
-drone repo enable gaokaohub/gaokao
+drone repo enable oktetopython/gaokao
 
 # 或在Drone UI中手动激活
 ```
@@ -129,13 +129,13 @@ git push origin master
 
 ### 3. 查看构建状态
 访问您的Drone UI查看构建进度：
-- `https://your-drone-server.com/gaokaohub/gaokao`
+- `https://your-drone-server.com/oktetopython/gaokao`
 
 ## 📊 构建状态徽章
 
 添加构建状态徽章到README：
 ```markdown
-[![Build Status](https://your-drone-server.com/api/badges/gaokaohub/gaokao/status.svg)](https://your-drone-server.com/gaokaohub/gaokao)
+[![Build Status](https://your-drone-server.com/api/badges/oktetopython/gaokao/status.svg)](https://your-drone-server.com/oktetopython/gaokao)
 ```
 
 ## 🔧 高级配置
@@ -186,10 +186,10 @@ environment:
 drone lint .drone.yml
 
 # 查看构建日志
-drone build logs gaokaohub/gaokao <build-number>
+drone build logs oktetopython/gaokao <build-number>
 
 # 重新触发构建
-drone build restart gaokaohub/gaokao <build-number>
+drone build restart oktetopython/gaokao <build-number>
 ```
 
 ---

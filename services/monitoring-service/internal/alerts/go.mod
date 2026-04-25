@@ -1,4 +1,4 @@
-module github.com/gaokao/monitoring-service/internal/alerts
+module github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts
 
 go 1.23.0
 

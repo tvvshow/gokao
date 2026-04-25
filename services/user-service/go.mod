@@ -1,12 +1,12 @@
-module user-service
+module github.com/oktetopython/gaokao/services/user-service
 
 go 1.21
 
 require (
-	github.com/gaokaohub/pkg/auth v0.0.0
-	github.com/gaokaohub/pkg/database v0.0.0
-	github.com/gaokaohub/pkg/errors v0.0.0
-	github.com/gaokaohub/pkg/logger v0.0.0
+	github.com/oktetopython/gaokao/pkg/auth v0.0.0
+	github.com/oktetopython/gaokao/pkg/database v0.0.0
+	github.com/oktetopython/gaokao/pkg/errors v0.0.0
+	github.com/oktetopython/gaokao/pkg/logger v0.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.4.0
@@ -69,10 +69,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
+replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
 
-replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
 
-replace github.com/gaokaohub/pkg/database => ../../pkg/database
+replace github.com/oktetopython/gaokao/pkg/database => ../../pkg/database
 
-replace github.com/gaokaohub/pkg/logger => ../../pkg/logger
+replace github.com/oktetopython/gaokao/pkg/logger => ../../pkg/logger

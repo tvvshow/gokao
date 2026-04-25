@@ -85,7 +85,7 @@ func NewBusinessMetrics() *BusinessMetrics {
 
 		recommendationSuccess: promauto.NewCounterVec(
 			prometheus.CounterOpts{
-	极			Name: "gaokao_recommendation_success_total",
+				Name: "gaokao_recommendation_success_total",
 				Help: "Total number of successful recommendations",
 			},
 			[]string{"algorithm", "satisfaction"},
@@ -94,7 +94,7 @@ func NewBusinessMetrics() *BusinessMetrics {
 		paymentRequests: promauto.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "gaokao_payment_requests_total",
-		极		Help: "Total number of payment requests",
+				Help: "Total number of payment requests",
 			},
 			[]string{"method", "status"},
 		),

@@ -1,10 +1,10 @@
-module github.com/gaokao/monitoring-service
+module github.com/oktetopython/gaokao/services/monitoring-service
 
 go 1.23.0
 
 require (
-	github.com/gaokao/monitoring-service/internal/alerts v0.0.0-00010101000000-000000000000
-	github.com/gaokao/monitoring-service/internal/metrics v0.0.0-00010101000000-000000000000
+	github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts v0.0.0-00010101000000-000000000000
+	github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics v0.0.0-00010101000000-000000000000
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/lib/pq v1.10.9
@@ -50,6 +50,6 @@ require (
 )
 
 replace (
-	github.com/gaokao/monitoring-service/internal/alerts => ./internal/alerts
-	github.com/gaokao/monitoring-service/internal/metrics => ./internal/metrics
+	github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts => ./internal/alerts
+	github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics => ./internal/metrics
 )

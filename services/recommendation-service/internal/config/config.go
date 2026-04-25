@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,12 +45,9 @@ type RedisConfig struct {
 }
 
 // LogConfig 日志配置
-type极速赛车开奖直播记录
-// LogConfig 日志配置
 type LogConfig struct {
 	Level      string `json:"level"`
 	File       string `json:"file"`
-	MaxSize    int    `json:"极速赛车开奖直播记录"`
 	MaxSize    int    `json:"max_size"`
 	MaxBackups int    `json:"max_backups"`
 	MaxAge     int    `json:"max_age"`
@@ -86,7 +84,7 @@ func loadConfig() (*Config, error) {
 		},
 		CPP: &CPPConfig{
 			ConfigPath:      "./config/hybrid_config.json",
-			LibraryPath:     "../../../cpp-modules/volunteer-matcher/build/libvolunteer_matcher.so",
+			LibraryPath:     "/usr/local/lib/libvolunteer_matcher.so",
 			MaxWorkers:      4,
 			CacheEnabled:    true,
 			CacheSize:       1000,

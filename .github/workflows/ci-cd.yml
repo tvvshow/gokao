@@ -277,7 +277,8 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./services/${{ matrix.service }}
+        context: ${{ matrix.service == 'recommendation-service' && '.' || format('./services/{0}', matrix.service) }}
+        file: ${{ matrix.service == 'recommendation-service' && './services/recommendation-service/Dockerfile' || format('./services/{0}/Dockerfile', matrix.service) }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

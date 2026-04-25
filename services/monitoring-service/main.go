@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,8 +16,8 @@ import (
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 
-	"github.com/gaokao/monitoring-service/internal/alerts"
-	"github.com/gaokao/monitoring-service/internal/metrics"
+	"github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts"
+	"github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics"
 )
 
 func main() {
@@ -24,8 +26,12 @@ func main() {
 	defer logger.Sync()
 
 	// 初始化Redis客户端
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "redis:6379"
+	}
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: redisAddr,
 	})
 
 	// 初始化指标收集器
@@ -48,8 +54,8 @@ func main() {
 
 	// 注册指标端点
 	r.GET("/metrics", func(c *gin.Context) {
-		// 这里应该集成Prometheus的HTTP处理程序
-		c.JSON(http.StatusOK, gin.H{"message": "Metrics endpoint"})
+		metricsText := formatPrometheusMetrics(metricsCollector.GetAllMetrics())
+		c.Data(http.StatusOK, "text/plain; version=0.0.4; charset=utf-8", []byte(metricsText))
 	})
 
 	// 注册告警相关端点
@@ -80,7 +86,7 @@ func main() {
 
 	// 启动服务器
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8086",
 		Handler: r,
 	}
 
@@ -91,7 +97,7 @@ func main() {
 		}
 	}()
 
-	logger.Info("Server started on :8080")
+	logger.Info("Server started on :8086")
 
 	// 等待中断信号以优雅地关闭服务器
 	quit := make(chan os.Signal, 1)
@@ -108,4 +114,19 @@ func main() {
 	}
 
 	logger.Info("Server exiting")
+}
+
+func formatPrometheusMetrics(values map[string]float64) string {
+	var b strings.Builder
+	for name, value := range values {
+		safeName := sanitizeMetricName(name)
+		b.WriteString("# TYPE " + safeName + " gauge\n")
+		b.WriteString(fmt.Sprintf("%s %v\n", safeName, value))
+	}
+	return b.String()
+}
+
+func sanitizeMetricName(name string) string {
+	replacer := strings.NewReplacer(" ", "_", "-", "_", ".", "_", "/", "_")
+	return replacer.Replace(name)
 }

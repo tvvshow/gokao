@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/services"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
 )
 
 // EnhancedRuleRecommendationBridge 增强版规则推荐引擎

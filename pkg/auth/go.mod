@@ -1,4 +1,4 @@
-module github.com/gaokaohub/pkg/auth
+module github.com/oktetopython/gaokao/pkg/auth
 
 go 1.23.0
 

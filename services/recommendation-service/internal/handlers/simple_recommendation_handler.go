@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/recommendation-service/pkg/cppbridge"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/cache"
+	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
 )
 
 // RecommendationCache 推荐缓存

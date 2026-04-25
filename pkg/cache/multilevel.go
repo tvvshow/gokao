@@ -304,3 +304,8 @@ func (mlc *MultiLevelCache) ResetStats() {
 	defer mlc.statsMutex.Unlock()
 	mlc.stats = &CacheStats{}
 }
+
+// ClearLocalCache 清空L1本地缓存
+func (mlc *MultiLevelCache) ClearLocalCache() {
+	mlc.localCache.Clear()
+}

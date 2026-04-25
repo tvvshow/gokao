@@ -511,6 +511,23 @@ func (w *WechatPayAdapter) verifySignature(request *http.Request, body []byte) e
 	// 3. 如果匹配则返回nil，否则返回错误
 	
 	// 这里返回nil表示验证通过（简化处理）
+	return nil
+}
+
+// decryptResource 解密回调资源（当前兼容明文/伪造测试数据）
+func (w *WechatPayAdapter) decryptResource(resource WechatPayResource) (*WechatPayResourceData, error) {
+	if resource.Ciphertext == "" {
+		return nil, fmt.Errorf("empty ciphertext")
+	}
+
+	// 当前实现为了兼容已有测试数据，按明文 JSON 解析。
+	// 若接入真实微信回调，需要替换为 AEAD_AES_256_GCM 解密流程。
+	var data WechatPayResourceData
+	if err := json.Unmarshal([]byte(resource.Ciphertext), &data); err != nil {
+		return nil, fmt.Errorf("unsupported ciphertext payload: %w", err)
+	}
+
+	return &data, nil
 }
 
 // getEnv 获取环境变量

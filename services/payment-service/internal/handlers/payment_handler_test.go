@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaokaohub/payment-service/internal/models"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )

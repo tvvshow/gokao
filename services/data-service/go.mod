@@ -72,10 +72,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/gaokaohub/pkg/auth => ../../pkg/auth
+replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
 
-replace github.com/gaokaohub/pkg/errors => ../../pkg/errors
+replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
 
-replace github.com/gaokaohub/pkg/database => ../../pkg/database
+replace github.com/oktetopython/gaokao/pkg/database => ../../pkg/database
 
-replace github.com/gaokaohub/pkg/logger => ../../pkg/logger
+replace github.com/oktetopython/gaokao/pkg/logger => ../../pkg/logger

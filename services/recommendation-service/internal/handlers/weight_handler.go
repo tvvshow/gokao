@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/services"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
 )
 
 // WeightHandler 权重配置处理器

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/recommendation-service/internal/types"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/types"
 )
 
 // Type aliases from types package

@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/recommendation-service
+module github.com/oktetopython/gaokao/services/recommendation-service
 
 go 1.23.0
 

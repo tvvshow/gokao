@@ -1,3 +1,3 @@
-module github.com/gaokaohub/gaokao/pkg/scripts
+module github.com/oktetopython/gaokao/pkg/scripts
 
 go 1.23.8

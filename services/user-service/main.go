@@ -10,11 +10,11 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"user-service/internal/config"
-	"user-service/internal/database"
-	"user-service/internal/handlers"
-	"user-service/internal/middleware"
-	"user-service/internal/services"
+	"github.com/oktetopython/gaokao/services/user-service/internal/config"
+	"github.com/oktetopython/gaokao/services/user-service/internal/database"
+	"github.com/oktetopython/gaokao/services/user-service/internal/handlers"
+	"github.com/oktetopython/gaokao/services/user-service/internal/middleware"
+	"github.com/oktetopython/gaokao/services/user-service/internal/services"
 )
 
 // @title GaokaoHub User Service API

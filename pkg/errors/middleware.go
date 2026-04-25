@@ -1,85 +1,86 @@
 package errors
 
 import (
-	"log"
 	"net/http"
 	"runtime"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // ErrorHandlerMiddleware Gin中间件，统一错误处理
 func ErrorHandlerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 在处理请求之前设置请求ID（如果尚未设置）
 		if c.GetString("request_id") == "" {
 			c.Set("request_id", c.GetHeader("X-Request-ID"))
 		}
 
-		// 继续处理请求
 		c.Next()
 
-		// 检查是否有错误
 		if len(c.Errors) > 0 {
-			// 获取最后一个错误
 			err := c.Errors.Last().Err
 
-			// 转换为APIError
-			var apiErr *APIError
-			if customErr, ok := err.(*APIError); ok {
-				apiErr = customErr
+			var errorResp *ErrorResponse
+			if customErr, ok := err.(*ErrorResponse); ok {
+				errorResp = customErr
 			} else {
-				// 未知错误，转换为500错误
-				apiErr = Internal("服务器内部错误", err.Error())
+				errorResp = InternalServerError("服务器内部错误")
 			}
 
-			// 设置请求ID
 			requestID := c.GetString("request_id")
 			if requestID != "" {
-				apiErr.RequestID = requestID
+				errorResp.RequestID = requestID
 			}
 
-			// 记录错误日志
-			logError(c, apiErr, err)
+			logError(c, errorResp, err)
 
-			// 返回统一的错误响应
-			c.JSON(apiErr.Code, apiErr)
+			statusCode := ErrorMapping[errorResp.Code]
+			if statusCode == 0 {
+				statusCode = http.StatusInternalServerError
+			}
+			c.JSON(statusCode, errorResp)
 			c.Abort()
 		}
 	}
 }
 
-// logError 记录错误日志
-func logError(c *gin.Context, apiErr *APIError, originalErr error) {
-	// 构建日志信息
-	logFields := map[string]interface{}{
-		"time":         time.Now().Format(time.RFC3339),
-		"method":       c.Request.Method,
-		"path":         c.Request.URL.Path,
-		"status":       apiErr.Code,
-		"client_ip":    c.ClientIP(),
-		"user_agent":   c.Request.UserAgent(),
-		"request_id":   c.GetString("request_id"),
-		"error_code":   apiErr.Code,
-		"error_message": apiErr.Message,
+func logError(c *gin.Context, errResp *ErrorResponse, originalErr error) {
+	statusCode := ErrorMapping[errResp.Code]
+	if statusCode == 0 {
+		statusCode = http.StatusInternalServerError
 	}
 
-	// 如果是服务器错误，记录堆栈信息
-	if apiErr.Code >= 500 {
-		// 获取调用堆栈
+	if statusCode >= 500 {
 		buf := make([]byte, 4096)
 		n := runtime.Stack(buf, false)
 		stackTrace := string(buf[:n])
 
-		logFields["stack_trace"] = stackTrace
-		logFields["original_error"] = originalErr.Error()
-
-		// 记录错误日志
-		log.Printf("SERVER_ERROR: %+v", logFields)
+		logrus.WithFields(logrus.Fields{
+			"time":          time.Now().Format(time.RFC3339),
+			"method":        c.Request.Method,
+			"path":          c.Request.URL.Path,
+			"status":        statusCode,
+			"client_ip":     c.ClientIP(),
+			"user_agent":    c.Request.UserAgent(),
+			"request_id":    c.GetString("request_id"),
+			"error_code":    errResp.Code,
+			"error_message": errResp.Message,
+			"stack_trace":   stackTrace,
+			"original_error": originalErr.Error(),
+		}).Error("Server error occurred")
 	} else {
-		// 记录客户端错误
-		log.Printf("CLIENT_ERROR: %+v", logFields)
+		logrus.WithFields(logrus.Fields{
+			"time":          time.Now().Format(time.RFC3339),
+			"method":        c.Request.Method,
+			"path":          c.Request.URL.Path,
+			"status":        statusCode,
+			"client_ip":     c.ClientIP(),
+			"user_agent":    c.Request.UserAgent(),
+			"request_id":    c.GetString("request_id"),
+			"error_code":    errResp.Code,
+			"error_message": errResp.Message,
+		}).Warn("Client error occurred")
 	}
 }
 
@@ -88,28 +89,26 @@ func RecoveryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				// 记录panic信息
-				log.Printf("PANIC: %v", err)
-
-				// 获取堆栈信息
 				buf := make([]byte, 4096)
 				n := runtime.Stack(buf, false)
 				stackTrace := string(buf[:n])
 
-				// 创建500错误
-				apiErr := Internal("服务器内部错误", map[string]interface{}{
-					"panic": err,
-					"stack": stackTrace,
-				})
+				errorResp := InternalServerError("服务器内部错误")
 
-				// 设置请求ID
 				requestID := c.GetString("request_id")
 				if requestID != "" {
-					apiErr.RequestID = requestID
+					errorResp.RequestID = requestID
 				}
 
-				// 返回错误响应
-				c.JSON(apiErr.Code, apiErr)
+				logrus.WithFields(logrus.Fields{
+					"panic":      err,
+					"stack":      stackTrace,
+					"request_id": requestID,
+					"path":       c.Request.URL.Path,
+					"method":     c.Request.Method,
+				}).Error("PANIC recovered")
+
+				c.JSON(http.StatusInternalServerError, errorResp)
 				c.Abort()
 			}
 		}()
@@ -126,7 +125,6 @@ func SuccessResponse(c *gin.Context, data interface{}) {
 		"data":    data,
 	}
 
-	// 添加请求ID
 	if requestID := c.GetString("request_id"); requestID != "" {
 		response["request_id"] = requestID
 	}
@@ -142,7 +140,6 @@ func SuccessResponseWithMessage(c *gin.Context, message string, data interface{}
 		"data":    data,
 	}
 
-	// 添加请求ID
 	if requestID := c.GetString("request_id"); requestID != "" {
 		response["request_id"] = requestID
 	}

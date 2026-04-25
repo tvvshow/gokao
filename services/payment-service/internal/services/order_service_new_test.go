@@ -9,7 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/gaokaohub/payment-service/internal/models"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
 )
 
 func TestOrderServiceNew_CreateOrder(t *testing.T) {

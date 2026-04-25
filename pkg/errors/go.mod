@@ -1,4 +1,4 @@
-module github.com/gaokaohub/pkg/errors
+module github.com/oktetopython/gaokao/pkg/errors
 
 go 1.23.0
 

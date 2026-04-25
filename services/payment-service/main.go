@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -84,7 +85,6 @@ func main() {
 	// 添加中间件
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(middleware.CORS())
 	router.Use(middleware.RequestID())
 	router.Use(middleware.RateLimit(cfg.RateLimit))
 
@@ -135,7 +135,7 @@ func main() {
 
 	// 启动服务器
 	server := &http.Server{
-		Addr:         ":10084",
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,

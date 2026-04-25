@@ -2,11 +2,10 @@ package utils
 
 import (
 	"errors"
-	"regexp"
+	"fmt"
+	"math/rand"
 	"strings"
 	"unicode"
-
-	"github.com/gaokao/pkg/errors"
 )
 
 // PasswordValidator 密码验证器
@@ -36,28 +35,15 @@ func NewPasswordValidator(minLength int, requireUpper, requireLower, requireNumb
 // ValidatePassword 验证密码复杂度
 func (v *PasswordValidator) ValidatePassword(password string) error {
 	if len(password) < v.MinLength {
-		return errors.NewError(
-			errors.ErrValidationFailed,
-			fmt.Sprintf("Password must be at least %d characters long", v.MinLength),
-			nil,
-		)
+		return fmt.Errorf("password must be at least %d characters long", v.MinLength)
 	}
 
 	if len(password) > v.MaxLength {
-		return errors.NewError(
-			errors.ErrValidationFailed,
-			fmt.Sprintf("Password must not exceed %d characters", v.MaxLength),
-			nil,
-		)
+		return fmt.Errorf("password must not exceed %d characters", v.MaxLength)
 	}
 
-	// 检查常见密码
 	if v.CommonPasswords[strings.ToLower(password)] {
-		return errors.NewError(
-			errors.ErrValidationFailed,
-			"Password is too common and easily guessable",
-			nil,
-		)
+		return errors.New("password is too common and easily guessable")
 	}
 
 	var (
@@ -99,20 +85,11 @@ func (v *PasswordValidator) ValidatePassword(password string) error {
 	}
 
 	if len(validationErrors) > 0 {
-		return errors.NewError(
-			errors.ErrValidationFailed,
-			"Password must contain "+strings.Join(validationErrors, ", "),
-			nil,
-		)
+		return fmt.Errorf("password must contain %s", strings.Join(validationErrors, ", "))
 	}
 
-	// 检查连续字符或重复模式
 	if v.hasRepeatingPattern(password) {
-		return errors.NewError(
-			errors.ErrValidationFailed,
-			"Password contains easily guessable patterns",
-			nil,
-		)
+		return errors.New("password contains easily guessable patterns")
 	}
 
 	return nil

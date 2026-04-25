@@ -310,3 +310,8 @@ cd frontend && npm run test:e2e
 - 可以使用 `obs_type` 过滤：bugfix, feature, decision, discovery, change
 - 使用日期过滤查找特定时间段的工作
 - 优先查看最近的会话以获取最新进展
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

@@ -93,7 +93,6 @@ func main() {
 	// 注册中间件
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.Recovery(logger))
-	router.Use(middleware.CORS()) // 启用CORS中间件，支持前端跨域请求
 	router.Use(middleware.Security())
 	router.Use(middleware.RateLimit(logger))
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))

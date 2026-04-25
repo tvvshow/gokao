@@ -10,8 +10,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"user-service/internal/config"
-	"user-service/internal/models"
+	"github.com/oktetopython/gaokao/services/user-service/internal/config"
+	"github.com/oktetopython/gaokao/services/user-service/internal/models"
 )
 
 // Initialize 初始化数据库连接

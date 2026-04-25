@@ -486,7 +486,7 @@ func NewProxyManager(logger *logrus.Logger) *ProxyManager {
 		},
 		"payment": {
 			Name:    "payment-service",
-			BaseURL: getEnv("PAYMENT_SERVICE_URL", "http://payment-service:8083"),
+			BaseURL: getEnv("PAYMENT_SERVICE_URL", "http://payment-service:8085"),
 			Prefix:  "/api/v1/payments",
 			Timeout: 30 * time.Second,
 		},
@@ -563,11 +563,8 @@ func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 
-		// 修改请求路径
-		req.URL.Path = strings.TrimPrefix(req.URL.Path, service.Prefix)
-		if req.URL.Path == "" {
-			req.URL.Path = "/"
-		}
+		// 统一重写为后端服务使用的 /api/v1/* 路径
+		req.URL.Path = normalizeServicePath(req.URL.Path, serviceName)
 
 		// 添加请求头
 		req.Header.Set("X-Forwarded-Service", service.Name)
@@ -674,6 +671,60 @@ func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
 
 		// 阻止Gin继续处理
 		c.Abort()
+	}
+}
+
+func normalizeServicePath(requestPath, serviceName string) string {
+	prefixes := serviceRoutePrefixes(serviceName)
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(requestPath, prefix) {
+			rest := strings.TrimPrefix(requestPath, prefix)
+			if rest == "" {
+				return "/api/v1"
+			}
+			if !strings.HasPrefix(rest, "/") {
+				rest = "/" + rest
+			}
+			return "/api/v1" + rest
+		}
+	}
+
+	// 回退：保持原始路径，避免误改未知路由。
+	return requestPath
+}
+
+func serviceRoutePrefixes(serviceName string) []string {
+	switch serviceName {
+	case "user":
+		return []string{
+			"/v1/users",
+			"/api/v1/users",
+			"/user/v1/users",
+			"/api/user/v1/users",
+		}
+	case "data":
+		return []string{
+			"/v1/data",
+			"/api/v1/data",
+			"/data/v1",
+			"/api/data/v1",
+		}
+	case "payment":
+		return []string{
+			"/v1/payments",
+			"/api/v1/payments",
+			"/payment/v1/payments",
+			"/api/payment/v1/payments",
+		}
+	case "recommendation":
+		return []string{
+			"/v1/recommendations",
+			"/api/v1/recommendations",
+			"/recommendation/v1/recommendations",
+			"/api/recommendation/v1/recommendations",
+		}
+	default:
+		return nil
 	}
 }
 

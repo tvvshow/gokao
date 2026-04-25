@@ -13,8 +13,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"user-service/internal/config"
-	"user-service/internal/models"
+	"github.com/oktetopython/gaokao/services/user-service/internal/config"
+	"github.com/oktetopython/gaokao/services/user-service/internal/models"
 )
 
 // AuthService 认证服务

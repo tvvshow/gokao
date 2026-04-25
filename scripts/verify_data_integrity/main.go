@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gaokao/shared"
+	"github.com/oktetopython/gaokao/pkg/shared"
 	_ "github.com/lib/pq"
 )
 
