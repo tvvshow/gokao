@@ -1,362 +1,206 @@
-高考志愿填报系统 — 完整架构分析报告
-======================================
-生成日期: 2026-04-24
-
-
-1. 模块职责与架构拓扑
-----------------------
-
-  ┌──────────────────────────────────────────────────────┐
-  │                    Frontend (Vue 3)                    │
-  │              :80 (nginx) / :3000 (dev)                │
-  └────────────────────────┬─────────────────────────────┘
-                           │ HTTP /api/{svc}/v1/...
-  ┌────────────────────────▼─────────────────────────────┐
-  │              API Gateway (:8080)                       │
-  │   JWT 透传 · 限流(token bucket) · Redis 缓存           │
-  │   Prometheus 指标 · CORS · 反向代理                    │
-  └──┬──────────┬──────────┬──────────┬──────────────────┘
-     │          │          │          │
-     ▼          ▼          ▼          ▼
-  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────────────────────┐
-  │ User │ │ Data │ │Payment│ │ Recommendation(:8084)│
-  │:8083 │ │:8082 │ │:8084 │ │ CGO -> C++ volunteer-  │
-  │JWT   │ │PG+ES │ │适配器 │ │ matcher.so            │
-  │RBAC  │ │+Redis│ │模式   │ │ + ML (Gorgonia)       │
-  └──────┘ └──────┘ └──────┘ └──────────────────────┘
-                                ┌──────────────────┐
-                                │Monitoring(:8080) │
-                                │ 告警+指标(未完成) │
-                                └──────────────────┘
-
-
-2. 各模块职责详述
------------------
-
-2.1 api-gateway (API 网关)
-   - 反向代理：将 /v1/{service} 路由到对应后端服务
-   - JWT 透传：从请求头提取 user_id/username/role 并转发
-   - 令牌桶限流：每 IP 10 req/s，burst 20
-   - Redis 缓存中间件：GET 请求自动缓存
-   - Prometheus 指标：请求计数 + 延迟直方图
-   - CORS + 安全头 + 输入验证 + Request ID
-   - 负载均衡器结构体存在但未与 ProxyManager 集成
-   - 826 行单体 main.go，代理/限流/缓存/指标全部耦合
-
-2.2 data-service (数据服务) — 最成熟
-   架构: handler -> service -> DB
-   存储: PostgreSQL (GORM) + Redis + Elasticsearch
-   功能:
-   - 大学信息 CRUD + 搜索 (中文分词 ik_max_word)
-   - 专业信息 CRUD + 搜索
-   - 录取数据查询 + 趋势分析 + 预测
-   - 全局搜索 + 自动补全 + 热词
-   - 志愿匹配算法 (服务端)
-   - 性能监控 + 缓存管理
-   - 数据库迁移管理
-   中间件: Logger/Recovery/CORS/Security/RateLimit/分页验证/性能监控
-
-2.3 user-service (用户服务)
-   - 注册/登录/Token 刷新/登出
-   - RBAC 权限模型 (user -> role -> permission)
-   - JWT 认证中间件 + 权限中间件 (RequirePermission)
-   - 设备指纹 (CGO 链接 OpenSSL + device-fingerprint C++ 模块)
-   - 自有 auth 实现，与 pkg/auth 并存
-   - CORS 被注释(由 Gateway 处理)
-
-2.4 payment-service (支付服务)
-   - 适配器模式：微信支付/支付宝/银联 (adapters/)
-   - 支付单创建/查询/关闭/退款/回调
-   - 会员系统 (整个被注释)
-   - 适配器工厂 (被注释)
-   - Repository 模式 (payment_repository.go)
-   - Stub 适配器用于未实现的支付渠道
-
-2.5 recommendation-service (推荐服务)
-   - CGO -> C++ 混合推荐引擎 (hybrid_bridge.go)
-   - ML 引擎 (Gorgonia + tensor)
-   - 回退链: EnhancedRule -> SimpleRule -> Mock
-   - 缓存: Redis 优先, 内存回退
-   - 数据同步服务 (从 data-service 拉数据)
-   - 权重配置服务
-   - 特征工程模块 (advanced_feature_engineering.go)
-
-2.6 monitoring-service (监控服务) — 骨架
-   - Redis 地址硬编码 localhost:6379
-   - 端口硬编码 :8080 (与 api-gateway 冲突)
-   - 仅 /metrics (空壳) 和 /alerts 两个端点
-   - 未被 docker-compose 编排
-   - 使用 zap 日志库 (其他服务全用 logrus)
-
-2.7 C++ 模块 (cpp-modules/)
-   - device-fingerprint: 设备识别和加密 (OpenSSL)
-   - volunteer-matcher: 录取预测算法 (CMake, OpenSSL, JsonCpp)
-   - license: 许可证验证
-   均独立 CMake 构建，产出 .so/.a
-
-2.8 Frontend (Vue 3 + TypeScript + Vite)
-   路由: 11 条 (会员路由被注释，/simulation 和 /recommendation 共享组件)
-   Store: user / recommendation / payment (payment 全桩代码)
-   API 层: Axios 实例 + Token 自动刷新 + 并发 401 排队
-   组件: 顶部导航 + 卡片 + 对比弹窗 + 虚拟列表 + 骨架屏
-   样式: Tailwind CSS + Element Plus + 自定义 design-system.css
-   测试: Vitest + 属性测试 (fast-check, 8 个场景)
-
-
-3. 数据流向
------------
-
-  用户 -> Frontend(nginx:80) -> /api/data/v1/...     -> API Gateway(:8080)
-                                  -> /v1/data/...        -> data-service(:8082)
-
-  用户 -> Frontend(nginx:80) -> /api/user/v1/...     -> API Gateway(:8080)
-                                  -> /v1/users/...       -> user-service(:8083)
-
-  用户 -> Frontend(nginx:80) -> /api/recommendation/v1/... -> API Gateway(:8080)
-                                  -> /v1/recommendations/... -> rec-svc(:8084)
-
-  关键问题:
-  - 前端 API 路径: /api/{service}/v1/{resource}
-  - Gateway 代理剥离前缀后: /v1/{resource}
-  - 各服务注册路径: /api/v1/{resource}
-  存在两层前缀不一致，目前靠反向代理的 TrimPrefix 勉强工作。
-
-
-4. 依赖关系
------------
-
-go.work (Go 1.25.5) 注册 17 个 module:
-  . (root)
-  pkg/auth, pkg/database, pkg/errors, pkg/logger,
-  pkg/middleware, pkg/models, pkg/scripts, pkg/utils
-  services/api-gateway, services/data-service,
-  services/monitoring-service,
-  services/monitoring-service/internal/alerts,
-  services/monitoring-service/internal/metrics,
-  services/payment-service, services/recommendation-service,
-  services/user-service
-
-  go.work 遗漏 (目录存在但未注册):
-  pkg/cache, pkg/discovery, pkg/health, pkg/metrics,
-  pkg/response, pkg/shared, pkg/testutil
-
-4.0 模块命名空间碎片化 (关键问题)
-  pkg 目录使用 3 种不同的 module path 前缀:
-  - github.com/oktetopython/gaokao/pkg/*      (auth, database, errors, logger, middleware, utils)
-  - github.com/oktetopython/gaokao/pkg/*  (api-gateway 和 payment-service 的 replace 指令)
-  - github.com/gaokao/shared        (shared 包专用)
-  - github.com/oktetopython/gaokao/pkg/scripts  (scripts 包专用)
-  这意味着每个服务的 go.mod 必须使用 replace 指令来映射 import 路径。
-  go.work 在开发时缓解了此问题，但命名不统一是严重技术债务。
-
-4.1 共享包实际使用情况
-  17 个 pkg 目录中仅 5 个被服务实际 import:
-  已使用: auth, errors, middleware, database, logger
-  未使用: cache, discovery, health, metrics, models, api, response,
-         scripts, shared, testutil, utils
-  (其中 api/response/models 为空或仅有占位文件)
-
-4.2 包编译状态
-  - pkg/utils/password_validator.go: import "github.com/gaokao/pkg/errors" (模块路径不存在，应为 gaokaohub)，且缺少 "fmt" import
-  - pkg/metrics/business.go:88 包含中文字符 "极"，语法错误
-  - pkg/database/pool.go: createPostgresConnection 返回 stub 实现 (未完成)
-  - pkg/models/: 仅有 go.mod，无任何 .go 源文件
-  - pkg/api/: 空目录
-  - pkg/response/: 仅有 test.txt，无代码
-
-4.3 重复实现
-  - 错误系统: pkg/errors 中 ErrorResponse 和 APIError 两套并存
-  - 缓存系统: pkg/cache 中 CacheManager 和 MultiLevelCache 两套并存
-  - 配置: pkg/database 中 connection.go 和 pool.go 有重复的 PoolConfig
-  - JWT 认证: pkg/auth 和 pkg/middleware 各有实现
-
-4.4 包可达性
-  cache, discovery, metrics, health, testutil 无 go.mod，
-  不是独立 Go module，无法被其他 module require。
-
-  外部依赖特征:
-  - 所有 Go 服务: Gin + logrus
-  - data-service 额外: Elasticsearch v7 (olivere/elastic)
-  - recommendation-service 额外: Gorgonia + tensor (ML)
-  - user-service 额外: CGO -> OpenSSL + device-fingerprint
-  - monitoring-service: zap (与其他服务不同的日志库)
-
-
-5. 设计模式使用
----------------
-
-  模式              位置                                    评价
-  ─────────────────────────────────────────────────────────────────
-  API Gateway        api-gateway/main.go:467-678            核心模式，但耦合在单文件
-  适配器             payment-service/internal/adapters/     结构正确，未接入真实 SDK
-  工厂               payment-service/internal/adapters/     被注释未使用
-                   factory.go
-  策略 (缓存)        recommendation-service/internal/       Redis/Memory 双实现
-                   cache/
-  回退链             recommendation-service/main.go:70-87   EnhancedRule->SimpleRule->Mock
-  令牌桶限流         api-gateway/main.go:223-273            自实现，无持久化
-  Repository         payment-service/internal/repository/   仅 payment-service 用
-  Bridge (CGO)       recommendation-service/pkg/            Go<->C++ 桥接，含 mock
-                   cppbridge/
-  单例 (Config)      各服务 config.Load()                    sync.Once，但每个服务独立实现
-  建造者             errors/api_error.go                    WithRequestID/WithRetryAfter 链式
-
-
-6. 架构问题 (按严重程度)
--------------------------
-
-  严重
-  ----
-  1. 模块命名空间碎片化
-     pkg 目录使用 4 种不同的 module path 前缀 (gaokaohub/oktetopython/gaokao/gaokaohub-gaokao)
-     每个服务需要 replace 指令来解析 import，脆弱且混乱
-
-  2. 端口冲突
-     docker-compose: payment-service 和 recommendation-service 同为 8084
-     monitoring-service (:8080) 与 api-gateway (:8080) 冲突
-     代码默认端口: api-gateway=8080, data=10082, user=10081,
-                   rec=10083, payment=10084, monitoring=8080
-
-  3. go.work 不完整
-     7 个 pkg 子目录未被 workspace 注册，import 这些包在多 module 构建时会失败
-     缺失: cache, discovery, health, metrics, response, shared, testutil
-     5 个 pkg 无 go.mod (cache/discovery/metrics/health/testutil)，无法被其他 module require
-
-  4. 编译错误
-     pkg/utils/password_validator.go: import 不存在的模块路径 + 缺少 fmt import
-     pkg/metrics/business.go:88: 中文字符导致的语法错误
-     这两个包在 go build ./... 时会编译失败
-
-  5. 前端<->后端路径不一致
-     前端: /api/{service}/v1/{resource}
-     Gateway 代理: /v1/{resource}
-     后端注册: /api/v1/{resource}
-     靠 TrimPrefix 勉强工作，脆弱且难调试
-
-  中等
-  ----
-  4. 共享包利用率低
-     pkg/auth/ 和 pkg/errors/ 设计完善，但只有 api-gateway 使用
-     user-service 有自有的 auth 实现 (与 pkg/auth 功能重叠)
-     data-service 未使用 pkg/errors
-
-  5. api-gateway 单体化
-     826 行 main.go，代理/限流/缓存/指标/中间件全部糅合
-
-  6. 服务间通信无弹性
-     无熔断器、无重试、无服务发现
-     pkg/discovery/consul.go 存在但未使用
-
-  7. 配置分散
-     每个服务自有一套 config 结构体和加载逻辑，无统一配置中心
-
-  8. payment-service/Dockerfile EXPOSE 8084 (与 recommendation 冲突)
-     monitoring-service Redis 地址硬编码 localhost:6379
-     monitoring-service 端口硬编码 :8080
-
-  轻微
-  ----
-  9. 数据库迁移嵌在 database.NewDB() 启动路径中
-     包含业务数据 UPDATE (专业热度分数硬编码)，不属于迁移层
-
-  10. CORS 实现重复 3 处
-      api-gateway + data-service + recommendation-service
-      应统一由 Gateway 处理
-
-  11. monitoring-service 占位状态
-      未被 docker-compose 编排，无实际功能
-
-  12. payment-service 会员模块整个被注释
-      支付适配器未接入真实 SDK
-
-  13. recommendation-service/config.go:47-48
-      有乱码行 "type极速赛车开奖直播记录" 和重复字段 MaxSize
-
-  14. data-service 热度分数 UPDATE 混在 migrate() 中
-      (database.go:253-258)
-
-
-7. 现存问题清单
----------------
-
-  [严重] 模块命名空间碎片化: 4 种不同 module path 前缀
-  [严重] pkg/utils/password_validator.go 编译错误 (import 不存在)
-  [严重] pkg/metrics/business.go:88 中文字符语法错误
-  [严重] payment/Dockerfile EXPOSE 8084 (与 recommendation 冲突)
-  [严重] docker-compose.yml payment + recommendation 同端口 8084
-  [严重] monitoring 端口 8080 硬编码 (与 api-gateway 冲突)
-  [严重] go.work 缺少 7 个 pkg module
-  [严重] 5 个 pkg 无 go.mod，无法被其他 module require
-  [中等] 前端路径 vs Gateway 路径 vs 后端路径三层不一致
-  [中等] 多个 CORS 实现 (api-gateway/data-service/rec-service)
-  [中等] 多个 auth 实现 (pkg/auth + user-service 内建)
-  [中等] pkg/errors 中 ErrorResponse 和 APIError 两套错误系统并存
-  [中等] pkg/cache 中 CacheManager 和 MultiLevelCache 重复实现
-  [中等] pkg/database 中 Postgres 连接为 stub (pool.go)
-  [中等] config.go:47 乱码 "type极速赛车开奖直播记录"
-  [中等] config.go:47-48 MaxSize 字段重复定义
-  [轻微] pkg/api/, pkg/response/, pkg/models/ 为空或仅有占位文件
-  [轻微] database.go:253-258 热度 UPDATE 混在迁移中
-  [轻微] monitoring Redis 地址硬编码 localhost:6379
-  [轻微] monitoring 未被 docker-compose 编排
-  [轻微] payment 会员/适配器被注释，未实现
-  [轻微] frontend services/ 和 composables/ 目录为空占位
-  [轻微] frontend /simulation 和 /recommendation 共享同一组件
-
-
-8. 优化方向
------------
-
-  短期 (R2 修复)
-  - 统一模块命名空间: 将 pkg 下所有 module path 收敛到单一前缀 (如 github.com/oktetopython/gaokao/pkg/...)
-  - 修复编译错误: pkg/utils 的 import + pkg/metrics 的中文字符
-  - 删除空包或填充: api, response, models 要么删除要么给出实际代码
-  - 为未注册 pkg 补齐 go.mod 或从 go.work 移除
-  - 统一端口分配，修正 docker-compose 和代码默认值
-  - 将 CORS 集中到 api-gateway，下游服务移除 CORS 中间件
-  - 修复 config.go 乱码和重复字段
-  - 统一前后端路径约定
-  - 消除 pkg/errors 中双错误系统，保留 ErrorResponse/ErrorCode
-
-  中期 (架构增强)
-  - 拆分 api-gateway main.go: proxy/router/limiter/cache 各自独立包
-  - 引入统一错误处理: 所有服务使用 pkg/errors
-  - 统一配置管理: 提取公共 Config 基类型
-  - 消除重复: 合并 CacheManager/MultiLevelCache，移除冗余 PoolConfig
-  - 激活 pkg/discovery 或移除，不做半成品
-  - 服务间调用加超时 + 重试 + 熔断
-  - 完成 pkg/database Postgres 连接实现 (当前为 stub)
-
-  长期 (平台化)
-  - 引入消息队列 (异步推荐生成、大数据导入)
-  - 分布式追踪 (OpenTelemetry)
-  - 数据库迁移从启动路径剥离为独立 migrate 子命令
-  - monitoring-service: 补全或移除
-  - payment-service: 接真实支付 SDK 或移除会员模块
-
-
-9. 前端架构要点 (补充)
-----------------------
-
-  亮点
-  - Token 刷新机制: 401 自动 refresh + 并发请求排队
-  - 中英文双重类型系统 (中文标签 <-> 英文枚举)
-  - 三层错误处理: Axios 拦截器 + ErrorBoundary + Vue errorHandler
-  - 属性测试覆盖 8 个场景 (fast-check)
-  - 虚拟列表 (VirtualList.vue) + 骨架屏 (SkeletonCard/SkeletonList)
-
-  问题
-  - services/ 和 composables/ 目录为空占位
-  - payment store 全为 TODO 桩代码
-  - /recommendation 和 /simulation 共享组件 (SEO/语义不理想)
-  - /login 和 /register 共享组件
-  - Vite 代理指向 localhost:10080，与 docker-compose 8080 不一致
-
-
-10. 推进建议
-------------
-
-  1. 立即: 解决端口冲突 + go.work 完整性问题 (影响构建正确性)
-  2. 本周: 统一 CORS/错误处理/配置模式，消除跨服务不一致
-  3. 本月: api-gateway 拆分解耦，monitoring-service 决定去留
-  4. 下月: 消息队列 + 分布式追踪 + C++ 模块 CI 集成 (Option A 已落地)
+# 高考志愿填报系统 架构分析报告（现状修订版）
+
+修订日期: 2026-04-25  
+修订范围: 基于当前仓库代码和配置文件的静态核查（README、go.work、docker-compose、services/*、frontend/src/api）
+
+## 1. 执行摘要
+
+你感受到的“混乱”来自两类问题叠加：
+
+1. 原推进计划要解决的架构治理问题  
+   例如 `replace` 治理、workspace 一致性、跨服务依赖收敛。
+2. 推进过程中暴露的实现一致性问题  
+   例如网关历史路径兼容逻辑膨胀、测试断言与实现偏移、服务行为与文档不一致。
+
+结论：当前并非“计划失焦”，而是“治理主线 + 实施期偏差”同时存在，需要分层治理。
+
+## 2. 架构总览与拓扑
+
+系统形态为：`Vue3 前端 + API Gateway + 多 Go 微服务 + pkg 共享库 + C++ 能力模块`。
+
+当前端口（以 `docker-compose.yml` 为准）：
+
+- api-gateway: `8080`
+- data-service: `8082`
+- user-service: `8083`
+- recommendation-service: `8084`
+- payment-service: `8085`
+- monitoring-service: `8086`
+- postgres: `5433 -> 5432`
+- redis: `6380 -> 6379`
+
+说明：旧报告中的 payment/recommendation 端口冲突、monitoring/gateway 端口冲突已不成立。
+
+## 3. 主要模块职责
+
+### 3.1 frontend
+
+- 基于 Vue 3 + Vite + TypeScript。
+- 通过 Axios 封装统一请求，具备 token 自动刷新与并发 401 排队机制。
+- API 路径主要走 `/api/v1/*`（见 `frontend/src/api/*.ts`）。
+
+### 3.2 api-gateway
+
+- 统一入口，承担反向代理、限流、指标、缓存、中间件编排。
+- 维护多套历史别名路径兼容，并最终重写到后端服务路径。
+- 问题：`main.go` 体量大，网关策略与路由重写耦合较高。
+
+### 3.3 data-service
+
+- 数据域主服务，承载院校、专业、录取等核心查询能力。
+- 具备数据库与缓存集成能力，是最核心的业务服务之一。
+
+### 3.4 user-service
+
+- 认证、用户、权限相关能力。
+- 与 `pkg/auth` 在职责上存在潜在重叠，需要边界澄清。
+
+### 3.5 payment-service
+
+- 支付域能力（订单、回调等），部分扩展能力存在阶段性未启用/注释代码。
+
+### 3.6 recommendation-service
+
+- 推荐域能力，包含 C++ 桥接与回退策略链。
+- 在外部依赖异常时可降级，具备一定韧性。
+
+### 3.7 monitoring-service
+
+- 指标和告警服务，已纳入 compose 编排，端口为 `8086`。
+- 日志技术栈与其他服务存在不一致（zap vs logrus）。
+
+### 3.8 pkg/*
+
+- 共享基础能力层，当前目录下模块已普遍具备 `go.mod`。
+- `go.work` 已注册主要 `pkg/*` 与服务模块，基础可达性较旧版本明显改善。
+
+## 4. 数据流向
+
+主链路：
+
+`Frontend -> API Gateway -> Domain Service -> Database/Redis`
+
+推荐链路：
+
+`Frontend -> Gateway -> recommendation-service -> C++ bridge -> fallback path`
+
+网关同时承担横切关注点：
+
+- 认证上下文透传
+- 限流
+- 指标采集
+- 路径重写与兼容
+
+## 5. 依赖关系与模块治理现状
+
+### 5.1 已完成或明显改善
+
+1. `go.work` 已注册 `pkg/cache`、`pkg/discovery`、`pkg/health`、`pkg/metrics`、`pkg/shared`、`pkg/testutil` 等模块。  
+2. `pkg` 下模块化完整度较之前提升，多数功能性子目录已有 `go.mod`；但 `pkg/api/` 为空目录、`pkg/response/` 仅有占位文件，尚不构成可复用功能包。  
+3. `docker-compose` 服务端口冲突已解除。
+
+### 5.2 仍待统一
+
+1. 当前仓库正确命名空间为 `github.com/oktetopython/gaokao/*`，不需要迁移到其他前缀。  
+2. `replace` 指令并非仅出现在两个服务：当前共 16 条，分布在 6 个 `go.mod` 中（root、api-gateway、data-service、user-service、payment-service、monitoring-service）。  
+3. `services/recommendation-service/go.mod` 当前未使用 `replace` 指令；服务间治理状态不一致，增加维护复杂度。
+
+### 5.3 CORS 分布现状（冗余实现）
+
+1. 网关层已启用统一 CORS，并在代理层清理后端返回的 CORS 头。  
+2. 3/5 个后端业务服务仍各自启用 CORS（`data-service`、`payment-service`、`recommendation-service`）。  
+3. `user-service` 已注释 CORS 中间件。  
+4. 现状属于“网关统一治理 + 下游重复实现并存”，是客观设计冗余，建议收敛。
+
+## 6. 设计模式使用评估
+
+1. API Gateway 模式  
+   网关职责明确，但实现集中在单文件，维护成本高。
+2. Middleware Chain  
+   鉴权、限流、日志、指标等横切逻辑通过中间件组织，方向正确。
+3. Adapter/Bridge  
+   支付适配器与推荐 C++ 桥接体现适配思想。
+4. Fallback/降级策略  
+   推荐服务具备回退路径，提升可用性。
+
+总体评价：模式选型合理，主要短板在“实现结构化程度”而非“模式缺失”。
+
+## 7. 当前架构问题（按优先级）
+
+### P0（必须优先处理）
+
+1. `replace` 指令在多模块分散存在（16 条 / 6 个 go.mod），影响构建一致性与可移植性。  
+2. 网关历史路径兼容逻辑较重，路由规则复杂，回归风险高。  
+3. CORS 策略在网关与下游服务重复实现，治理边界不清晰。
+
+### P1（应在近期迭代处理）
+
+1. 网关单体 `main.go` 过大，建议拆分为 router/rewriter/proxy/middleware 子模块。  
+2. 认证与错误处理在服务间仍有重复实现倾向，需要统一契约。  
+3. 监控服务日志栈与其他服务不一致，运维观察面不统一。
+
+### P2（中期优化）
+
+1. 建立跨服务 API 契约测试，避免“实现变化先于测试更新”。  
+2. 梳理配置加载模式，减少服务各自维护配置模板带来的漂移。
+
+## 8. 计划相关 vs 推进暴露问题
+
+### 8.1 计划主线问题（架构治理债务）
+
+- `replace` 指令清理
+- workspace/模块依赖一致性
+- CORS 责任边界收敛（网关统一，下游去冗余）
+
+### 8.2 推进暴露问题（实施一致性债务）
+
+- 网关路径兼容逻辑持续堆叠
+- 测试断言与当前实现不同步
+- 局部功能“半启用”导致行为预期不稳定
+
+## 9. 优化方向与落地建议
+
+### 短期（1-2 个迭代）
+
+1. 冻结并遵循现有正确模块前缀 `github.com/oktetopython/gaokao/*`。  
+2. 分批清理 6 个模块中的 `replace` 指令，优先处理服务模块，再处理 root/monitoring 内部替换。  
+3. 将 CORS 策略收敛到网关，逐步移除下游服务重复 CORS 中间件。  
+4. 先补网关路由契约测试，再重构路由重写逻辑。
+
+### 中期（2-4 个迭代）
+
+1. 拆分网关核心模块，降低单文件耦合。  
+2. 统一错误码、认证上下文、日志字段规范。  
+3. 建立跨服务接口变更检查（OpenAPI diff/契约测试）。
+
+### 长期
+
+1. 引入更完善可观测性（trace + 指标关联）。  
+2. 推进配置与治理标准化，减少新服务接入成本。
+
+## 10. 本次修订对旧报告的处理说明
+
+已删除或修正的过时结论：
+
+1. payment/recommendation 端口冲突。  
+2. monitoring 与 gateway 端口冲突。  
+3. `go.work` 缺失多个 pkg 模块。  
+4. `pkg/metrics` 中文字符导致语法错误、`pkg/utils` 缺少 `fmt` 等历史编译问题（当前代码中已修复）。
+
+保留并强化的核心问题：
+
+1. 多模块 `replace` 依赖未完全清理。  
+2. 网关路径兼容逻辑过重和结构性拆分不足。  
+3. CORS 重复实现带来的治理边界冗余。
+
+## 11. 验证说明
+
+本次为静态架构核查。尝试执行 Go 构建时，当前执行环境返回 `go: command not found`，因此未在本环境完成动态编译验证。  
+建议在已安装 Go 工具链的终端执行：
+
+```bash
+go version
+go work sync
+cd services/api-gateway && go build ./...
+cd ../payment-service && go build ./...
+```

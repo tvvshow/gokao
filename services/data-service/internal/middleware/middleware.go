@@ -51,6 +51,31 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 	}
 }
 
+// CORS 跨域中间件
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
+
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Request-ID")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-ID")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Max-Age", "86400")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 // RateLimit 限流中间件
 func RateLimit(logger *logrus.Logger) gin.HandlerFunc {
 	// 简单的内存限流实现，生产环境建议使用Redis

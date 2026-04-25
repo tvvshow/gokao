@@ -85,6 +85,7 @@ func main() {
 	// 添加中间件
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(middleware.CORS())
 	router.Use(middleware.RequestID())
 	router.Use(middleware.RateLimit(cfg.RateLimit))
 
