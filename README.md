@@ -97,12 +97,6 @@ cd services/api-gateway
 go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
 ```
 
-## 治理与约束
-
-- 项目宪章: `.specify/memory/constitution.md`
-- 约束协议: `docs/Gaokao_Constraint_Protocol_v1.0.md`
-- 所有变更需满足“最优秀原则 / 有即复用原则 / 不允许简化原则”，并通过质量闸门后合并。
-
 ## 贡献说明
 
 提交前建议至少执行:
