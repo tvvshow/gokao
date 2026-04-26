@@ -147,6 +147,19 @@ logs/
 temp/
 tmp/
 
+# Local AI / workflow tooling directories (workspace-only)
+.agents/
+.claude/
+.codex/
+.specify/
+.spec-workflow/
+.kiro/
+.ace-tool/
+.augment/
+.qoder/
+.trae/
+.iflow/
+
 # Docker
 .dockerignore
 
@@ -245,6 +258,22 @@ frontend/out/
 # Build outputs
 bin/
 *.exe
+
+# Service local binaries (no extension)
+services/api-gateway/api-gateway
+services/data-service/data-service
+services/user-service/user-service
+services/payment-service/payment-service
+services/recommendation-service/recommendation-service
+services/monitoring-service/monitoring-service
+
+# C++ example/test build outputs
+cpp-modules/device-fingerprint/c_interface_example
+cpp-modules/device-fingerprint/fingerprint_example
+cpp-modules/device-fingerprint/device_fingerprint_tests
+
+# Frontend packaged artifact
+frontend/dist.tar.gz
 
 # Secrets and configuration
 *.env
