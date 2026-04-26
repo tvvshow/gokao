@@ -4,7 +4,13 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 )
+
+func resetConfigSingleton() {
+	once = sync.Once{}
+	instance = nil
+}
 
 func TestLoad(t *testing.T) {
 	// 保存原始环境变量
@@ -80,8 +86,7 @@ func TestLoadFromEnv(t *testing.T) {
 	}()
 
 	// 重新加载配置（清除单例）
-	once = sync.Once{}
-	instance = nil
+	resetConfigSingleton()
 
 	config, err := Load()
 	if err != nil {
@@ -110,8 +115,7 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 
 	// 清除单例以不影响其他测试
-	once = sync.Once{}
-	instance = nil
+	resetConfigSingleton()
 }
 
 func TestGetInstance(t *testing.T) {
@@ -165,8 +169,7 @@ func TestReload(t *testing.T) {
 
 	// 清除环境变量和单例
 	os.Unsetenv("SERVER_PORT")
-	once = sync.Once{}
-	instance = nil
+	resetConfigSingleton()
 }
 
 func TestCPPConfigValidation(t *testing.T) {
@@ -217,6 +220,54 @@ func TestRedisConfigValidation(t *testing.T) {
 	}
 }
 
+func TestLLMConfigDefaultsAndEnv(t *testing.T) {
+	os.Setenv("LLM_ENABLED", "true")
+	os.Setenv("LLM_BASE_URL", "http://localhost:11434/v1")
+	os.Setenv("LLM_API_KEY", "test-key")
+	os.Setenv("LLM_MODEL", "gpt-4o-mini")
+	os.Setenv("LLM_TIMEOUT", "20s")
+	os.Setenv("LLM_MAX_TOKENS", "1024")
+	os.Setenv("LLM_TEMPERATURE", "0.6")
+	defer func() {
+		os.Unsetenv("LLM_ENABLED")
+		os.Unsetenv("LLM_BASE_URL")
+		os.Unsetenv("LLM_API_KEY")
+		os.Unsetenv("LLM_MODEL")
+		os.Unsetenv("LLM_TIMEOUT")
+		os.Unsetenv("LLM_MAX_TOKENS")
+		os.Unsetenv("LLM_TEMPERATURE")
+		resetConfigSingleton()
+	}()
+
+	resetConfigSingleton()
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+
+	if config.LLM == nil {
+		t.Fatal("LLM配置为空")
+	}
+	if !config.LLM.Enabled {
+		t.Fatal("期望 LLM 已启用")
+	}
+	if config.LLM.BaseURL != "http://localhost:11434/v1" {
+		t.Fatalf("unexpected base url: %s", config.LLM.BaseURL)
+	}
+	if config.LLM.APIKey != "test-key" {
+		t.Fatalf("unexpected api key: %s", config.LLM.APIKey)
+	}
+	if config.LLM.Timeout != 20*time.Second {
+		t.Fatalf("unexpected timeout: %s", config.LLM.Timeout)
+	}
+	if config.LLM.MaxTokens != 1024 {
+		t.Fatalf("unexpected max tokens: %d", config.LLM.MaxTokens)
+	}
+	if config.LLM.Temperature != 0.6 {
+		t.Fatalf("unexpected temperature: %v", config.LLM.Temperature)
+	}
+}
+
 func TestLogConfigValidation(t *testing.T) {
 	config, err := Load()
 	if err != nil {
@@ -253,8 +304,7 @@ func TestLogConfigValidation(t *testing.T) {
 // 基准测试
 func BenchmarkLoad(b *testing.B) {
 	// 清除单例
-	once = sync.Once{}
-	instance = nil
+	resetConfigSingleton()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

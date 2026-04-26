@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/llm"
+	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // RecommendationCache 推荐缓存
 type RecommendationCache struct {
-	mu    sync.RWMutex
-	data  map[string]*CacheEntry
+	mu     sync.RWMutex
+	data   map[string]*CacheEntry
 	expiry time.Duration
 }
 
@@ -45,33 +46,34 @@ type ConfidenceCalculator struct {
 
 // BatchProcessor 批处理器
 type BatchProcessor struct {
-	maxWorkers     int
-	batchSize      int
-	timeout        time.Duration
-	retryAttempts  int
+	maxWorkers    int
+	batchSize     int
+	timeout       time.Duration
+	retryAttempts int
 }
 
 // SimpleRecommendationHandler 简化的推荐处理器
 type SimpleRecommendationHandler struct {
-	bridge            cppbridge.HybridRecommendationBridge
-	cache             cache.CacheInterface
-	explainer         *RecommendationExplainer
-	confidenceCalc    *ConfidenceCalculator
-	batchProcessor    *BatchProcessor
-	performanceStats  *PerformanceStats
-	mu                sync.RWMutex
+	bridge           cppbridge.HybridRecommendationBridge
+	cache            cache.CacheInterface
+	explainer        *RecommendationExplainer
+	confidenceCalc   *ConfidenceCalculator
+	batchProcessor   *BatchProcessor
+	performanceStats *PerformanceStats
+	analyzer         llm.Analyzer
+	mu               sync.RWMutex
 }
 
 // PerformanceStats 性能统计
 type PerformanceStats struct {
-	mu               sync.RWMutex
-	totalRequests    int64
-	successRequests  int64
-	failedRequests   int64
-	totalLatency     time.Duration
-	cacheHits        int64
-	cacheMisses      int64
-	lastUpdate       time.Time
+	mu              sync.RWMutex
+	totalRequests   int64
+	successRequests int64
+	failedRequests  int64
+	totalLatency    time.Duration
+	cacheHits       int64
+	cacheMisses     int64
+	lastUpdate      time.Time
 }
 
 // NewRecommendationCache 创建推荐缓存
@@ -131,7 +133,11 @@ func NewBatchProcessor(maxWorkers, batchSize int, timeout time.Duration) *BatchP
 }
 
 // NewSimpleRecommendationHandler 创建新的简化推荐处理器
-func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge, cacheInterface cache.CacheInterface) *SimpleRecommendationHandler {
+func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge, cacheInterface cache.CacheInterface, analyzer llm.Analyzer) *SimpleRecommendationHandler {
+	if analyzer == nil {
+		analyzer = llm.NewLocalFallbackAnalyzer()
+	}
+
 	return &SimpleRecommendationHandler{
 		bridge:           bridge,
 		cache:            cacheInterface,
@@ -139,6 +145,7 @@ func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge,
 		confidenceCalc:   NewConfidenceCalculator(),
 		batchProcessor:   NewBatchProcessor(10, 50, 30*time.Second),
 		performanceStats: &PerformanceStats{lastUpdate: time.Now()},
+		analyzer:         analyzer,
 	}
 }
 
@@ -150,21 +157,21 @@ type ErrorResponse struct {
 
 // StudentInfo 前端学生信息结构
 type StudentInfo struct {
-	Score       *int                   `json:"score"`
-	Province    string                 `json:"province"`
-	ScienceType string                 `json:"scienceType"`
-	Year        int                    `json:"year"`
-	Rank        *int                   `json:"rank"`
-	Preferences StudentPreferences     `json:"preferences"`
+	Score       *int               `json:"score"`
+	Province    string             `json:"province"`
+	ScienceType string             `json:"scienceType"`
+	Year        int                `json:"year"`
+	Rank        *int               `json:"rank"`
+	Preferences StudentPreferences `json:"preferences"`
 }
 
 // StudentPreferences 学生偏好设置
 type StudentPreferences struct {
-	Regions           []string `json:"regions"`
-	MajorCategories   []string `json:"majorCategories"`
-	UniversityTypes   []string `json:"universityTypes"`
-	RiskTolerance     string   `json:"riskTolerance"`
-	SpecialRequirements string `json:"specialRequirements"`
+	Regions             []string `json:"regions"`
+	MajorCategories     []string `json:"majorCategories"`
+	UniversityTypes     []string `json:"universityTypes"`
+	RiskTolerance       string   `json:"riskTolerance"`
+	SpecialRequirements string   `json:"specialRequirements"`
 }
 
 // APIResponse 统一API响应格式
@@ -182,15 +189,15 @@ type RecommendationData struct {
 
 // FrontendRecommendation 前端推荐格式
 type FrontendRecommendation struct {
-	ID                  string                    `json:"id"`
-	University          FrontendUniversity        `json:"university"`
-	Type                string                    `json:"type"`
+	ID                   string                   `json:"id"`
+	University           FrontendUniversity       `json:"university"`
+	Type                 string                   `json:"type"`
 	AdmissionProbability int                      `json:"admissionProbability"`
-	MatchScore          int                       `json:"matchScore"`
-	RecommendReason     string                    `json:"recommendReason"`
-	RiskLevel           string                    `json:"riskLevel"`
-	SuggestedMajors     []FrontendMajor          `json:"suggestedMajors"`
-	HistoricalData      []FrontendHistoricalData `json:"historicalData"`
+	MatchScore           int                      `json:"matchScore"`
+	RecommendReason      string                   `json:"recommendReason"`
+	RiskLevel            string                   `json:"riskLevel"`
+	SuggestedMajors      []FrontendMajor          `json:"suggestedMajors"`
+	HistoricalData       []FrontendHistoricalData `json:"historicalData"`
 }
 
 // FrontendUniversity 前端大学格式
@@ -272,9 +279,9 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 		h.performanceStats.mu.Lock()
 		h.performanceStats.cacheHits++
 		h.performanceStats.mu.Unlock()
-		
+
 		// 转换为前端格式
-		frontendData := h.convertToFrontendFormat(cachedResponse)
+		frontendData := h.buildRecommendationData(c.Request.Context(), &studentInfo, request, cachedResponse)
 		c.JSON(http.StatusOK, APIResponse{
 			Success: true,
 			Data:    frontendData,
@@ -306,7 +313,7 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	h.updatePerformanceStats(false, false, time.Since(startTime))
 
 	// 转换为前端格式
-	frontendData := h.convertToFrontendFormat(response)
+	frontendData := h.buildRecommendationData(c.Request.Context(), &studentInfo, request, response)
 	c.JSON(http.StatusOK, APIResponse{
 		Success: true,
 		Data:    frontendData,
@@ -486,8 +493,8 @@ func (h *SimpleRecommendationHandler) ClearCache(c *gin.Context) {
 	}
 
 	result := map[string]interface{}{
-		"status": "success",
-		"message": "缓存已清空",
+		"status":    "success",
+		"message":   "缓存已清空",
 		"timestamp": time.Now().Unix(),
 	}
 
@@ -534,10 +541,10 @@ func (h *SimpleRecommendationHandler) UpdateModel(c *gin.Context) {
 	}
 
 	result := map[string]interface{}{
-		"status": "success",
-		"message": "模型更新成功",
+		"status":     "success",
+		"message":    "模型更新成功",
 		"model_path": modelPath,
-		"timestamp": time.Now().Unix(),
+		"timestamp":  time.Now().Unix(),
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -594,15 +601,15 @@ func (h *SimpleRecommendationHandler) validateAndSetDefaults(request *cppbridge.
 	if request.StudentID == "" {
 		return fmt.Errorf("student_id is required")
 	}
-	
+
 	if request.TotalScore <= 0 || request.TotalScore > 750 {
 		return fmt.Errorf("total_score must be between 1 and 750")
 	}
-	
+
 	if request.Province == "" {
 		return fmt.Errorf("province is required")
 	}
-	
+
 	// 设置默认值
 	if request.MaxRecommendations == 0 {
 		request.MaxRecommendations = 30
@@ -610,30 +617,30 @@ func (h *SimpleRecommendationHandler) validateAndSetDefaults(request *cppbridge.
 	if request.Algorithm == "" {
 		request.Algorithm = "hybrid"
 	}
-	
+
 	// 限制最大推荐数量
 	if request.MaxRecommendations > 100 {
 		request.MaxRecommendations = 100
 	}
-	
+
 	return nil
 }
 
 // generateCacheKey 生成缓存键
 func (h *SimpleRecommendationHandler) generateCacheKey(request *cppbridge.RecommendationRequest) string {
-	key := fmt.Sprintf("rec_%s_%d_%s_%s_%d", 
-		request.StudentID, 
-		request.TotalScore, 
-		request.Province, 
-		request.Algorithm, 
+	key := fmt.Sprintf("rec_%s_%d_%s_%s_%d",
+		request.StudentID,
+		request.TotalScore,
+		request.Province,
+		request.Algorithm,
 		request.MaxRecommendations)
-	
+
 	// 添加偏好哈希
 	if request.Preferences != nil {
 		prefHash := h.hashPreferences(request.Preferences)
 		key += "_" + prefHash
 	}
-	
+
 	return key
 }
 
@@ -654,12 +661,12 @@ func (h *SimpleRecommendationHandler) getFromCache(key string) *cppbridge.Recomm
 	if err != nil {
 		return nil
 	}
-	
+
 	var response cppbridge.RecommendationResponse
 	if err := json.Unmarshal(value, &response); err != nil {
 		return nil
 	}
-	
+
 	return &response
 }
 
@@ -670,7 +677,7 @@ func (h *SimpleRecommendationHandler) setToCache(key string, response *cppbridge
 	if err != nil {
 		return
 	}
-	
+
 	// 设置30分钟过期时间
 	h.cache.Set(ctx, key, data, 30*time.Minute)
 }
@@ -688,48 +695,48 @@ func (h *SimpleRecommendationHandler) generateEnhancedRecommendations(request *c
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 增强推荐结果
 	if response != nil && len(response.Recommendations) > 0 {
 		// 计算置信度
 		for i := range response.Recommendations {
 			confidence := h.calculateConfidence(&response.Recommendations[i], request)
 			response.Recommendations[i].Score = confidence
-			
+
 			// 生成推荐原因
 			reasons := h.generateRecommendationReasons(&response.Recommendations[i], request)
 			response.Recommendations[i].Reasons = reasons
 		}
-		
+
 		// 重新排序基于置信度
 		h.sortRecommendationsByConfidence(response.Recommendations)
 	}
-	
+
 	return response, nil
 }
 
 // calculateConfidence 计算置信度
 func (h *SimpleRecommendationHandler) calculateConfidence(rec *cppbridge.Recommendation, request *cppbridge.RecommendationRequest) float64 {
 	confidence := h.confidenceCalc.baseConfidence
-	
+
 	// 分数匹配度
 	scoreMatch := h.calculateScoreMatch(rec.AdmissionScore, request.TotalScore)
 	confidence += scoreMatch * 0.3
-	
+
 	// 地理位置偏好
 	locationMatch := h.calculateLocationMatch(rec.SchoolName, request)
 	confidence += locationMatch * 0.2
-	
+
 	// 历史成功率
 	historicalKey := fmt.Sprintf("%s_%s", rec.SchoolID, rec.MajorID)
 	if historical, exists := h.confidenceCalc.historicalData[historicalKey]; exists {
 		confidence += historical * 0.2
 	}
-	
+
 	// 风险调整
 	riskAdjustment := h.calculateRiskAdjustment(rec.RiskLevel)
 	confidence += riskAdjustment
-	
+
 	// 确保置信度在0-1范围内
 	if confidence > 1.0 {
 		confidence = 1.0
@@ -737,7 +744,7 @@ func (h *SimpleRecommendationHandler) calculateConfidence(rec *cppbridge.Recomme
 	if confidence < 0.0 {
 		confidence = 0.0
 	}
-	
+
 	return confidence
 }
 
@@ -746,9 +753,9 @@ func (h *SimpleRecommendationHandler) calculateScoreMatch(admissionScore, totalS
 	if admissionScore <= 0 {
 		return 0.0
 	}
-	
+
 	scoreDiff := float64(totalScore - admissionScore)
-	
+
 	// 分数高于录取线时匹配度更高
 	if scoreDiff >= 0 {
 		return math.Min(1.0, scoreDiff/50.0) // 高50分为满分
@@ -763,19 +770,19 @@ func (h *SimpleRecommendationHandler) calculateLocationMatch(schoolName string, 
 	if request.Preferences == nil {
 		return 0.0
 	}
-	
+
 	preferredLocations, ok := request.Preferences["preferred_locations"].([]interface{})
 	if !ok {
 		return 0.0
 	}
-	
+
 	// 简化的地理位置匹配逻辑
 	for _, loc := range preferredLocations {
 		if locStr, ok := loc.(string); ok && strings.Contains(schoolName, locStr) {
 			return 0.3
 		}
 	}
-	
+
 	return 0.0
 }
 
@@ -796,7 +803,7 @@ func (h *SimpleRecommendationHandler) calculateRiskAdjustment(riskLevel string) 
 // generateRecommendationReasons 生成推荐原因
 func (h *SimpleRecommendationHandler) generateRecommendationReasons(rec *cppbridge.Recommendation, request *cppbridge.RecommendationRequest) []string {
 	var reasons []string
-	
+
 	// 基于分数匹配
 	if rec.AdmissionScore > 0 && request.TotalScore >= rec.AdmissionScore {
 		scoreDiff := request.TotalScore - rec.AdmissionScore
@@ -808,19 +815,19 @@ func (h *SimpleRecommendationHandler) generateRecommendationReasons(rec *cppbrid
 			reasons = append(reasons, "分数达到录取线，建议作为稳妥选择")
 		}
 	}
-	
+
 	// 基于概率
 	if rec.Probability >= 0.8 {
 		reasons = append(reasons, "根据历年数据，录取概率很高")
 	} else if rec.Probability >= 0.6 {
 		reasons = append(reasons, "录取概率较高，值得考虑")
 	}
-	
+
 	// 基于专业特色
 	if strings.Contains(rec.MajorName, "计算机") || strings.Contains(rec.MajorName, "人工智能") {
 		reasons = append(reasons, "热门专业，就业前景广阔")
 	}
-	
+
 	// 基于学校声誉
 	prestigiousKeywords := []string{"大学", "学院", "工业大学", "科技大学"}
 	for _, keyword := range prestigiousKeywords {
@@ -829,7 +836,7 @@ func (h *SimpleRecommendationHandler) generateRecommendationReasons(rec *cppbrid
 			break
 		}
 	}
-	
+
 	return reasons
 }
 
@@ -843,7 +850,7 @@ func (h *SimpleRecommendationHandler) sortRecommendationsByConfidence(recommenda
 		// 置信度相同时按概率降序排列
 		return recommendations[i].Probability > recommendations[j].Probability
 	})
-	
+
 	// 更新排名
 	for i := range recommendations {
 		recommendations[i].Ranking = i + 1
@@ -854,23 +861,23 @@ func (h *SimpleRecommendationHandler) sortRecommendationsByConfidence(recommenda
 func (h *SimpleRecommendationHandler) processBatchRecommendationsWithOptimization(batchRequest *cppbridge.BatchRecommendationRequest) ([]cppbridge.RecommendationResponse, int, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(batchRequest.Timeout)*time.Millisecond)
 	defer cancel()
-	
+
 	// 创建工作池
 	jobs := make(chan cppbridge.RecommendationRequest, len(batchRequest.Requests))
 	results := make(chan cppbridge.RecommendationResponse, len(batchRequest.Requests))
-	
+
 	// 启动工作协程
 	workerCount := h.batchProcessor.maxWorkers
 	if len(batchRequest.Requests) < workerCount {
 		workerCount = len(batchRequest.Requests)
 	}
-	
+
 	var wg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
 		go h.batchWorker(ctx, jobs, results, &wg, batchRequest.Algorithm)
 	}
-	
+
 	// 发送任务
 	go func() {
 		defer close(jobs)
@@ -882,18 +889,18 @@ func (h *SimpleRecommendationHandler) processBatchRecommendationsWithOptimizatio
 			}
 		}
 	}()
-	
+
 	// 等待所有工作完成
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
-	
+
 	// 收集结果
 	var responses []cppbridge.RecommendationResponse
 	successCount := 0
 	failedCount := 0
-	
+
 	for response := range results {
 		responses = append(responses, response)
 		if response.Success {
@@ -902,21 +909,21 @@ func (h *SimpleRecommendationHandler) processBatchRecommendationsWithOptimizatio
 			failedCount++
 		}
 	}
-	
+
 	return responses, successCount, failedCount, nil
 }
 
 // batchWorker 批处理工作协程
 func (h *SimpleRecommendationHandler) batchWorker(ctx context.Context, jobs <-chan cppbridge.RecommendationRequest, results chan<- cppbridge.RecommendationResponse, wg *sync.WaitGroup, algorithm string) {
 	defer wg.Done()
-	
+
 	for {
 		select {
 		case request, ok := <-jobs:
 			if !ok {
 				return
 			}
-			
+
 			// 设置默认值
 			if request.MaxRecommendations == 0 {
 				request.MaxRecommendations = 30
@@ -924,16 +931,16 @@ func (h *SimpleRecommendationHandler) batchWorker(ctx context.Context, jobs <-ch
 			if request.Algorithm == "" {
 				request.Algorithm = algorithm
 			}
-			
+
 			// 尝试处理请求
 			response := h.processRequestWithRetry(&request, h.batchProcessor.retryAttempts)
-			
+
 			select {
 			case results <- response:
 			case <-ctx.Done():
 				return
 			}
-			
+
 		case <-ctx.Done():
 			return
 		}
@@ -943,20 +950,20 @@ func (h *SimpleRecommendationHandler) batchWorker(ctx context.Context, jobs <-ch
 // processRequestWithRetry 带重试的请求处理
 func (h *SimpleRecommendationHandler) processRequestWithRetry(request *cppbridge.RecommendationRequest, maxRetries int) cppbridge.RecommendationResponse {
 	var lastErr error
-	
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		response, err := h.generateEnhancedRecommendations(request)
 		if err == nil && response != nil {
 			return *response
 		}
-		
+
 		lastErr = err
 		if attempt < maxRetries {
 			// 指数退避
 			time.Sleep(time.Duration(math.Pow(2, float64(attempt))) * 100 * time.Millisecond)
 		}
 	}
-	
+
 	// 返回失败响应
 	return cppbridge.RecommendationResponse{
 		StudentID:    request.StudentID,
@@ -969,40 +976,40 @@ func (h *SimpleRecommendationHandler) processRequestWithRetry(request *cppbridge
 func (h *SimpleRecommendationHandler) generateIntelligentExplanation(recommendationID string) (map[string]interface{}, error) {
 	// 模拟从数据库或缓存获取推荐详情
 	// 在实际实现中，这里应该查询具体的推荐记录
-	
+
 	explanation := map[string]interface{}{
 		"recommendation_id": recommendationID,
 		"explanation": map[string]interface{}{
-			"overall_score": 0.88,
+			"overall_score":    0.88,
 			"confidence_level": "高",
 			"match_factors": []map[string]interface{}{
 				{
-					"factor": "分数匹配度",
-					"score": 0.92,
-					"weight": h.explainer.scoreWeights["score_match"],
+					"factor":      "分数匹配度",
+					"score":       0.92,
+					"weight":      h.explainer.scoreWeights["score_match"],
 					"description": "您的分数与该专业历年录取分数线匹配度为92%",
 				},
 				{
-					"factor": "兴趣匹配度", 
-					"score": 0.85,
-					"weight": h.explainer.scoreWeights["interest_match"],
+					"factor":      "兴趣匹配度",
+					"score":       0.85,
+					"weight":      h.explainer.scoreWeights["interest_match"],
 					"description": "根据您的兴趣偏好，该专业符合度为85%",
 				},
 				{
-					"factor": "就业前景",
-					"score": 0.90,
-					"weight": h.explainer.scoreWeights["employment_prospect"], 
+					"factor":      "就业前景",
+					"score":       0.90,
+					"weight":      h.explainer.scoreWeights["employment_prospect"],
 					"description": "该专业就业前景良好，就业率达90%",
 				},
 			},
 		},
-		"detailed_analysis": h.generateDetailedAnalysis(recommendationID),
+		"detailed_analysis":    h.generateDetailedAnalysis(recommendationID),
 		"comparative_analysis": h.generateComparativeAnalysis(recommendationID),
-		"risk_assessment": h.generateRiskAssessment(recommendationID),
-		"recommendations": h.generateActionRecommendations(recommendationID),
+		"risk_assessment":      h.generateRiskAssessment(recommendationID),
+		"recommendations":      h.generateActionRecommendations(recommendationID),
 		"confidence_breakdown": h.generateConfidenceBreakdown(recommendationID),
 	}
-	
+
 	return explanation, nil
 }
 
@@ -1021,9 +1028,9 @@ func (h *SimpleRecommendationHandler) generateDetailedAnalysis(recommendationID 
 			"建议了解专业课程设置",
 		},
 		"historical_data": map[string]interface{}{
-			"admission_trend": "近三年录取分数稳中有升",
-			"employment_rate": "95%",
-			"average_salary": "8000-12000元/月",
+			"admission_trend":        "近三年录取分数稳中有升",
+			"employment_rate":        "95%",
+			"average_salary":         "8000-12000元/月",
 			"further_education_rate": "30%",
 		},
 	}
@@ -1034,15 +1041,15 @@ func (h *SimpleRecommendationHandler) generateComparativeAnalysis(recommendation
 	return map[string]interface{}{
 		"vs_similar_majors": []map[string]interface{}{
 			{
-				"major": "软件工程",
-				"advantages": []string{"更偏向实践应用", "就业机会更多"},
+				"major":         "软件工程",
+				"advantages":    []string{"更偏向实践应用", "就业机会更多"},
 				"disadvantages": []string{"理论基础相对较浅"},
 			},
 		},
 		"vs_similar_schools": []map[string]interface{}{
 			{
-				"school": "相似档次学校",
-				"advantages": []string{"录取分数相近", "专业实力相当"},
+				"school":        "相似档次学校",
+				"advantages":    []string{"录取分数相近", "专业实力相当"},
 				"disadvantages": []string{"地理位置稍逊"},
 			},
 		},
@@ -1055,11 +1062,11 @@ func (h *SimpleRecommendationHandler) generateRiskAssessment(recommendationID st
 	return map[string]interface{}{
 		"overall_risk": "中等",
 		"admission_risk": map[string]interface{}{
-			"level": "低",
+			"level":   "低",
 			"factors": []string{"分数优势明显", "历年录取稳定"},
 		},
 		"career_risk": map[string]interface{}{
-			"level": "低",
+			"level":   "低",
 			"factors": []string{"行业发展趋势良好", "技能通用性强"},
 		},
 		"mitigation_strategies": []string{
@@ -1074,22 +1081,22 @@ func (h *SimpleRecommendationHandler) generateRiskAssessment(recommendationID st
 func (h *SimpleRecommendationHandler) generateActionRecommendations(recommendationID string) []map[string]interface{} {
 	return []map[string]interface{}{
 		{
-			"priority": "高",
-			"action": "深入了解专业课程设置",
+			"priority":    "高",
+			"action":      "深入了解专业课程设置",
 			"description": "建议查看详细的课程体系和培养方案",
-			"deadline": "填报前1周",
+			"deadline":    "填报前1周",
 		},
 		{
-			"priority": "中",
-			"action": "咨询在校学生或毕业生",
+			"priority":    "中",
+			"action":      "咨询在校学生或毕业生",
 			"description": "获取第一手的专业学习和就业信息",
-			"deadline": "填报前3天",
+			"deadline":    "填报前3天",
 		},
 		{
-			"priority": "低",
-			"action": "关注学校开放日活动",
+			"priority":    "低",
+			"action":      "关注学校开放日活动",
 			"description": "实地了解校园环境和学习氛围",
-			"deadline": "填报前1个月",
+			"deadline":    "填报前1个月",
 		},
 	}
 }
@@ -1099,10 +1106,10 @@ func (h *SimpleRecommendationHandler) generateConfidenceBreakdown(recommendation
 	return map[string]interface{}{
 		"base_confidence": h.confidenceCalc.baseConfidence,
 		"adjustments": map[string]float64{
-			"score_match_bonus": 0.15,
-			"interest_alignment": 0.08,
+			"score_match_bonus":   0.15,
+			"interest_alignment":  0.08,
 			"location_preference": 0.05,
-			"historical_success": 0.03,
+			"historical_success":  0.03,
 		},
 		"final_confidence": 0.88,
 		"confidence_level": "高置信度",
@@ -1117,40 +1124,40 @@ func (h *SimpleRecommendationHandler) generateConfidenceBreakdown(recommendation
 // performIntelligentOptimization 执行智能优化
 func (h *SimpleRecommendationHandler) performIntelligentOptimization(request map[string]interface{}) (map[string]interface{}, error) {
 	optimizationID := "opt_" + strconv.FormatInt(time.Now().Unix(), 10)
-	
+
 	// 提取优化参数
 	feedbackData, ok := request["feedback_data"].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing feedback_data")
 	}
-	
+
 	// 分析反馈数据
 	improvements := h.analyzeFeedbackAndOptimize(feedbackData)
-	
+
 	// 更新权重
 	newWeights := h.calculateOptimalWeights(feedbackData)
-	
+
 	// 应用优化
 	err := h.bridge.UpdateFusionWeights(newWeights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update weights: %v", err)
 	}
-	
+
 	result := map[string]interface{}{
 		"optimization_id": optimizationID,
-		"status": "completed",
-		"improvements": improvements,
-		"new_weights": newWeights,
+		"status":          "completed",
+		"improvements":    improvements,
+		"new_weights":     newWeights,
 		"optimization_details": map[string]interface{}{
-			"feedback_analyzed": len(feedbackData),
+			"feedback_analyzed":      len(feedbackData),
 			"confidence_improvement": improvements["accuracy_increase"],
 			"user_satisfaction_gain": improvements["user_satisfaction"],
 		},
 		"performance_impact": h.calculatePerformanceImpact(newWeights),
-		"message": "推荐算法已根据反馈进行智能优化",
-		"next_evaluation": time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"message":            "推荐算法已根据反馈进行智能优化",
+		"next_evaluation":    time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
-	
+
 	return result, nil
 }
 
@@ -1160,16 +1167,16 @@ func (h *SimpleRecommendationHandler) analyzeFeedbackAndOptimize(feedbackData ma
 	userSatisfaction, _ := feedbackData["user_satisfaction"].(float64)
 	clickThroughRate, _ := feedbackData["click_through_rate"].(float64)
 	conversionRate, _ := feedbackData["conversion_rate"].(float64)
-	
+
 	// 计算改进度
 	accuracyIncrease := math.Min(0.1, userSatisfaction*0.05)
 	diversityImprovement := math.Min(0.08, clickThroughRate*0.1)
 	satisfactionGain := math.Min(0.15, conversionRate*0.2)
-	
+
 	return map[string]interface{}{
-		"accuracy_increase": accuracyIncrease,
-		"diversity_improvement": diversityImprovement,
-		"user_satisfaction": satisfactionGain,
+		"accuracy_increase":         accuracyIncrease,
+		"diversity_improvement":     diversityImprovement,
+		"user_satisfaction":         satisfactionGain,
 		"response_time_improvement": 0.02,
 	}
 }
@@ -1179,7 +1186,7 @@ func (h *SimpleRecommendationHandler) calculateOptimalWeights(feedbackData map[s
 	// 基于反馈数据动态调整权重
 	traditionalPerformance, _ := feedbackData["traditional_performance"].(float64)
 	aiPerformance, _ := feedbackData["ai_performance"].(float64)
-	
+
 	// 如果没有提供性能数据，使用默认值
 	if traditionalPerformance == 0 {
 		traditionalPerformance = 0.7
@@ -1187,16 +1194,16 @@ func (h *SimpleRecommendationHandler) calculateOptimalWeights(feedbackData map[s
 	if aiPerformance == 0 {
 		aiPerformance = 0.8
 	}
-	
+
 	// 根据性能调整权重
 	totalPerformance := traditionalPerformance + aiPerformance
 	traditionalWeight := traditionalPerformance / totalPerformance * 0.9 // 稍微偏向传统算法以保证稳定性
 	aiWeight := 1.0 - traditionalWeight
-	
+
 	return map[string]float64{
 		"traditional": traditionalWeight,
-		"ai": aiWeight,
-		"diversity": 0.15,
+		"ai":          aiWeight,
+		"diversity":   0.15,
 	}
 }
 
@@ -1204,9 +1211,9 @@ func (h *SimpleRecommendationHandler) calculateOptimalWeights(feedbackData map[s
 func (h *SimpleRecommendationHandler) calculatePerformanceImpact(newWeights map[string]float64) map[string]interface{} {
 	return map[string]interface{}{
 		"expected_latency_change": -0.05, // 预期延迟减少5%
-		"expected_accuracy_gain": 0.03,   // 预期准确度提升3%
-		"resource_usage_change": 0.02,    // 资源使用增加2%
-		"throughput_impact": 0.01,        // 吞吐量提升1%
+		"expected_accuracy_gain":  0.03,  // 预期准确度提升3%
+		"resource_usage_change":   0.02,  // 资源使用增加2%
+		"throughput_impact":       0.01,  // 吞吐量提升1%
 	}
 }
 
@@ -1214,28 +1221,28 @@ func (h *SimpleRecommendationHandler) calculatePerformanceImpact(newWeights map[
 func (h *SimpleRecommendationHandler) updatePerformanceStats(isNewRequest, isFailed bool, latency time.Duration) {
 	h.performanceStats.mu.Lock()
 	defer h.performanceStats.mu.Unlock()
-	
+
 	if isNewRequest {
 		h.performanceStats.totalRequests++
 	}
-	
+
 	if isFailed {
 		h.performanceStats.failedRequests++
 	} else {
 		h.performanceStats.successRequests++
 	}
-	
+
 	if latency > 0 {
 		h.performanceStats.totalLatency += latency
 	}
-	
+
 	h.performanceStats.lastUpdate = time.Now()
 }
 
 // convertToFrontendFormat 转换为前端格式
-func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridge.RecommendationResponse) RecommendationData {
+func (h *SimpleRecommendationHandler) buildRecommendationData(ctx context.Context, studentInfo *StudentInfo, request *cppbridge.RecommendationRequest, response *cppbridge.RecommendationResponse) RecommendationData {
 	var frontendRecs []FrontendRecommendation
-	
+
 	for i, rec := range response.Recommendations {
 		// 确定推荐类型
 		recType := "稳妥"
@@ -1246,7 +1253,7 @@ func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridg
 		} else {
 			recType = "冲刺"
 		}
-		
+
 		// 确定风险等级
 		riskLevel := "中等"
 		if rec.Probability >= 0.8 {
@@ -1254,16 +1261,16 @@ func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridg
 		} else if rec.Probability < 0.5 {
 			riskLevel = "高"
 		}
-		
+
 		// 生成推荐原因
 		recommendReason := "综合评估推荐"
 		if len(rec.Reasons) > 0 {
 			recommendReason = rec.Reasons[0]
 		}
-		
+
 		// 构建前端推荐格式
 		frontendRec := FrontendRecommendation{
-			ID:                  fmt.Sprintf("rec_%d", i+1),
+			ID: fmt.Sprintf("rec_%d", i+1),
 			University: FrontendUniversity{
 				ID:         rec.SchoolID,
 				Name:       rec.SchoolName,
@@ -1273,11 +1280,11 @@ func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridg
 				Type:       rec.SchoolType,
 				IsFavorite: false,
 			},
-			Type:                recType,
+			Type:                 recType,
 			AdmissionProbability: int(rec.Probability * 100),
-			MatchScore:          int(rec.Score * 100),
-			RecommendReason:     recommendReason,
-			RiskLevel:           riskLevel,
+			MatchScore:           int(rec.Score * 100),
+			RecommendReason:      recommendReason,
+			RiskLevel:            riskLevel,
 			SuggestedMajors: []FrontendMajor{
 				{
 					ID:          rec.MajorID,
@@ -1294,13 +1301,13 @@ func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridg
 				},
 			},
 		}
-		
+
 		frontendRecs = append(frontendRecs, frontendRec)
 	}
-	
+
 	// 生成分析报告
-	analysisReport := h.generateAnalysisReport(response)
-	
+	analysisReport := h.generateAnalysisReport(ctx, studentInfo, request, frontendRecs)
+
 	return RecommendationData{
 		Recommendations: frontendRecs,
 		AnalysisReport:  analysisReport,
@@ -1308,62 +1315,97 @@ func (h *SimpleRecommendationHandler) convertToFrontendFormat(response *cppbridg
 }
 
 // generateAnalysisReport 生成分析报告
-func (h *SimpleRecommendationHandler) generateAnalysisReport(response *cppbridge.RecommendationResponse) string {
-	if len(response.Recommendations) == 0 {
-		return "暂无推荐结果"
-	}
-	
-	// 统计不同类型的推荐数量
-	stableCount := 0
-	moderateCount := 0
-	reachCount := 0
-	
-	for _, rec := range response.Recommendations {
-		if rec.Probability >= 0.8 {
-			stableCount++
-		} else if rec.Probability >= 0.6 {
-			moderateCount++
-		} else {
-			reachCount++
+func (h *SimpleRecommendationHandler) generateAnalysisReport(ctx context.Context, studentInfo *StudentInfo, request *cppbridge.RecommendationRequest, recommendations []FrontendRecommendation) string {
+	input := h.buildRecommendationAnalysisInput(studentInfo, request, recommendations)
+	if h.analyzer != nil {
+		report, err := h.analyzer.AnalyzeRecommendation(ctx, input)
+		if err == nil && strings.TrimSpace(report) != "" {
+			return report
 		}
 	}
-	
-	report := fmt.Sprintf("根据您的分数和偏好，为您推荐了%d所院校。其中稳妥选择%d个，适中选择%d个，冲刺选择%d个。建议合理搭配，确保志愿填报的科学性和安全性。",
-		len(response.Recommendations), stableCount, moderateCount, reachCount)
-	
-	return report
+
+	fallback, _ := llm.NewLocalFallbackAnalyzer().AnalyzeRecommendation(ctx, input)
+	return fallback
+}
+
+func (h *SimpleRecommendationHandler) buildRecommendationAnalysisInput(studentInfo *StudentInfo, request *cppbridge.RecommendationRequest, recommendations []FrontendRecommendation) llm.RecommendationAnalysisInput {
+	input := llm.RecommendationAnalysisInput{
+		StudentName:         request.Name,
+		Score:               request.TotalScore,
+		Province:            request.Province,
+		SubjectCombination:  request.SubjectCombination,
+		RiskTolerance:       studentInfo.Preferences.RiskTolerance,
+		PreferredRegions:    append([]string(nil), studentInfo.Preferences.Regions...),
+		PreferredMajors:     append([]string(nil), studentInfo.Preferences.MajorCategories...),
+		UniversityTypes:     append([]string(nil), studentInfo.Preferences.UniversityTypes...),
+		SpecialRequirements: studentInfo.Preferences.SpecialRequirements,
+		TotalCount:          len(recommendations),
+		Recommendations:     make([]llm.RecommendationCandidate, 0, len(recommendations)),
+	}
+	if input.StudentName == "" {
+		input.StudentName = "Student"
+	}
+	if request.Ranking > 0 {
+		rank := request.Ranking
+		input.Rank = &rank
+	}
+
+	for _, rec := range recommendations {
+		candidate := llm.RecommendationCandidate{
+			SchoolName:           rec.University.Name,
+			MajorName:            firstMajorName(rec.SuggestedMajors),
+			Probability:          float64(rec.AdmissionProbability) / 100,
+			AdmissionProbability: rec.AdmissionProbability,
+			MatchScore:           rec.MatchScore,
+			RiskLevel:            rec.RiskLevel,
+			Type:                 rec.University.Type,
+			Province:             rec.University.Province,
+			City:                 rec.University.City,
+			Reason:               rec.RecommendReason,
+		}
+		input.Recommendations = append(input.Recommendations, candidate)
+	}
+
+	return input
+}
+
+func firstMajorName(majors []FrontendMajor) string {
+	if len(majors) == 0 {
+		return ""
+	}
+	return majors[0].Name
 }
 
 // GetPerformanceStats 获取性能统计（新增方法）
 func (h *SimpleRecommendationHandler) GetPerformanceStats() map[string]interface{} {
 	h.performanceStats.mu.RLock()
 	defer h.performanceStats.mu.RUnlock()
-	
+
 	var avgLatency float64
 	if h.performanceStats.totalRequests > 0 {
 		avgLatency = float64(h.performanceStats.totalLatency.Nanoseconds()) / float64(h.performanceStats.totalRequests) / 1e6 // 转换为毫秒
 	}
-	
+
 	var successRate float64
 	if h.performanceStats.totalRequests > 0 {
 		successRate = float64(h.performanceStats.successRequests) / float64(h.performanceStats.totalRequests)
 	}
-	
+
 	var cacheHitRate float64
 	totalCacheRequests := h.performanceStats.cacheHits + h.performanceStats.cacheMisses
 	if totalCacheRequests > 0 {
 		cacheHitRate = float64(h.performanceStats.cacheHits) / float64(totalCacheRequests)
 	}
-	
+
 	return map[string]interface{}{
-		"total_requests": h.performanceStats.totalRequests,
+		"total_requests":   h.performanceStats.totalRequests,
 		"success_requests": h.performanceStats.successRequests,
-		"failed_requests": h.performanceStats.failedRequests,
-		"success_rate": successRate,
-		"avg_latency_ms": avgLatency,
-		"cache_hit_rate": cacheHitRate,
-		"cache_hits": h.performanceStats.cacheHits,
-		"cache_misses": h.performanceStats.cacheMisses,
-		"last_update": h.performanceStats.lastUpdate,
+		"failed_requests":  h.performanceStats.failedRequests,
+		"success_rate":     successRate,
+		"avg_latency_ms":   avgLatency,
+		"cache_hit_rate":   cacheHitRate,
+		"cache_hits":       h.performanceStats.cacheHits,
+		"cache_misses":     h.performanceStats.cacheMisses,
+		"last_update":      h.performanceStats.lastUpdate,
 	}
 }

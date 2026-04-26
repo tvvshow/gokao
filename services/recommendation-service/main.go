@@ -15,9 +15,10 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/config"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/handlers"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
+	"github.com/oktetopython/gaokao/services/recommendation-service/internal/llm"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
 	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
 )
@@ -65,12 +66,12 @@ func main() {
 	// 初始化推荐桥接器（优先使用增强版规则引擎）
 	var bridge cppbridge.HybridRecommendationBridge
 	var bridgeType string
-	
+
 	// 尝试使用增强版规则引擎
 	enhancedBridge, err := cppbridge.NewEnhancedRuleRecommendationBridge(dataSyncService, weightService, logger)
 	if err != nil {
 		logger.Warnf("初始化增强版推荐引擎失败，使用简化版: %v", err)
-		
+
 		// 回退到简化版规则引擎
 		bridge, err = cppbridge.NewSimpleRuleRecommendationBridge(cfg.CPP.ConfigPath)
 		if err != nil {
@@ -80,12 +81,12 @@ func main() {
 	} else {
 		bridge = enhancedBridge
 		bridgeType = "enhanced_rule"
-		
+
 		// 启动数据同步服务
 		go dataSyncService.Start(context.Background())
 	}
 	defer bridge.Close()
-	
+
 	logger.Infof("使用%s推荐引擎", bridgeType)
 
 	// 初始化缓存
@@ -96,8 +97,30 @@ func main() {
 	}
 	defer cacheService.Close()
 
+	// 初始化分析器，默认保留本地回退能力；启用后可对接兼容 OpenAI 的接口。
+	fallbackAnalyzer := llm.NewLocalFallbackAnalyzer()
+	var fallback llm.Analyzer = fallbackAnalyzer
+	if cfg.LLM != nil && !cfg.LLM.FallbackEnabled {
+		fallback = nil
+	}
+	var analyzer llm.Analyzer = fallbackAnalyzer
+	if cfg.LLM != nil && cfg.LLM.Enabled {
+		client := llm.NewOpenAICompatibleClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Timeout)
+		analyzer = llm.NewOpenAICompatibleAnalyzer(
+			client,
+			cfg.LLM.Model,
+			cfg.LLM.Temperature,
+			cfg.LLM.MaxTokens,
+			cfg.LLM.SystemPrompt,
+			fallback,
+		)
+		logger.Infof("LLM分析已启用: provider=%s base_url=%s model=%s", cfg.LLM.Provider, cfg.LLM.BaseURL, cfg.LLM.Model)
+	} else {
+		logger.Info("LLM分析未启用，使用本地分析回退")
+	}
+
 	// 初始化处理器
-	recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge, cacheService)
+	recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge, cacheService, analyzer)
 	weightHandler := handlers.NewWeightHandler(weightService, logger)
 
 	// 创建路由器
