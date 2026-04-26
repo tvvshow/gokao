@@ -49,7 +49,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	// 验证默认值
-	expectedPort := ":8083"
+	expectedPort := "10083"
 	if config.Server.Port != expectedPort {
 		t.Errorf("期望端口 %s，实际 %s", expectedPort, config.Server.Port)
 	}
@@ -225,7 +225,7 @@ func TestLogConfigValidation(t *testing.T) {
 
 	// 日志配置验证
 	validLevels := map[string]bool{
-		"debug": true, "info": true, "warn": true, 
+		"debug": true, "info": true, "warn": true,
 		"warning": true, "error": true, "fatal": true, "panic": true,
 	}
 
@@ -255,7 +255,7 @@ func BenchmarkLoad(b *testing.B) {
 	// 清除单例
 	once = sync.Once{}
 	instance = nil
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := Load()

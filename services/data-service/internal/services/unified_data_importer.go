@@ -2,46 +2,51 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"gaokao-system/services/data-service/internal/models"
 	"github.com/google/uuid"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"gorm.io/gorm"
 )
+
+// DataSource 定义统一数据源接口
+type DataSource interface {
+	FetchUniversities() ([]models.University, error)
+	FetchMajors() ([]models.Major, error)
+	FetchAdmissionData() ([]models.AdmissionData, error)
+	Validate() error
+	GetSourceName() string
+}
 
 // ===== 统一数据导入器 =====
 type UnifiedDataImporter struct {
-	db                 interface {
-		Create(value interface{}) error
-		Save(value interface{}) error
-		Where(query interface{}, args ...interface{}) interface{}
-		First(dest interface{}, conds ...interface{}) error
-		Delete(value interface{}) error
-	}
-	validator          *DataValidationService
-	dataSources        map[string]DataSource
-	importHistory      []ImportRecord
+	db            *gorm.DB
+	validator     *DataValidationService
+	dataSources   map[string]DataSource
+	importHistory []ImportRecord
 }
 
 // 导入记录
 type ImportRecord struct {
-	ID          uuid.UUID    `json:"id"`
-	Source      string      `json:"source"`
-	DataType    string      `json:"data_type"` // university, major, admission
-	RecordCount int         `json:"record_count"`
-	Status      string      `json:"status"`   // success, failed, partial
-	StartTime   time.Time   `json:"start_time"`
-	EndTime     *time.Time  `json:"end_time,omitempty"`
+	ID           uuid.UUID  `json:"id"`
+	Source       string     `json:"source"`
+	DataType     string     `json:"data_type"` // university, major, admission
+	RecordCount  int        `json:"record_count"`
+	Status       string     `json:"status"` // success, failed, partial
+	StartTime    time.Time  `json:"start_time"`
+	EndTime      *time.Time `json:"end_time,omitempty"`
 	ErrorMessage string     `json:"error_message,omitempty"`
-	CreatedAt   time.Time   `json:"created_at"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
-func NewUnifiedDataImporter(db interface{}, validator *DataValidationService) *UnifiedDataImporter {
+func NewUnifiedDataImporter(db *gorm.DB, validator *DataValidationService) *UnifiedDataImporter {
 	return &UnifiedDataImporter{
-		db:        db,
-		validator: validator,
+		db:          db,
+		validator:   validator,
 		dataSources: make(map[string]DataSource),
 	}
 }
@@ -233,7 +238,7 @@ func (i *UnifiedDataImporter) ImportMajors(source DataSource) (ImportRecord, err
 	for _, major := range majors {
 		stats := models.MajorStatistics{
 			ID:        uuid.New(),
-			MajorID:  major.ID,
+			MajorID:   major.ID,
 			UpdatedAt: time.Now(),
 		}
 		i.db.Create(&stats)
@@ -302,10 +307,10 @@ func (i *UnifiedDataImporter) ImportAdmissionData(source DataSource) (ImportReco
 		}
 
 		// 检查专业是否存在（如果非空）
-		if admission.MajorID != uuid.Nil {
+		if admission.MajorID != nil && *admission.MajorID != uuid.Nil {
 			var major models.Major
-			if err := i.db.First(&major, admission.MajorID).Error; err != nil {
-				admission.MajorID = uuid.Nil // 清除无效的专业ID
+			if err := i.db.First(&major, *admission.MajorID).Error; err != nil {
+				admission.MajorID = nil // 清除无效的专业ID
 			}
 		}
 

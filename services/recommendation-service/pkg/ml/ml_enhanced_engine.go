@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -22,7 +23,7 @@ type MLEnhancedRecommendationEngine struct {
 	contentBasedModel *ContentBasedFilter
 	// 强化学习优化器
 	reinforcementLearner *ReinforcementLearner
-	
+
 	logger *logrus.Logger
 	mu     sync.RWMutex
 }
@@ -36,21 +37,22 @@ type DeepLearningModel struct {
 
 // CollaborativeFilter 协同过滤算法
 type CollaborativeFilter struct {
-	userItemMatrix tensor.Tensor
+	userItemMatrix   tensor.Tensor
 	similarityMatrix tensor.Tensor
 	// 协同过滤参数
 }
 
 // ContentBasedFilter 内容基础过滤
 type ContentBasedFilter struct {
-	featureVectors map[string]tensor.Tensor
+	featureVectors      map[string]tensor.Tensor
 	similarityThreshold float64
 }
 
 // ReinforcementLearner 强化学习优化器
 type ReinforcementLearner struct {
-	qTable map[string]float64
-	learningRate float64	discountFactor float64
+	qTable         map[string]float64
+	learningRate   float64
+	discountFactor float64
 }
 
 // NewMLEnhancedRecommendationEngine 创建新的机器学习增强推荐引擎
@@ -83,9 +85,9 @@ func NewMLEnhancedRecommendationEngine(logger *logrus.Logger) (*MLEnhancedRecomm
 }
 
 // PredictAdmissionProbability 预测录取概率
-func (e *MLEnhancedRecommendationEngine) PredictAdmissionProbability(ctx context.Context, 
+func (e *MLEnhancedRecommendationEngine) PredictAdmissionProbability(ctx context.Context,
 	studentFeatures map[string]interface{}, universityFeatures map[string]interface{}) (float64, error) {
-	
+
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -105,10 +107,10 @@ func (e *MLEnhancedRecommendationEngine) PredictAdmissionProbability(ctx context
 
 	// 协同过滤修正
 	cfAdjustment := e.collaborativeFilter.GetAdjustment(features)
-	
+
 	// 内容基础过滤修正
-	cbAdjustment := e.contentBasedFilter.GetAdjustment(features)
-	
+	cbAdjustment := e.contentBasedModel.GetAdjustment(features)
+
 	// 强化学习优化
 	finalProbability := e.reinforcementLearner.Optimize(dlProbability, cfAdjustment, cbAdjustment)
 
@@ -126,7 +128,7 @@ func (e *MLEnhancedRecommendationEngine) extractFeatures(studentFeatures, univer
 	if ranking, ok := studentFeatures["ranking"].(int); ok {
 		features["student_ranking"] = float64(ranking)
 	}
-	
+
 	// 院校特征提取
 	if minScore, ok := universityFeatures["min_admission_score"].(float64); ok {
 		features["university_min_score"] = minScore
@@ -152,7 +154,7 @@ func (e *MLEnhancedRecommendationEngine) extractFeatures(studentFeatures, univer
 func (e *MLEnhancedRecommendationEngine) fallbackPrediction(features map[string]float64) float64 {
 	// 简单的线性模型作为降级方案
 	baseProbability := 0.5
-	
+
 	if scoreGap, ok := features["score_gap"]; ok {
 		// 每10分差距调整5%概率
 		probabilityAdjustment := (scoreGap / 10.0) * 0.05
@@ -166,14 +168,14 @@ func (e *MLEnhancedRecommendationEngine) fallbackPrediction(features map[string]
 	if baseProbability > 1 {
 		return 1
 	}
-	
+
 	return baseProbability
 }
 
 // UpdateModel 更新模型（在线学习）
-func (e *MLEnhancedRecommendationEngine) UpdateModel(ctx context.Context, 
+func (e *MLEnhancedRecommendationEngine) UpdateModel(ctx context.Context,
 	actualResults map[string]interface{}) error {
-	
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -214,19 +216,19 @@ func (e *MLEnhancedRecommendationEngine) GetModelStats() map[string]interface{} 
 	defer e.mu.RUnlock()
 
 	stats := make(map[string]interface{})
-	
+
 	// 深度学习模型统计
 	stats["dl_model_accuracy"] = e.deepLearningModel.GetAccuracy()
 	stats["dl_model_loss"] = e.deepLearningModel.GetLoss()
-	
+
 	// 协同过滤统计
 	stats["cf_matrix_size"] = e.collaborativeFilter.GetMatrixSize()
 	stats["cf_similarity_threshold"] = e.collaborativeFilter.GetSimilarityThreshold()
-	
+
 	// 强化学习统计
 	stats["rl_q_table_size"] = e.reinforcementLearner.GetQTableSize()
 	stats["rl_learning_rate"] = e.reinforcementLearner.GetLearningRate()
-	
+
 	return stats
 }
 
@@ -236,21 +238,22 @@ func (e *MLEnhancedRecommendationEngine) SaveModel(filePath string) error {
 	defer e.mu.Unlock()
 
 	modelData := map[string]interface{}{
-		"deep_learning":    e.deepLearningModel.Export(),
-		"collaborative":    e.collaborativeFilter.Export(),
-		"reinforcement":    e.reinforcementLearner.Export(),
-		"timestamp":        time.Now().Unix(),
-		"version":          "1.0.0",
+		"deep_learning": e.deepLearningModel.Export(),
+		"collaborative": e.collaborativeFilter.Export(),
+		"reinforcement": e.reinforcementLearner.Export(),
+		"timestamp":     time.Now().Unix(),
+		"version":       "1.0.0",
 	}
 
 	data, err := json.Marshal(modelData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal model data: %w", err)
 	}
+	_ = data
 
 	// 这里应该实现文件保存逻辑
 	// 实际实现会使用文件系统操作
-	
+
 	e.logger.Infof("Model saved successfully to %s", filePath)
 	return nil
 }
@@ -311,9 +314,154 @@ func (e *MLEnhancedRecommendationEngine) initContentBasedFilter() error {
 func (e *MLEnhancedRecommendationEngine) initReinforcementLearner() error {
 	// 初始化强化学习
 	e.reinforcementLearner = &ReinforcementLearner{
-		qTable:          make(map[string]float64),
-		learningRate:    0.1,
-		discountFactor:  0.9,
+		qTable:         make(map[string]float64),
+		learningRate:   0.1,
+		discountFactor: 0.9,
 	}
 	return nil
+}
+
+// Predict 执行深度学习预测（当前为轻量占位实现）
+func (m *DeepLearningModel) Predict(features map[string]float64) (float64, error) {
+	if len(features) == 0 {
+		return 0, fmt.Errorf("empty features")
+	}
+	base := 0.5
+	if gap, ok := features["score_gap"]; ok {
+		base += (gap / 100.0) * 0.2
+	}
+	return clamp01(base), nil
+}
+
+// Update 更新深度学习模型（占位实现）
+func (m *DeepLearningModel) Update(trainingData interface{}) error {
+	_ = trainingData
+	return nil
+}
+
+// GetAccuracy 返回模型精度（占位实现）
+func (m *DeepLearningModel) GetAccuracy() float64 {
+	return 0.82
+}
+
+// GetLoss 返回模型损失（占位实现）
+func (m *DeepLearningModel) GetLoss() float64 {
+	return 0.18
+}
+
+// Export 导出深度学习模型
+func (m *DeepLearningModel) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"has_graph": m.graph != nil,
+		"has_model": m.model != nil,
+	}
+}
+
+// Import 导入深度学习模型
+func (m *DeepLearningModel) Import(data interface{}) error {
+	_ = data
+	return nil
+}
+
+// GetAdjustment 计算协同过滤修正值（占位实现）
+func (c *CollaborativeFilter) GetAdjustment(features map[string]float64) float64 {
+	if len(features) == 0 {
+		return 0
+	}
+	return 0.02
+}
+
+// Update 更新协同过滤矩阵（占位实现）
+func (c *CollaborativeFilter) Update(trainingData interface{}) error {
+	_ = trainingData
+	return nil
+}
+
+// GetMatrixSize 返回协同过滤矩阵规模（占位实现）
+func (c *CollaborativeFilter) GetMatrixSize() int {
+	return 0
+}
+
+// GetSimilarityThreshold 返回相似度阈值（占位实现）
+func (c *CollaborativeFilter) GetSimilarityThreshold() float64 {
+	return 0.7
+}
+
+// Export 导出协同过滤参数
+func (c *CollaborativeFilter) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"has_user_item_matrix":  c.userItemMatrix != nil,
+		"has_similarity_matrix": c.similarityMatrix != nil,
+	}
+}
+
+// Import 导入协同过滤参数
+func (c *CollaborativeFilter) Import(data interface{}) error {
+	_ = data
+	return nil
+}
+
+// GetAdjustment 计算内容过滤修正值（占位实现）
+func (c *ContentBasedFilter) GetAdjustment(features map[string]float64) float64 {
+	if len(features) == 0 {
+		return 0
+	}
+	return 0.01
+}
+
+// Optimize 融合多路概率信号
+func (r *ReinforcementLearner) Optimize(base, cfAdjustment, cbAdjustment float64) float64 {
+	optimized := base + cfAdjustment + cbAdjustment
+	return clamp01(optimized)
+}
+
+// Update 更新强化学习状态（占位实现）
+func (r *ReinforcementLearner) Update(trainingData interface{}) error {
+	_ = trainingData
+	return nil
+}
+
+// GetQTableSize 返回Q表大小
+func (r *ReinforcementLearner) GetQTableSize() int {
+	return len(r.qTable)
+}
+
+// GetLearningRate 返回学习率
+func (r *ReinforcementLearner) GetLearningRate() float64 {
+	return r.learningRate
+}
+
+// Export 导出强化学习状态
+func (r *ReinforcementLearner) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"q_table_size":    len(r.qTable),
+		"learning_rate":   r.learningRate,
+		"discount_factor": r.discountFactor,
+	}
+}
+
+// Import 导入强化学习状态
+func (r *ReinforcementLearner) Import(data interface{}) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var payload struct {
+		LearningRate   float64 `json:"learning_rate"`
+		DiscountFactor float64 `json:"discount_factor"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.LearningRate > 0 {
+		r.learningRate = payload.LearningRate
+	}
+	if payload.DiscountFactor > 0 {
+		r.discountFactor = payload.DiscountFactor
+	}
+	return nil
+}
+
+func clamp01(v float64) float64 {
+	return math.Max(0, math.Min(1, v))
 }

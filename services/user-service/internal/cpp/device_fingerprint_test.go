@@ -1,3 +1,6 @@
+//go:build cgo && devicefingerprint && !windows
+// +build cgo,devicefingerprint,!windows
+
 package cpp
 
 import (
@@ -11,12 +14,12 @@ import (
 // TestDeviceFingerprintCollector_Initialize 测试初始化功能
 func TestDeviceFingerprintCollector_Initialize(t *testing.T) {
 	collector := NewDeviceFingerprintCollector()
-	
+
 	// 测试初始化
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	assert.True(t, collector.IsInitialized())
-	
+
 	// 清理
 	collector.Uninitialize()
 	assert.False(t, collector.IsInitialized())
@@ -28,12 +31,12 @@ func TestDeviceFingerprintCollector_CollectFingerprint(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 测试采集指纹
 	fingerprint, err := collector.CollectFingerprint()
 	require.NoError(t, err)
 	require.NotNil(t, fingerprint)
-	
+
 	// 验证指纹字段
 	assert.NotEmpty(t, fingerprint.DeviceID)
 	assert.NotEmpty(t, fingerprint.FingerprintHash)
@@ -46,7 +49,7 @@ func TestQuickCollectFingerprint(t *testing.T) {
 	fingerprint, err := QuickCollectFingerprint()
 	require.NoError(t, err)
 	require.NotNil(t, fingerprint)
-	
+
 	assert.NotEmpty(t, fingerprint.DeviceID)
 	assert.NotEmpty(t, fingerprint.FingerprintHash)
 }
@@ -57,7 +60,7 @@ func TestDeviceFingerprintCollector_Configuration(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 设置配置
 	config := &Configuration{
 		CollectSensitiveInfo: true,
@@ -66,10 +69,10 @@ func TestDeviceFingerprintCollector_Configuration(t *testing.T) {
 		EncryptionKey:        "test_key_123",
 		TimeoutSeconds:       30,
 	}
-	
+
 	err = collector.SetConfiguration(config)
 	require.NoError(t, err)
-	
+
 	// 获取配置验证
 	retrievedConfig, err := collector.GetConfiguration()
 	require.NoError(t, err)
@@ -84,11 +87,11 @@ func TestDeviceFingerprintCollector_HashGeneration(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 采集指纹
 	fingerprint, err := collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	// 生成哈希
 	hash, err := collector.GenerateHash(fingerprint)
 	require.NoError(t, err)
@@ -102,18 +105,18 @@ func TestDeviceFingerprintCollector_Comparison(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 采集两次指纹
 	fp1, err := collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	fp2, err := collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	// 比较指纹
 	comparison, err := collector.CompareFingerprints(fp1, fp2)
 	require.NoError(t, err)
-	
+
 	// 同一设备的指纹应该相似
 	assert.True(t, comparison.IsSameDevice)
 	assert.Greater(t, comparison.SimilarityScore, 0.9)
@@ -126,16 +129,16 @@ func TestDeviceFingerprintCollector_Validation(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 采集指纹
 	fingerprint, err := collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	// 验证指纹
 	isValid, err := collector.ValidateFingerprint(fingerprint, fingerprint.FingerprintHash)
 	require.NoError(t, err)
 	assert.True(t, isValid)
-	
+
 	// 使用错误的哈希验证
 	isValid, err = collector.ValidateFingerprint(fingerprint, "wrong_hash")
 	require.NoError(t, err)
@@ -148,20 +151,20 @@ func TestDeviceFingerprintCollector_Serialization(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 采集指纹
 	originalFp, err := collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	// 序列化为JSON
 	jsonData, err := collector.SerializeToJSON(originalFp)
 	require.NoError(t, err)
 	assert.NotEmpty(t, jsonData)
-	
+
 	// 从JSON反序列化
 	deserializedFp, err := collector.DeserializeFromJSON(jsonData)
 	require.NoError(t, err)
-	
+
 	// 验证反序列化的数据
 	assert.Equal(t, originalFp.DeviceID, deserializedFp.DeviceID)
 	assert.Equal(t, originalFp.FingerprintHash, deserializedFp.FingerprintHash)
@@ -174,17 +177,17 @@ func TestDeviceFingerprintCollector_SecurityChecks(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 检查调试器
 	isDebugger, err := collector.IsDebuggerPresent()
 	require.NoError(t, err)
 	t.Logf("Debugger present: %v", isDebugger)
-	
+
 	// 检查虚拟机
 	isVM, err := collector.IsVirtualMachine()
 	require.NoError(t, err)
 	t.Logf("Virtual machine: %v", isVM)
-	
+
 	// 检查安全性
 	securityLevel, riskFactors, err := collector.CheckSecurity()
 	require.NoError(t, err)
@@ -199,24 +202,24 @@ func TestDeviceFingerprintCollector_PerformanceStats(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 启用性能监控
 	err = collector.SetPerformanceMonitoring(true)
 	require.NoError(t, err)
-	
+
 	// 重置统计
 	err = collector.ResetPerformanceStats()
 	require.NoError(t, err)
-	
+
 	// 执行一些操作
 	_, err = collector.CollectFingerprint()
 	require.NoError(t, err)
-	
+
 	// 获取性能统计
 	stats, err := collector.GetPerformanceStats()
 	require.NoError(t, err)
 	require.NotNil(t, stats)
-	
+
 	assert.Greater(t, stats.TotalCalls, uint32(0))
 	assert.Greater(t, stats.SuccessCalls, uint32(0))
 	assert.GreaterOrEqual(t, stats.CollectTimeUs, uint64(0))
@@ -241,12 +244,12 @@ func TestGetSupportedPlatforms(t *testing.T) {
 // TestDeviceFingerprintCollector_ErrorHandling 测试错误处理
 func TestDeviceFingerprintCollector_ErrorHandling(t *testing.T) {
 	collector := NewDeviceFingerprintCollector()
-	
+
 	// 未初始化时调用方法应该失败
 	_, err := collector.CollectFingerprint()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not initialized")
-	
+
 	// 无效配置测试
 	err = collector.SetConfiguration(nil)
 	assert.Error(t, err)
@@ -258,12 +261,12 @@ func TestDeviceFingerprintCollector_ConcurrentAccess(t *testing.T) {
 	err := collector.Initialize("")
 	require.NoError(t, err)
 	defer collector.Uninitialize()
-	
+
 	// 并发采集指纹
 	const goroutines = 10
 	results := make(chan *DeviceFingerprint, goroutines)
 	errors := make(chan error, goroutines)
-	
+
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			fp, err := collector.CollectFingerprint()
@@ -274,7 +277,7 @@ func TestDeviceFingerprintCollector_ConcurrentAccess(t *testing.T) {
 			}
 		}()
 	}
-	
+
 	// 收集结果
 	for i := 0; i < goroutines; i++ {
 		select {
@@ -295,10 +298,10 @@ func BenchmarkDeviceFingerprintCollector_CollectFingerprint(b *testing.B) {
 	err := collector.Initialize("")
 	require.NoError(b, err)
 	defer collector.Uninitialize()
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		_, err := collector.CollectFingerprint()
 		if err != nil {
@@ -311,7 +314,7 @@ func BenchmarkDeviceFingerprintCollector_CollectFingerprint(b *testing.B) {
 func BenchmarkQuickCollectFingerprint(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		_, err := QuickCollectFingerprint()
 		if err != nil {
@@ -326,14 +329,14 @@ func BenchmarkDeviceFingerprintCollector_GenerateHash(b *testing.B) {
 	err := collector.Initialize("")
 	require.NoError(b, err)
 	defer collector.Uninitialize()
-	
+
 	// 准备测试数据
 	fingerprint, err := collector.CollectFingerprint()
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		_, err := collector.GenerateHash(fingerprint)
 		if err != nil {
@@ -348,17 +351,17 @@ func BenchmarkDeviceFingerprintCollector_CompareFingerprints(b *testing.B) {
 	err := collector.Initialize("")
 	require.NoError(b, err)
 	defer collector.Uninitialize()
-	
+
 	// 准备测试数据
 	fp1, err := collector.CollectFingerprint()
 	require.NoError(b, err)
-	
+
 	fp2, err := collector.CollectFingerprint()
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		_, err := collector.CompareFingerprints(fp1, fp2)
 		if err != nil {
@@ -373,20 +376,20 @@ func BenchmarkDeviceFingerprintCollector_Serialization(b *testing.B) {
 	err := collector.Initialize("")
 	require.NoError(b, err)
 	defer collector.Uninitialize()
-	
+
 	// 准备测试数据
 	fingerprint, err := collector.CollectFingerprint()
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		jsonData, err := collector.SerializeToJSON(fingerprint)
 		if err != nil {
 			b.Fatalf("SerializeToJSON failed: %v", err)
 		}
-		
+
 		_, err = collector.DeserializeFromJSON(jsonData)
 		if err != nil {
 			b.Fatalf("DeserializeFromJSON failed: %v", err)
@@ -400,11 +403,11 @@ func BenchmarkDeviceFingerprintCollector_ConcurrentCollect(b *testing.B) {
 	err := collector.Initialize("")
 	require.NoError(b, err)
 	defer collector.Uninitialize()
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
 	b.SetParallelism(10)
-	
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			_, err := collector.CollectFingerprint()

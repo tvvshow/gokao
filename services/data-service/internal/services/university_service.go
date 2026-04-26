@@ -2,10 +2,10 @@ package services
 
 import (
 	"context"
-	"data-service/internal/database"
-	"data-service/internal/models"
 	"encoding/json"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
 	"strings"
 	"time"
 
@@ -31,37 +31,37 @@ func NewUniversityService(db *database.DB, logger *logrus.Logger) *UniversitySer
 // UniversityQueryParams 院校查询参数
 type UniversityQueryParams struct {
 	// 基本查询
-	ID       string `form:"id"`
-	Code     string `form:"code"`
-	Name     string `form:"name"`
-	Keyword  string `form:"keyword"`
-	
+	ID      string `form:"id"`
+	Code    string `form:"code"`
+	Name    string `form:"name"`
+	Keyword string `form:"keyword"`
+
 	// 分类筛选
-	Type     string `form:"type"`     // undergraduate, graduate, vocational
-	Level    string `form:"level"`    // 985, 211, double_first_class, ordinary
-	Nature   string `form:"nature"`   // public, private, joint_venture
+	Type     string `form:"type"`   // undergraduate, graduate, vocational
+	Level    string `form:"level"`  // 985, 211, double_first_class, ordinary
+	Nature   string `form:"nature"` // public, private, joint_venture
 	Category string `form:"category"`
-	
+
 	// 地理位置
 	Province string `form:"province"`
 	City     string `form:"city"`
-	
+
 	// 排名筛选
 	MinRank int `form:"min_rank"`
 	MaxRank int `form:"max_rank"`
-	
+
 	// 状态筛选
-	IsActive      *bool `form:"is_active"`
-	IsRecruiting  *bool `form:"is_recruiting"`
-	
+	IsActive     *bool `form:"is_active"`
+	IsRecruiting *bool `form:"is_recruiting"`
+
 	// 排序选项
 	SortBy    string `form:"sort_by"`    // name, rank, score, created_at
 	SortOrder string `form:"sort_order"` // asc, desc
-	
+
 	// 分页参数
 	Page     int `form:"page,default=1"`
 	PageSize int `form:"page_size,default=20"`
-	
+
 	// 关联数据
 	IncludeMajors bool `form:"include_majors"`
 }
@@ -100,7 +100,7 @@ func (s *UniversityService) GetUniversityByID(ctx context.Context, id string) (*
 	// 从数据库查询
 	var university models.University
 	query := s.db.PostgreSQL.Where("id = ?", id)
-	
+
 	if err := query.First(&university).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("院校不存在")
@@ -128,7 +128,7 @@ func (s *UniversityService) GetUniversitiesWithMajors(ctx context.Context, unive
 
 	// 生成缓存键
 	cacheKey := fmt.Sprintf("universities:with_majors:%s", strings.Join(universityIDs, ","))
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -152,7 +152,7 @@ func (s *UniversityService) GetUniversitiesWithMajors(ctx context.Context, unive
 		}).
 		Preload("Majors.AdmissionData", func(db *gorm.DB) *gorm.DB {
 			return db.Where("year = ?", time.Now().Year()-1). // 获取去年的录取数据
-				Order("province ASC, batch ASC")
+										Order("province ASC, batch ASC")
 		})
 
 	if err := query.Find(&universities).Error; err != nil {
@@ -168,13 +168,13 @@ func (s *UniversityService) GetUniversitiesWithMajors(ctx context.Context, unive
 	}
 
 	s.logger.Debugf("成功获取 %d 所院校的专业信息", len(universities))
-	
+
 	// 记录批量查询性能
 	startTime := time.Now()
 	defer func() {
 		s.logQueryPerformance("GetUniversitiesWithMajors", "database", time.Since(startTime), len(universities))
 	}()
-	
+
 	return universities, nil
 }
 
@@ -303,10 +303,10 @@ func (s *UniversityService) ListUniversities(ctx context.Context, params Univers
 
 	// 排名范围筛选
 	if params.MinRank > 0 {
-		query = query.Where("ranking >= ?", params.MinRank)
+		query = query.Where("national_rank >= ?", params.MinRank)
 	}
 	if params.MaxRank > 0 {
-		query = query.Where("ranking <= ?", params.MaxRank)
+		query = query.Where("national_rank <= ?", params.MaxRank)
 	}
 
 	// 状态筛选
@@ -324,9 +324,12 @@ func (s *UniversityService) ListUniversities(ctx context.Context, params Univers
 	}
 
 	// 排序
-	sortBy := "ranking"
+	sortBy := "national_rank"
 	if params.SortBy != "" {
 		sortBy = params.SortBy
+	}
+	if sortBy == "ranking" {
+		sortBy = "national_rank"
 	}
 	sortOrder := "ASC"
 	if params.SortOrder == "desc" {
@@ -375,13 +378,13 @@ func (s *UniversityService) SearchUniversities(ctx context.Context, keyword stri
 
 // UniversityStatistics 院校统计信息
 type UniversityStatistics struct {
-	Total          int64            `json:"total"`
-	By985          int64            `json:"by_985"`
-	By211          int64            `json:"by_211"`
-	ByDoubleFirst  int64            `json:"by_double_first_class"`
-	ByProvince     map[string]int64 `json:"by_province"`
-	ByType         map[string]int64 `json:"by_type"`
-	ByNature       map[string]int64 `json:"by_nature"`
+	Total         int64            `json:"total"`
+	By985         int64            `json:"by_985"`
+	By211         int64            `json:"by_211"`
+	ByDoubleFirst int64            `json:"by_double_first_class"`
+	ByProvince    map[string]int64 `json:"by_province"`
+	ByType        map[string]int64 `json:"by_type"`
+	ByNature      map[string]int64 `json:"by_nature"`
 }
 
 // GetUniversityStatistics 获取院校统计信息

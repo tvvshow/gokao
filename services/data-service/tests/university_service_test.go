@@ -2,10 +2,10 @@ package tests
 
 import (
 	"context"
-	"data-service/internal/config"
-	"data-service/internal/database"
-	"data-service/internal/models"
-	"data-service/internal/services"
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"testing"
 	"time"
 
@@ -28,8 +28,11 @@ type UniversityServiceTestSuite struct {
 // SetupSuite 设置测试套件
 func (suite *UniversityServiceTestSuite) SetupSuite() {
 	// 使用内存SQLite数据库进行测试
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	suite.Require().NoError(err)
+	sqlDB, err := db.DB()
+	suite.Require().NoError(err)
+	sqlDB.SetMaxOpenConns(1)
 
 	// 自动迁移
 	err = db.AutoMigrate(&models.University{}, &models.Major{}, &models.AdmissionData{})
@@ -248,36 +251,28 @@ func (suite *UniversityServiceTestSuite) TestGetUniversityStatistics() {
 	suite.NotNil(stats)
 
 	// 验证总数
-	suite.Equal(int64(3), stats["total"])
+	suite.Equal(int64(3), stats.Total)
 
-	// 验证按层次统计
-	levelStats, ok := stats["by_level"].([]struct {
-		Level string `json:"level"`
-		Count int64  `json:"count"`
-	})
-	suite.True(ok)
-	suite.NotEmpty(levelStats)
+	// 验证层次统计
+	suite.Equal(int64(2), stats.By985)
+	suite.Equal(int64(1), stats.By211)
 
 	// 验证按省份统计
-	provinceStats, ok := stats["by_province"].([]struct {
-		Province string `json:"province"`
-		Count    int64  `json:"count"`
-	})
-	suite.True(ok)
-	suite.NotEmpty(provinceStats)
+	suite.NotEmpty(stats.ByProvince)
+	suite.Equal(int64(3), stats.ByProvince["北京市"])
 }
 
 // TestUniversityQueryParamsValidation 测试查询参数验证
 func (suite *UniversityServiceTestSuite) TestUniversityQueryParamsValidation() {
 	// 测试分页参数自动修正
 	params := services.UniversityQueryParams{
-		Page:     0, // 无效页码
+		Page:     0,  // 无效页码
 		PageSize: -1, // 无效页大小
 	}
 
 	result, err := suite.service.ListUniversities(suite.ctx, params)
 	suite.NoError(err)
-	suite.Equal(1, result.Page) // 应该被修正为1
+	suite.Equal(1, result.Page)      // 应该被修正为1
 	suite.Equal(20, result.PageSize) // 应该被修正为默认值
 }
 

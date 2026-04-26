@@ -2,6 +2,7 @@ package feature_engineering
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"gorgonia.org/tensor"
 )
 
 // AdvancedFeatureEngineering 高级特征工程框架
@@ -22,7 +22,7 @@ type AdvancedFeatureEngineering struct {
 	onlineFeatureUpdater *StreamingFeatureUpdater
 	// 特征重要性分析器
 	featureImportanceAnalyzer *FeatureImportanceAnalyzer
-	
+
 	logger *logrus.Logger
 	mu     sync.RWMutex
 }
@@ -36,7 +36,7 @@ type AutoMLFeatureSelector struct {
 
 // FeatureInteractionEngine 特征交互发现引擎
 type FeatureInteractionEngine struct {
-	interactionGraph map[string]map[string]float64
+	interactionGraph     map[string]map[string]float64
 	interactionThreshold float64
 }
 
@@ -79,9 +79,9 @@ func NewAdvancedFeatureEngineering(logger *logrus.Logger) (*AdvancedFeatureEngin
 }
 
 // ExtractFeatures 提取特征
-func (e *AdvancedFeatureEngineering) ExtractFeatures(ctx context.Context, 
+func (e *AdvancedFeatureEngineering) ExtractFeatures(ctx context.Context,
 	rawData map[string]interface{}) (map[string]float64, error) {
-	
+
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -180,7 +180,7 @@ func (e *AdvancedFeatureEngineering) normalizeFeatures(features map[string]float
 	for feature, value := range features {
 		// 获取特征统计信息
 		stats := e.onlineFeatureUpdater.GetFeatureStatistics(feature)
-		
+
 		if stats != nil && stats.StdDev > 0 {
 			// Z-score标准化
 			normalized[feature] = (value - stats.Mean) / stats.StdDev
@@ -215,9 +215,9 @@ func (e *AdvancedFeatureEngineering) getFeatureRange(feature string) (float64, f
 }
 
 // UpdateFeatureStatistics 更新特征统计信息
-func (e *AdvancedFeatureEngineering) UpdateFeatureStatistics(ctx context.Context, 
+func (e *AdvancedFeatureEngineering) UpdateFeatureStatistics(ctx context.Context,
 	features map[string]float64) error {
-	
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -276,8 +276,7 @@ func (e *AdvancedFeatureEngineering) ExportFeaturePipeline() ([]byte, error) {
 		"timestamp":            time.Now().Unix(),
 	}
 
-	// 这里应该实现序列化逻辑
-	return nil, nil
+	return json.Marshal(pipeline)
 }
 
 // ImportFeaturePipeline 导入特征处理管道
@@ -285,9 +284,10 @@ func (e *AdvancedFeatureEngineering) ImportFeaturePipeline(data []byte) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	// 这里应该实现反序列化逻辑
 	var pipeline map[string]interface{}
-	// json.Unmarshal(data, &pipeline)
+	if err := json.Unmarshal(data, &pipeline); err != nil {
+		return fmt.Errorf("failed to unmarshal feature pipeline: %w", err)
+	}
 
 	// 导入各个组件
 	if err := e.autoFeatureSelector.Import(pipeline["selected_features"]); err != nil {
@@ -309,6 +309,257 @@ func (e *AdvancedFeatureEngineering) ImportFeaturePipeline(data []byte) error {
 	return nil
 }
 
+// SelectFeatures 自动特征选择
+func (s *AutoMLFeatureSelector) SelectFeatures(features map[string]float64) map[string]float64 {
+	if len(s.selectedFeatures) == 0 {
+		for k := range features {
+			s.selectedFeatures[k] = true
+		}
+	}
+	selected := make(map[string]float64)
+	for k, v := range features {
+		if s.selectedFeatures[k] {
+			selected[k] = v
+		}
+	}
+	return selected
+}
+
+// UpdateSelection 更新特征选择
+func (s *AutoMLFeatureSelector) UpdateSelection(features map[string]float64) error {
+	for k, v := range features {
+		score := math.Abs(v)
+		s.featureScores[k] = score
+		s.selectedFeatures[k] = score >= 0.01
+	}
+	return nil
+}
+
+// GetSelectedFeatures 返回当前选择的特征列表
+func (s *AutoMLFeatureSelector) GetSelectedFeatures() []string {
+	keys := make([]string, 0, len(s.selectedFeatures))
+	for k, selected := range s.selectedFeatures {
+		if selected {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Export 导出特征选择器状态
+func (s *AutoMLFeatureSelector) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"selected_features": s.selectedFeatures,
+		"feature_scores":    s.featureScores,
+		"selection_method":  s.selectionMethod,
+	}
+}
+
+// Import 导入特征选择器状态
+func (s *AutoMLFeatureSelector) Import(data interface{}) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var payload struct {
+		SelectedFeatures map[string]bool    `json:"selected_features"`
+		FeatureScores    map[string]float64 `json:"feature_scores"`
+		SelectionMethod  string             `json:"selection_method"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.SelectedFeatures != nil {
+		s.selectedFeatures = payload.SelectedFeatures
+	}
+	if payload.FeatureScores != nil {
+		s.featureScores = payload.FeatureScores
+	}
+	if payload.SelectionMethod != "" {
+		s.selectionMethod = payload.SelectionMethod
+	}
+	return nil
+}
+
+// DiscoverInteractions 发现特征交互项
+func (f *FeatureInteractionEngine) DiscoverInteractions(features map[string]float64) map[string]float64 {
+	result := make(map[string]float64)
+	keys := make([]string, 0, len(features))
+	for k := range features {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for i := 0; i < len(keys); i++ {
+		for j := i + 1; j < len(keys); j++ {
+			a, b := keys[i], keys[j]
+			score := math.Abs(features[a] * features[b])
+			if score >= f.interactionThreshold {
+				name := a + "_x_" + b
+				result[name] = features[a] * features[b]
+				if _, ok := f.interactionGraph[a]; !ok {
+					f.interactionGraph[a] = make(map[string]float64)
+				}
+				f.interactionGraph[a][b] = score
+			}
+		}
+	}
+	return result
+}
+
+// GetInteractionGraph 返回交互图
+func (f *FeatureInteractionEngine) GetInteractionGraph() map[string]map[string]float64 {
+	return f.interactionGraph
+}
+
+// Export 导出交互引擎状态
+func (f *FeatureInteractionEngine) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"interaction_graph":     f.interactionGraph,
+		"interaction_threshold": f.interactionThreshold,
+	}
+}
+
+// Import 导入交互引擎状态
+func (f *FeatureInteractionEngine) Import(data interface{}) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var payload struct {
+		InteractionGraph     map[string]map[string]float64 `json:"interaction_graph"`
+		InteractionThreshold float64                       `json:"interaction_threshold"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.InteractionGraph != nil {
+		f.interactionGraph = payload.InteractionGraph
+	}
+	if payload.InteractionThreshold > 0 {
+		f.interactionThreshold = payload.InteractionThreshold
+	}
+	return nil
+}
+
+// GetFeatureStatistics 返回某个特征统计
+func (s *StreamingFeatureUpdater) GetFeatureStatistics(feature string) *FeatureStatistics {
+	return s.featureStatistics[feature]
+}
+
+// Update 增量更新特征统计
+func (s *StreamingFeatureUpdater) Update(features map[string]float64) error {
+	for k, v := range features {
+		stats, ok := s.featureStatistics[k]
+		if !ok {
+			s.featureStatistics[k] = &FeatureStatistics{
+				Count:     1,
+				Sum:       v,
+				Mean:      v,
+				StdDev:    0,
+				Min:       v,
+				Max:       v,
+				Histogram: map[float64]int{v: 1},
+			}
+			continue
+		}
+		stats.Count++
+		stats.Sum += v
+		prevMean := stats.Mean
+		stats.Mean = stats.Sum / float64(stats.Count)
+		stats.StdDev = math.Sqrt(((stats.StdDev * stats.StdDev * float64(stats.Count-1)) + ((v - prevMean) * (v - stats.Mean))) / float64(stats.Count))
+		if v < stats.Min {
+			stats.Min = v
+		}
+		if v > stats.Max {
+			stats.Max = v
+		}
+		if stats.Histogram == nil {
+			stats.Histogram = make(map[float64]int)
+		}
+		stats.Histogram[v]++
+	}
+	return nil
+}
+
+// Export 导出流式更新器状态
+func (s *StreamingFeatureUpdater) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"feature_window_size": s.featureWindowSize,
+		"update_interval_ns":  int64(s.updateInterval),
+		"feature_statistics":  s.featureStatistics,
+	}
+}
+
+// Import 导入流式更新器状态
+func (s *StreamingFeatureUpdater) Import(data interface{}) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var payload struct {
+		FeatureWindowSize int                           `json:"feature_window_size"`
+		UpdateIntervalNS  int64                         `json:"update_interval_ns"`
+		FeatureStatistics map[string]*FeatureStatistics `json:"feature_statistics"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.FeatureWindowSize > 0 {
+		s.featureWindowSize = payload.FeatureWindowSize
+	}
+	if payload.UpdateIntervalNS > 0 {
+		s.updateInterval = time.Duration(payload.UpdateIntervalNS)
+	}
+	if payload.FeatureStatistics != nil {
+		s.featureStatistics = payload.FeatureStatistics
+	}
+	return nil
+}
+
+// AnalyzeImportance 分析特征重要性
+func (f *FeatureImportanceAnalyzer) AnalyzeImportance(features map[string]float64) error {
+	for k, v := range features {
+		f.importanceScores[k] = math.Abs(v)
+	}
+	return nil
+}
+
+// GetImportanceScores 返回特征重要性分数
+func (f *FeatureImportanceAnalyzer) GetImportanceScores() map[string]float64 {
+	return f.importanceScores
+}
+
+// Export 导出重要性分析器状态
+func (f *FeatureImportanceAnalyzer) Export() map[string]interface{} {
+	return map[string]interface{}{
+		"importance_scores": f.importanceScores,
+		"analysis_method":   f.analysisMethod,
+	}
+}
+
+// Import 导入重要性分析器状态
+func (f *FeatureImportanceAnalyzer) Import(data interface{}) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var payload struct {
+		ImportanceScores map[string]float64 `json:"importance_scores"`
+		AnalysisMethod   string             `json:"analysis_method"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return err
+	}
+	if payload.ImportanceScores != nil {
+		f.importanceScores = payload.ImportanceScores
+	}
+	if payload.AnalysisMethod != "" {
+		f.analysisMethod = payload.AnalysisMethod
+	}
+	return nil
+}
+
 // 初始化各个组件
 func (e *AdvancedFeatureEngineering) initComponents() error {
 	// 初始化自动特征选择器
@@ -326,15 +577,15 @@ func (e *AdvancedFeatureEngineering) initComponents() error {
 
 	// 初始化在线特征更新器
 	e.onlineFeatureUpdater = &StreamingFeatureUpdater{
-		featureWindowSize:    1000,
-		updateInterval:       time.Minute,
-		featureStatistics:    make(map[string]*FeatureStatistics),
+		featureWindowSize: 1000,
+		updateInterval:    time.Minute,
+		featureStatistics: make(map[string]*FeatureStatistics),
 	}
 
 	// 初始化特征重要性分析器
 	e.featureImportanceAnalyzer = &FeatureImportanceAnalyzer{
 		importanceScores: make(map[string]float64),
-		analysisMethod:  "permutation_importance",
+		analysisMethod:   "permutation_importance",
 	}
 
 	return nil

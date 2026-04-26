@@ -4,21 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
+	"time"
 
-	"gaokao-system/services/data-service/internal/models"
+	"github.com/google/uuid"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"gorm.io/gorm"
 )
 
 // ===== 数据验证服务实现 =====
 type DataValidationService struct {
-	db interface {
-		Find(dest interface{}, conds ...interface{}) error
-		Where(query interface{}, args ...interface{}) interface{}
-	}
+	db *gorm.DB
 }
 
-func NewDataValidationService(db interface{}) *DataValidationService {
+func NewDataValidationService(db *gorm.DB) *DataValidationService {
 	return &DataValidationService{db: db}
 }
 
@@ -43,9 +42,9 @@ func (s *DataValidationService) ValidateUniversity(data *models.University) erro
 	}
 
 	// 邮箱格式验证
-	if data.ContactEmail != "" {
+	if data.Email != "" {
 		emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-		if !emailRegex.MatchString(data.ContactEmail) {
+		if !emailRegex.MatchString(data.Email) {
 			return errors.New("联系邮箱格式不正确")
 		}
 	}
@@ -99,7 +98,7 @@ func (s *DataValidationService) ValidateMajor(data *models.Major) error {
 		return errors.New("专业类别不能为空")
 	}
 
-	if strings.TrimSpace(data.Degree) == "" {
+	if strings.TrimSpace(data.DegreeType) == "" {
 		return errors.New("学位层次不能为空")
 	}
 
@@ -139,11 +138,11 @@ func (s *DataValidationService) ValidateAdmissionData(data *models.AdmissionData
 		return errors.New("大学ID不能为空")
 	}
 
-	if strings.TrimSpace(data.ScienceType) == "" {
+	if strings.TrimSpace(data.Category) == "" {
 		return errors.New("科类不能为空")
 	}
 
-	if strings.TrimSpace(data.BatchType) == "" {
+	if strings.TrimSpace(data.Batch) == "" {
 		return errors.New("批次类型不能为空")
 	}
 
@@ -155,7 +154,7 @@ func (s *DataValidationService) ValidateAdmissionData(data *models.AdmissionData
 	validScienceTypes := []string{"理科", "文科", "新高考", "综合"}
 	isValid := false
 	for _, validType := range validScienceTypes {
-		if data.ScienceType == validType {
+		if data.Category == validType {
 			isValid = true
 			break
 		}
@@ -168,7 +167,7 @@ func (s *DataValidationService) ValidateAdmissionData(data *models.AdmissionData
 	validBatchTypes := []string{"本科一批", "本科二批", "专科一批", "专科二批", "提前批"}
 	isValid = false
 	for _, validBatch := range validBatchTypes {
-		if data.BatchType == validBatch {
+		if data.Batch == validBatch {
 			isValid = true
 			break
 		}
@@ -178,41 +177,41 @@ func (s *DataValidationService) ValidateAdmissionData(data *models.AdmissionData
 	}
 
 	// 招生计划验证
-	if data.EnrollmentQuota < 0 {
+	if data.PlannedCount < 0 {
 		return errors.New("招生计划数不能为负数")
 	}
 
-	if data.ActualEnrollment < 0 {
+	if data.ActualCount < 0 {
 		return errors.New("实际录取数不能为负数")
 	}
 
-	if data.ActualEnrollment > data.EnrollmentQuota {
+	if data.ActualCount > data.PlannedCount {
 		return errors.New("实际录取数不能超过招生计划数")
 	}
 
 	// 分数验证
-	if data.CutoffScore < 0 || data.CutoffScore > 750 {
+	if data.MinScore < 0 || data.MinScore > 750 {
 		return errors.New("分数线必须在0-750分之间")
 	}
 
-	if data.AverageScore < 0 || data.AverageScore > 750 {
+	if data.AvgScore < 0 || data.AvgScore > 750 {
 		return errors.New("平均分必须在0-750分之间")
 	}
 
-	if data.HighestScore < 0 || data.HighestScore > 750 {
+	if data.MaxScore < 0 || data.MaxScore > 750 {
 		return errors.New("最高分必须在0-750分之间")
 	}
 
-	if data.LowestScore < 0 || data.LowestScore > 750 {
+	if data.MinScore < 0 || data.MinScore > 750 {
 		return errors.New("最低分必须在0-750分之间")
 	}
 
 	// 排名验证
-	if data.CutoffRank < 0 {
+	if data.MinRank < 0 {
 		return errors.New("最低排名不能为负数")
 	}
 
-	if data.AverageRank < 0 {
+	if data.AvgRank < 0 {
 		return errors.New("平均排名不能为负数")
 	}
 
@@ -329,21 +328,8 @@ func (s *DataValidationService) CleanUniversityData(data *models.University) {
 	data.Type = strings.TrimSpace(data.Type)
 	data.Website = strings.TrimSpace(data.Website)
 	data.Address = strings.TrimSpace(data.Address)
-	data.ContactPhone = strings.TrimSpace(data.ContactPhone)
-	data.ContactEmail = strings.TrimSpace(data.ContactEmail)
-
-	// 标准化学校类型
-	switch strings.ToUpper(data.Type) {
-	case "985":
-		data.Is985 = true
-		data.Type = "985"
-	case "211":
-		data.Is211 = true
-		data.Type = "211"
-	case "双一流":
-		data.IsDoubleFirstClass = true
-		data.Type = "双一流"
-	}
+	data.Phone = strings.TrimSpace(data.Phone)
+	data.Email = strings.TrimSpace(data.Email)
 
 	// 确保URL格式正确
 	if strings.HasPrefix(data.Website, "www.") {
@@ -357,47 +343,47 @@ func (s *DataValidationService) CleanMajorData(data *models.Major) {
 	data.EnglishName = strings.TrimSpace(data.EnglishName)
 	data.Code = strings.TrimSpace(data.Code)
 	data.Category = strings.TrimSpace(data.Category)
-	data.Degree = strings.TrimSpace(data.Degree)
+	data.DegreeType = strings.TrimSpace(data.DegreeType)
 
 	// 标准化学位类型
-	switch strings.ToUpper(data.Degree) {
+	switch strings.ToUpper(data.DegreeType) {
 	case "本科", "BACHELOR":
-		data.Degree = "本科"
+		data.DegreeType = "本科"
 	case "硕士", "MASTER":
-		data.Degree = "硕士"
+		data.DegreeType = "硕士"
 	case "博士", "PHD", "DOCTOR":
-		data.Degree = "博士"
+		data.DegreeType = "博士"
 	}
 }
 
 func (s *DataValidationService) CleanAdmissionData(data *models.AdmissionData) {
 	// 去除前后空格
-	data.ScienceType = strings.TrimSpace(data.ScienceType)
-	data.BatchType = strings.TrimSpace(data.BatchType)
+	data.Category = strings.TrimSpace(data.Category)
+	data.Batch = strings.TrimSpace(data.Batch)
 
 	// 标准化科类
-	switch strings.ToUpper(data.ScienceType) {
+	switch strings.ToUpper(data.Category) {
 	case "理科", "SCIENCE":
-		data.ScienceType = "理科"
+		data.Category = "理科"
 	case "文科", "ARTS":
-		data.ScienceType = "文科"
+		data.Category = "文科"
 	case "新高考", "NEW_GAOKAO":
-		data.ScienceType = "新高考"
+		data.Category = "新高考"
 	case "综合", "COMPREHENSIVE":
-		data.ScienceType = "综合"
+		data.Category = "综合"
 	}
 
 	// 标准化批次类型
-	switch strings.ToUpper(data.BatchType) {
+	switch strings.ToUpper(data.Batch) {
 	case "一批", "FIRST_BATCH":
-		data.BatchType = "本科一批"
+		data.Batch = "本科一批"
 	case "二批", "SECOND_BATCH":
-		data.BatchType = "本科二批"
+		data.Batch = "本科二批"
 	case "专科一批", "VOCATIONAL_FIRST":
-		data.BatchType = "专科一批"
+		data.Batch = "专科一批"
 	case "专科二批", "VOCATIONAL_SECOND":
-		data.BatchType = "专科二批"
+		data.Batch = "专科二批"
 	case "提前批", "EARLY_BATCH":
-		data.BatchType = "提前批"
+		data.Batch = "提前批"
 	}
 }

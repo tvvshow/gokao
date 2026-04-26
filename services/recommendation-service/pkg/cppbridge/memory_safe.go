@@ -1,4 +1,5 @@
-// +build cgo
+//go:build cgo && legacycpp
+// +build cgo,legacycpp
 
 package cppbridge
 

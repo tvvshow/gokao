@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -64,10 +63,10 @@ func (h *AnalyticsHandler) GetRecommendationStats(c *gin.Context) {
 	// 解析时间参数
 	startTimeStr := c.Query("start_time")
 	endTimeStr := c.Query("end_time")
-	
+
 	var startTime, endTime time.Time
 	var err error
-	
+
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
@@ -80,7 +79,7 @@ func (h *AnalyticsHandler) GetRecommendationStats(c *gin.Context) {
 	} else {
 		startTime = time.Now().AddDate(0, 0, -7) // 默认7天前
 	}
-	
+
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
@@ -267,7 +266,7 @@ func (h *AnalyticsHandler) ExportAnalyticsReport(c *gin.Context) {
 
 	// 构建完整报告
 	report := make(map[string]interface{})
-	
+
 	// 系统指标
 	systemMetrics, err := h.analyticsService.GetSystemMetrics()
 	if err == nil {
@@ -300,7 +299,7 @@ func (h *AnalyticsHandler) ExportAnalyticsReport(c *gin.Context) {
 			StartTime: startTime,
 			EndTime:   endTime,
 		},
-		"format": format,
+		"format":  format,
 		"user_id": userID,
 	}
 
@@ -426,12 +425,12 @@ func (h *AnalyticsHandler) GenerateQualityReport(c *gin.Context) {
 // @Router /analytics/trends [get]
 func (h *AnalyticsHandler) GetRecommendationTrends(c *gin.Context) {
 	timeRange := c.DefaultQuery("time_range", "24h")
-	
+
 	// 验证时间范围参数
 	validRanges := map[string]bool{
 		"1h": true, "24h": true, "7d": true, "30d": true,
 	}
-	
+
 	if !validRanges[timeRange] {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_time_range",

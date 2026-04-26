@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
+	"github.com/sirupsen/logrus"
 )
 
 // WeightHandler 权重配置处理器
@@ -79,7 +78,7 @@ func (h *WeightHandler) GetWeightConfig(c *gin.Context) {
 // @Router /weights/{key} [post]
 func (h *WeightHandler) SetWeightConfig(c *gin.Context) {
 	key := c.Param("key")
-	
+
 	var config services.WeightConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
 		h.logger.Warnf("解析权重配置失败: %v", err)
@@ -89,7 +88,7 @@ func (h *WeightHandler) SetWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if err := h.weightService.SetWeights(key, &config); err != nil {
 		h.logger.Warnf("设置权重配置失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -98,7 +97,7 @@ func (h *WeightHandler) SetWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "权重配置已更新",
@@ -117,9 +116,9 @@ func (h *WeightHandler) SetWeightConfig(c *gin.Context) {
 // @Router /weights/{key} [delete]
 func (h *WeightHandler) DeleteWeightConfig(c *gin.Context) {
 	key := c.Param("key")
-	
+
 	h.weightService.DeleteWeights(key)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "权重配置已删除",
@@ -137,9 +136,9 @@ func (h *WeightHandler) DeleteWeightConfig(c *gin.Context) {
 // @Router /weights/{key}/reset [post]
 func (h *WeightHandler) ResetWeightConfig(c *gin.Context) {
 	key := c.Param("key")
-	
+
 	h.weightService.ResetToDefault(key)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "权重配置已重置为默认",
@@ -157,7 +156,7 @@ func (h *WeightHandler) ResetWeightConfig(c *gin.Context) {
 // @Router /weights/{key}/export [get]
 func (h *WeightHandler) ExportWeightConfig(c *gin.Context) {
 	key := c.Param("key")
-	
+
 	data, err := h.weightService.ExportWeights(key)
 	if err != nil {
 		h.logger.Warnf("导出权重配置失败: %v", err)
@@ -167,7 +166,7 @@ func (h *WeightHandler) ExportWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.Header("Content-Type", "application/json")
 	c.Header("Content-Disposition", "attachment; filename=\"weight_config_"+key+".json\"")
 	c.String(http.StatusOK, string(data))
@@ -186,7 +185,7 @@ func (h *WeightHandler) ExportWeightConfig(c *gin.Context) {
 // @Router /weights/{key}/import [post]
 func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 	key := c.Param("key")
-	
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.logger.Warnf("获取上传文件失败: %v", err)
@@ -196,7 +195,7 @@ func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 检查文件类型
 	if !strings.HasSuffix(file.Filename, ".json") {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -205,7 +204,7 @@ func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 读取文件内容
 	f, err := file.Open()
 	if err != nil {
@@ -217,7 +216,7 @@ func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 		return
 	}
 	defer f.Close()
-	
+
 	data := make([]byte, file.Size)
 	_, err = f.Read(data)
 	if err != nil {
@@ -228,7 +227,7 @@ func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 导入配置
 	if err := h.weightService.ImportWeights(key, data); err != nil {
 		h.logger.Warnf("导入权重配置失败: %v", err)
@@ -238,7 +237,7 @@ func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "权重配置导入成功",
@@ -267,7 +266,7 @@ func (h *WeightHandler) GetWeightStats(c *gin.Context) {
 // @Router /weights/presets [post]
 func (h *WeightHandler) CreatePresetWeights(c *gin.Context) {
 	h.weightService.CreatePresetWeights()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "预设权重配置已创建",
@@ -277,15 +276,15 @@ func (h *WeightHandler) CreatePresetWeights(c *gin.Context) {
 
 // WeightConfigRequest 权重配置请求（用于文档）
 type WeightConfigRequest struct {
-	Name        string  `json:"name" example:"自定义配置"`
-	Description string  `json:"description" example:"我的自定义权重配置"`
-	ScoreMatchWeight    float64 `json:"score_match_weight" example:"0.35"`
-	LocationWeight      float64 `json:"location_weight" example:"0.15"`
-	InterestWeight      float64 `json:"interest_weight" example:"0.15"`
-	EmploymentWeight    float64 `json:"employment_weight" example:"0.15"`
-	UniversityRankWeight float64 `json:"university_rank_weight" example:"0.10"`
-	CompetitionWeight   float64 `json:"competition_weight" example:"0.10"`
-	EnableAdaptiveWeights bool   `json:"enable_adaptive_weights" example:"true"`
+	Name                  string  `json:"name" example:"自定义配置"`
+	Description           string  `json:"description" example:"我的自定义权重配置"`
+	ScoreMatchWeight      float64 `json:"score_match_weight" example:"0.35"`
+	LocationWeight        float64 `json:"location_weight" example:"0.15"`
+	InterestWeight        float64 `json:"interest_weight" example:"0.15"`
+	EmploymentWeight      float64 `json:"employment_weight" example:"0.15"`
+	UniversityRankWeight  float64 `json:"university_rank_weight" example:"0.10"`
+	CompetitionWeight     float64 `json:"competition_weight" example:"0.10"`
+	EnableAdaptiveWeights bool    `json:"enable_adaptive_weights" example:"true"`
 	MinWeightThreshold    float64 `json:"min_weight_threshold" example:"0.05"`
 	MaxWeightThreshold    float64 `json:"max_weight_threshold" example:"0.40"`
 }

@@ -2,13 +2,13 @@ package tests
 
 import (
 	"bytes"
-	"data-service/internal/config"
-	"data-service/internal/database"
-	"data-service/internal/handlers"
-	"data-service/internal/middleware"
-	"data-service/internal/models"
-	"data-service/internal/services"
 	"encoding/json"
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
+	"github.com/oktetopython/gaokao/services/data-service/internal/middleware"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,9 +25,9 @@ import (
 // IntegrationTestSuite 集成测试套件
 type IntegrationTestSuite struct {
 	suite.Suite
-	router  *gin.Engine
-	db      *gorm.DB
-	logger  *logrus.Logger
+	router *gin.Engine
+	db     *gorm.DB
+	logger *logrus.Logger
 }
 
 // SetupSuite 设置测试套件
@@ -36,8 +36,11 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	gin.SetMode(gin.TestMode)
 
 	// 创建测试数据库
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	suite.Require().NoError(err)
+	sqlDB, err := db.DB()
+	suite.Require().NoError(err)
+	sqlDB.SetMaxOpenConns(1)
 
 	// 自动迁移
 	err = db.AutoMigrate(
@@ -163,32 +166,32 @@ func (suite *IntegrationTestSuite) seedTestData() {
 	// 创建测试院校
 	universities := []models.University{
 		{
-			ID:            uuid.New(),
-			Code:          "10001",
-			Name:          "北京大学",
-			Type:          "undergraduate",
-			Level:         "985",
-			Nature:        "public",
-			Province:      "北京市",
-			City:          "北京市",
-			NationalRank:  1,
-			OverallScore:  95.5,
-			IsActive:      true,
-			IsRecruiting:  true,
+			ID:           uuid.New(),
+			Code:         "10001",
+			Name:         "北京大学",
+			Type:         "undergraduate",
+			Level:        "985",
+			Nature:       "public",
+			Province:     "北京市",
+			City:         "北京市",
+			NationalRank: 1,
+			OverallScore: 95.5,
+			IsActive:     true,
+			IsRecruiting: true,
 		},
 		{
-			ID:            uuid.New(),
-			Code:          "10002",
-			Name:          "清华大学",
-			Type:          "undergraduate",
-			Level:         "985",
-			Nature:        "public",
-			Province:      "北京市",
-			City:          "北京市",
-			NationalRank:  2,
-			OverallScore:  95.0,
-			IsActive:      true,
-			IsRecruiting:  true,
+			ID:           uuid.New(),
+			Code:         "10002",
+			Name:         "清华大学",
+			Type:         "undergraduate",
+			Level:        "985",
+			Nature:       "public",
+			Province:     "北京市",
+			City:         "北京市",
+			NationalRank: 2,
+			OverallScore: 95.0,
+			IsActive:     true,
+			IsRecruiting: true,
 		},
 	}
 
@@ -199,18 +202,18 @@ func (suite *IntegrationTestSuite) seedTestData() {
 	// 创建测试专业
 	majors := []models.Major{
 		{
-			ID:           uuid.New(),
-			UniversityID: universities[0].ID,
-			Code:         "080901",
-			Name:         "计算机科学与技术",
-			Category:     "工学",
-			Discipline:   "计算机类",
-			DegreeType:   "bachelor",
-			EmploymentRate: 95.5,
-			AverageSalary:  12000,
+			ID:              uuid.New(),
+			UniversityID:    universities[0].ID,
+			Code:            "080901",
+			Name:            "计算机科学与技术",
+			Category:        "工学",
+			Discipline:      "计算机类",
+			DegreeType:      "bachelor",
+			EmploymentRate:  95.5,
+			AverageSalary:   12000,
 			PopularityScore: 85.0,
-			IsActive:     true,
-			IsRecruiting: true,
+			IsActive:        true,
+			IsRecruiting:    true,
 		},
 	}
 
@@ -221,21 +224,21 @@ func (suite *IntegrationTestSuite) seedTestData() {
 	// 创建测试录取数据
 	admissionData := []models.AdmissionData{
 		{
-			ID:           uuid.New(),
-			UniversityID: universities[0].ID,
-			MajorID:      &majors[0].ID,
-			Year:         2023,
-			Province:     "北京市",
-			Batch:        "first_batch",
-			Category:     "science",
-			MinScore:     650.0,
-			MaxScore:     690.0,
-			AvgScore:     670.0,
-			MinRank:      500,
-			MaxRank:      100,
-			AvgRank:      300,
-			PlannedCount: 100,
-			ActualCount:  100,
+			ID:            uuid.New(),
+			UniversityID:  universities[0].ID,
+			MajorID:       &majors[0].ID,
+			Year:          2023,
+			Province:      "北京市",
+			Batch:         "first_batch",
+			Category:      "science",
+			MinScore:      650.0,
+			MaxScore:      690.0,
+			AvgScore:      670.0,
+			MinRank:       500,
+			MaxRank:       100,
+			AvgRank:       300,
+			PlannedCount:  100,
+			ActualCount:   100,
 			AdmissionRate: 0.8,
 		},
 	}
@@ -362,9 +365,9 @@ func (suite *IntegrationTestSuite) TestAlgorithmAPI() {
 		Score:         650.0,
 		RiskTolerance: "moderate",
 		Preferences: services.VolunteerPreferences{
-			SchoolWeight:   0.4,
-			MajorWeight:    0.3,
-			LocationWeight: 0.2,
+			SchoolWeight:     0.4,
+			MajorWeight:      0.3,
+			LocationWeight:   0.2,
 			EmploymentWeight: 0.1,
 		},
 	}

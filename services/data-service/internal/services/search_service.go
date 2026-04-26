@@ -2,10 +2,10 @@ package services
 
 import (
 	"context"
-	"data-service/internal/database"
-	"data-service/internal/models"
 	"encoding/json"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
 	"time"
 
 	"github.com/olivere/elastic/v7"
@@ -31,12 +31,12 @@ func NewSearchService(db *database.DB, logger *logrus.Logger) *SearchService {
 // SearchRequest 搜索请求
 type SearchRequest struct {
 	Keyword   string   `json:"keyword" form:"keyword" validate:"required"`
-	Types     []string `json:"types" form:"types"`         // university, major
+	Types     []string `json:"types" form:"types"` // university, major
 	Province  string   `json:"province" form:"province"`
 	Category  string   `json:"category" form:"category"`
 	Page      int      `json:"page" form:"page,default=1"`
 	PageSize  int      `json:"page_size" form:"page_size,default=20"`
-	SortBy    string   `json:"sort_by" form:"sort_by"`     // relevance, popularity, name
+	SortBy    string   `json:"sort_by" form:"sort_by"`       // relevance, popularity, name
 	SortOrder string   `json:"sort_order" form:"sort_order"` // asc, desc
 }
 
@@ -55,7 +55,7 @@ type SearchResponse struct {
 // AutoCompleteRequest 自动补全请求
 type AutoCompleteRequest struct {
 	Keyword string `json:"keyword" form:"keyword" validate:"required"`
-	Type    string `json:"type" form:"type"`     // university, major, all
+	Type    string `json:"type" form:"type"` // university, major, all
 	Limit   int    `json:"limit" form:"limit,default=10"`
 }
 
@@ -67,7 +67,7 @@ type AutoCompleteResponse struct {
 // AutoCompleteSuggestion 自动补全建议
 type AutoCompleteSuggestion struct {
 	Text     string `json:"text"`
-	Type     string `json:"type"`     // university, major
+	Type     string `json:"type"` // university, major
 	Category string `json:"category,omitempty"`
 	ID       string `json:"id,omitempty"`
 }
@@ -116,7 +116,7 @@ func (s *SearchService) AutoComplete(ctx context.Context, req AutoCompleteReques
 
 	// 生成缓存键
 	cacheKey := fmt.Sprintf("autocomplete:%s:%s:%d", req.Type, req.Keyword, req.Limit)
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -170,7 +170,7 @@ func (s *SearchService) GetHotSearches(ctx context.Context, category string, lim
 
 	// 生成缓存键
 	cacheKey := fmt.Sprintf("hot_searches:%s:%d", category, limit)
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -229,7 +229,7 @@ func (s *SearchService) GetSearchSuggestions(ctx context.Context, keyword string
 	var hotKeywords []string
 	s.db.PostgreSQL.Model(&models.HotSearch{}).
 		Select("keyword").
-		Where("keyword ILIKE ?", "%"+keyword+"%").
+		Where("LOWER(keyword) LIKE LOWER(?)", "%"+keyword+"%").
 		Where("date >= ?", time.Now().AddDate(0, 0, -30)).
 		Order("search_count DESC").
 		Limit(5).
@@ -241,7 +241,7 @@ func (s *SearchService) GetSearchSuggestions(ctx context.Context, keyword string
 	var universityNames []string
 	s.db.PostgreSQL.Model(&models.University{}).
 		Select("name").
-		Where("name ILIKE ? OR alias ILIKE ?", "%"+keyword+"%", "%"+keyword+"%").
+		Where("LOWER(name) LIKE LOWER(?) OR LOWER(alias) LIKE LOWER(?)", "%"+keyword+"%", "%"+keyword+"%").
 		Where("is_active = ?", true).
 		Limit(3).
 		Pluck("name", &universityNames)
@@ -252,7 +252,7 @@ func (s *SearchService) GetSearchSuggestions(ctx context.Context, keyword string
 	var majorNames []string
 	s.db.PostgreSQL.Model(&models.Major{}).
 		Select("name").
-		Where("name ILIKE ?", "%"+keyword+"%").
+		Where("LOWER(name) LIKE LOWER(?)", "%"+keyword+"%").
 		Where("is_active = ?", true).
 		Limit(3).
 		Pluck("name", &majorNames)
@@ -353,34 +353,34 @@ func (s *SearchService) searchWithDatabase(ctx context.Context, req SearchReques
 // searchUniversitiesES 使用ES搜索院校
 func (s *SearchService) searchUniversitiesES(ctx context.Context, req SearchRequest) ([]models.University, int64, error) {
 	searchService := s.db.Elasticsearch.Search().Index("universities")
-	
+
 	// 构建查询
 	boolQuery := elastic.NewBoolQuery()
-	
+
 	// 主查询
 	multiMatchQuery := elastic.NewMultiMatchQuery(req.Keyword, "name^3", "alias^2", "description").
 		Type("best_fields").
 		Fuzziness("AUTO")
 	boolQuery.Must(multiMatchQuery)
-	
+
 	// 过滤条件
 	if req.Province != "" {
 		boolQuery.Filter(elastic.NewTermQuery("province", req.Province))
 	}
-	
+
 	searchService.Query(boolQuery)
-	
+
 	// 排序
 	if req.SortBy == "name" {
 		searchService.Sort("name.keyword", req.SortOrder == "asc")
 	} else {
 		searchService.Sort("_score", false).Sort("national_rank", true)
 	}
-	
+
 	// 分页
 	from := (req.Page - 1) * req.PageSize
 	searchService.From(from).Size(req.PageSize)
-	
+
 	// 执行搜索
 	searchResult, err := searchService.Do(ctx)
 	if err != nil {
@@ -411,34 +411,34 @@ func (s *SearchService) searchUniversitiesES(ctx context.Context, req SearchRequ
 // searchMajorsES 使用ES搜索专业
 func (s *SearchService) searchMajorsES(ctx context.Context, req SearchRequest) ([]models.Major, int64, error) {
 	searchService := s.db.Elasticsearch.Search().Index("majors")
-	
+
 	// 构建查询
 	boolQuery := elastic.NewBoolQuery()
-	
+
 	// 主查询
 	multiMatchQuery := elastic.NewMultiMatchQuery(req.Keyword, "name^3", "description^2", "career_prospects").
 		Type("best_fields").
 		Fuzziness("AUTO")
 	boolQuery.Must(multiMatchQuery)
-	
+
 	// 过滤条件
 	if req.Category != "" {
 		boolQuery.Filter(elastic.NewTermQuery("category", req.Category))
 	}
-	
+
 	searchService.Query(boolQuery)
-	
+
 	// 排序
 	if req.SortBy == "name" {
 		searchService.Sort("name.keyword", req.SortOrder == "asc")
 	} else {
 		searchService.Sort("_score", false).Sort("popularity_score", false)
 	}
-	
+
 	// 分页
 	from := (req.Page - 1) * req.PageSize
 	searchService.From(from).Size(req.PageSize)
-	
+
 	// 执行搜索
 	searchResult, err := searchService.Do(ctx)
 	if err != nil {
@@ -469,24 +469,24 @@ func (s *SearchService) searchMajorsES(ctx context.Context, req SearchRequest) (
 // searchUniversitiesDB 使用数据库搜索院校
 func (s *SearchService) searchUniversitiesDB(ctx context.Context, req SearchRequest) ([]models.University, int64, error) {
 	query := s.db.PostgreSQL.Model(&models.University{})
-	
+
 	// 搜索条件
 	keyword := "%" + req.Keyword + "%"
-	query = query.Where("name ILIKE ? OR alias ILIKE ? OR description ILIKE ?", keyword, keyword, keyword)
-	
+	query = query.Where("LOWER(name) LIKE LOWER(?) OR LOWER(alias) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?)", keyword, keyword, keyword)
+
 	// 过滤条件
 	if req.Province != "" {
 		query = query.Where("province = ?", req.Province)
 	}
-	
+
 	query = query.Where("is_active = ?", true)
-	
+
 	// 计算总数
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 排序
 	if req.SortBy == "name" {
 		order := "name ASC"
@@ -497,40 +497,40 @@ func (s *SearchService) searchUniversitiesDB(ctx context.Context, req SearchRequ
 	} else {
 		query = query.Order("national_rank ASC, name ASC")
 	}
-	
+
 	// 分页
 	offset := (req.Page - 1) * req.PageSize
 	query = query.Offset(offset).Limit(req.PageSize)
-	
+
 	var universities []models.University
 	if err := query.Find(&universities).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	return universities, total, nil
 }
 
 // searchMajorsDB 使用数据库搜索专业
 func (s *SearchService) searchMajorsDB(ctx context.Context, req SearchRequest) ([]models.Major, int64, error) {
 	query := s.db.PostgreSQL.Model(&models.Major{})
-	
+
 	// 搜索条件
 	keyword := "%" + req.Keyword + "%"
-	query = query.Where("name ILIKE ? OR description ILIKE ? OR career_prospects ILIKE ?", keyword, keyword, keyword)
-	
+	query = query.Where("LOWER(name) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?) OR LOWER(career_prospects) LIKE LOWER(?)", keyword, keyword, keyword)
+
 	// 过滤条件
 	if req.Category != "" {
 		query = query.Where("category = ?", req.Category)
 	}
-	
+
 	query = query.Where("is_active = ?", true)
-	
+
 	// 计算总数
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 排序
 	if req.SortBy == "name" {
 		order := "name ASC"
@@ -541,16 +541,16 @@ func (s *SearchService) searchMajorsDB(ctx context.Context, req SearchRequest) (
 	} else {
 		query = query.Order("popularity_score DESC, name ASC")
 	}
-	
+
 	// 分页
 	offset := (req.Page - 1) * req.PageSize
 	query = query.Offset(offset).Limit(req.PageSize)
-	
+
 	var majors []models.Major
 	if err := query.Preload("University").Find(&majors).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	return majors, total, nil
 }
 
@@ -559,7 +559,7 @@ func (s *SearchService) getUniversitySuggestions(ctx context.Context, keyword st
 	var universities []models.University
 	s.db.PostgreSQL.Model(&models.University{}).
 		Select("id, name, type").
-		Where("name ILIKE ? OR alias ILIKE ?", "%"+keyword+"%", "%"+keyword+"%").
+		Where("LOWER(name) LIKE LOWER(?) OR LOWER(alias) LIKE LOWER(?)", "%"+keyword+"%", "%"+keyword+"%").
 		Where("is_active = ?", true).
 		Order("national_rank ASC").
 		Limit(limit).
@@ -583,7 +583,7 @@ func (s *SearchService) getMajorSuggestions(ctx context.Context, keyword string,
 	var majors []models.Major
 	s.db.PostgreSQL.Model(&models.Major{}).
 		Select("id, name, category").
-		Where("name ILIKE ?", "%"+keyword+"%").
+		Where("LOWER(name) LIKE LOWER(?)", "%"+keyword+"%").
 		Where("is_active = ?", true).
 		Order("popularity_score DESC").
 		Limit(limit).
@@ -607,10 +607,10 @@ func (s *SearchService) recordSearch(ctx context.Context, keyword, province, cat
 	// 更新热搜数据
 	go func() {
 		today := time.Now().Truncate(24 * time.Hour)
-		
+
 		var hotSearch models.HotSearch
 		result := s.db.PostgreSQL.Where("keyword = ? AND date = ? AND category = ?", keyword, today, category).First(&hotSearch)
-		
+
 		if result.Error == gorm.ErrRecordNotFound {
 			// 创建新记录
 			hotSearch = models.HotSearch{
@@ -647,13 +647,13 @@ func (s *SearchService) containsType(types []string, targetType string) bool {
 func (s *SearchService) removeDuplicates(slice []string) []string {
 	keys := make(map[string]bool)
 	var result []string
-	
+
 	for _, item := range slice {
 		if !keys[item] {
 			keys[item] = true
 			result = append(result, item)
 		}
 	}
-	
+
 	return result
 }

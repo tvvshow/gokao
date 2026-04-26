@@ -1,11 +1,11 @@
-//go:build cgo && !windows
-// +build cgo,!windows
+//go:build cgo && devicefingerprint && !windows
+// +build cgo,devicefingerprint,!windows
 
 package cpp
 
 /*
-#cgo CPPFLAGS: -I../../../cpp-modules/device-fingerprint/include
-#cgo LDFLAGS: -L../../../cpp-modules/device-fingerprint/lib -ldevice_fingerprint -lstdc++
+#cgo CPPFLAGS: -I../../../../cpp-modules/device-fingerprint/include
+#cgo LDFLAGS: -L../../../../cpp-modules/device-fingerprint/lib -ldevice_fingerprint -lstdc++
 
 #include "c_interface.h"
 #include <stdlib.h>

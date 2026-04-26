@@ -1,5 +1,6 @@
-//go:build linux && !cgo
-// +build linux,!cgo
+//go:build linux && (!cgo || !devicefingerprint)
+// +build linux
+// +build !cgo !devicefingerprint
 
 package cpp
 
