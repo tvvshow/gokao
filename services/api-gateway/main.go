@@ -54,8 +54,12 @@ import (
 
 // NEW: default rate limiter configuration
 const (
-	defaultRatePerSec = 10 // tokens per second
-	defaultBurst      = 20 // max burst tokens
+	defaultRatePerSec         = 10 // tokens per second
+	defaultBurst              = 20 // max burst tokens
+	defaultPublicRate         = 100
+	defaultPublicBurst        = 200
+	defaultRecommendationRate = 20
+	defaultRecommendationBurst = 40
 )
 
 // NEW: response schemas for Swagger
@@ -226,6 +230,12 @@ type rateLimiter struct {
 	m     sync.Map // key: client id (IP) -> *rateBucket
 }
 
+type routeRateLimitRule struct {
+	name     string
+	prefixes []string
+	limiter  *rateLimiter
+}
+
 func newRateLimiter(ratePerSec, burst int) *rateLimiter {
 	rl := &rateLimiter{
 		rate:  float64(ratePerSec),
@@ -273,7 +283,7 @@ func (rl *rateLimiter) allow(key string) (ok bool, retryAfterSec int) {
 }
 
 func rateLimitMiddlewareWithConfig(ratePerSec, burst int) gin.HandlerFunc {
-	rl := newRateLimiter(ratePerSec, burst)
+	limiters := buildRouteRateLimitRules(ratePerSec, burst)
 	return func(c *gin.Context) {
 		// Only limit non-OPTIONS (preflight handled earlier by CORS)
 		if c.Request.Method != http.MethodOptions {
@@ -286,8 +296,10 @@ func rateLimitMiddlewareWithConfig(ratePerSec, burst int) gin.HandlerFunc {
 				c.Next()
 				return
 			}
+
+			limiter := selectRateLimiter(limiters, c.Request.URL.Path)
 			key := c.ClientIP()
-			if ok, retry := rl.allow(key); !ok {
+			if ok, retry := limiter.allow(key); !ok {
 				c.Writer.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
 				return
@@ -295,6 +307,47 @@ func rateLimitMiddlewareWithConfig(ratePerSec, burst int) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func buildRouteRateLimitRules(defaultRatePerSec, defaultBurst int) []routeRateLimitRule {
+	publicRate := getEnvAsIntOrDefault("RATE_LIMIT_PUBLIC_RPS", defaultPublicRate)
+	publicBurst := getEnvAsIntOrDefault("RATE_LIMIT_PUBLIC_BURST", defaultPublicBurst)
+	recommendationRate := getEnvAsIntOrDefault("RATE_LIMIT_RECOMMENDATION_RPS", defaultRecommendationRate)
+	recommendationBurst := getEnvAsIntOrDefault("RATE_LIMIT_RECOMMENDATION_BURST", defaultRecommendationBurst)
+
+	return []routeRateLimitRule{
+		{
+			name:     "public-data",
+			prefixes: []string{"/api/v1/data", "/v1/data"},
+			limiter:  newRateLimiter(publicRate, publicBurst),
+		},
+		{
+			name:     "recommendation",
+			prefixes: []string{"/api/v1/recommendations", "/v1/recommendations"},
+			limiter:  newRateLimiter(recommendationRate, recommendationBurst),
+		},
+		{
+			name:     "default",
+			prefixes: nil,
+			limiter:  newRateLimiter(defaultRatePerSec, defaultBurst),
+		},
+	}
+}
+
+func selectRateLimiter(rules []routeRateLimitRule, path string) *rateLimiter {
+	for _, rule := range rules {
+		for _, prefix := range rule.prefixes {
+			if strings.HasPrefix(path, prefix) {
+				return rule.limiter
+			}
+		}
+	}
+	for _, rule := range rules {
+		if rule.name == "default" {
+			return rule.limiter
+		}
+	}
+	return newRateLimiter(defaultRatePerSec, defaultBurst)
 }
 
 func setupRouter() *gin.Engine { // NEW: expose router for tests
@@ -863,6 +916,18 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func getEnvAsIntOrDefault(key string, defaultValue int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
 }
 
 func getEnvAsDuration(key, defaultValue string) time.Duration {

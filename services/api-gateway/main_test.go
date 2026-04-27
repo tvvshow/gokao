@@ -178,6 +178,53 @@ func TestRateLimiter_SkipsOPTIONS(t *testing.T) {
     }
 }
 
+func TestRateLimiter_UsesHigherBudgetForPublicDataRoutes(t *testing.T) {
+	oldPublicRPS := os.Getenv("RATE_LIMIT_PUBLIC_RPS")
+	oldPublicBurst := os.Getenv("RATE_LIMIT_PUBLIC_BURST")
+	t.Cleanup(func() {
+		_ = os.Setenv("RATE_LIMIT_PUBLIC_RPS", oldPublicRPS)
+		_ = os.Setenv("RATE_LIMIT_PUBLIC_BURST", oldPublicBurst)
+	})
+	_ = os.Setenv("RATE_LIMIT_PUBLIC_RPS", "0")
+	_ = os.Setenv("RATE_LIMIT_PUBLIC_BURST", "3")
+
+	r := setupRouterWithLimiter(1, 1)
+
+	for i := 0; i < 3; i++ {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/data/universities", nil)
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusTooManyRequests {
+			t.Fatalf("expected public data route to use higher budget on request %d", i+1)
+		}
+	}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/data/universities", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 after exhausting public data burst, got %d", w.Code)
+	}
+}
+
+func TestSelectRateLimiterFallsBackToDefault(t *testing.T) {
+	rules := buildRouteRateLimitRules(2, 2)
+
+	defaultLimiter := selectRateLimiter(rules, "/healthz")
+	if defaultLimiter == nil {
+		t.Fatal("expected default limiter")
+	}
+	if ok, _ := defaultLimiter.allow("ip-healthz"); !ok {
+		t.Fatal("expected default limiter to allow first request")
+	}
+	if ok, _ := defaultLimiter.allow("ip-healthz"); !ok {
+		t.Fatal("expected default limiter burst to allow second request")
+	}
+	if ok, _ := defaultLimiter.allow("ip-healthz"); ok {
+		t.Fatal("expected default limiter to block third request")
+	}
+}
+
 func TestHealthz(t *testing.T) {
     r := setupRouter()
     w := httptest.NewRecorder()
