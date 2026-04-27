@@ -2,11 +2,16 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/llm"
+	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
 )
 
 type stubAnalyzer struct {
@@ -19,6 +24,32 @@ func (s stubAnalyzer) AnalyzeRecommendation(ctx context.Context, input llm.Recom
 		return "", s.err
 	}
 	return s.report, nil
+}
+
+type stubBridge struct {
+	status map[string]interface{}
+}
+
+func (b stubBridge) Close() error { return nil }
+func (b stubBridge) GenerateRecommendations(request *cppbridge.RecommendationRequest) (*cppbridge.RecommendationResponse, error) {
+	return nil, nil
+}
+func (b stubBridge) GetHybridConfig() (map[string]interface{}, error)     { return nil, nil }
+func (b stubBridge) UpdateFusionWeights(weights map[string]float64) error { return nil }
+func (b stubBridge) CompareRecommendations(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (b stubBridge) GetPerformanceMetrics() (map[string]interface{}, error) { return nil, nil }
+func (b stubBridge) GenerateHybridPlan(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (b stubBridge) ClearCache() error                  { return nil }
+func (b stubBridge) UpdateModel(modelPath string) error { return nil }
+func (b stubBridge) GetSystemStatus() (map[string]interface{}, error) {
+	if b.status == nil {
+		return map[string]interface{}{"status": "healthy", "engine": "test"}, nil
+	}
+	return b.status, nil
 }
 
 func TestGenerateAnalysisReportUsesAnalyzer(t *testing.T) {
@@ -94,6 +125,44 @@ func TestBuildRecommendationAnalysisInput(t *testing.T) {
 	}
 	if input.Recommendations[0].SchoolName != "清华大学" || input.Recommendations[0].MajorName != "计算机科学与技术" {
 		t.Fatalf("unexpected first recommendation: %+v", input.Recommendations[0])
+	}
+}
+
+func TestGetSystemStatusIncludesAnalysisAndCache(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewSimpleRecommendationHandler(stubBridge{status: map[string]interface{}{"status": "healthy", "engine": "test"}}, cache.NewMemoryCache(), llm.NewLocalFallbackAnalyzer())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system/status", nil)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	handler.GetSystemStatus(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response failed: %v", err)
+	}
+	analysis, ok := payload["analysis"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("analysis status missing: %+v", payload)
+	}
+	if analysis["provider"] != "local-fallback" {
+		t.Fatalf("unexpected analysis provider: %+v", analysis)
+	}
+	if analysis["status"] != "degraded" {
+		t.Fatalf("unexpected analysis status: %+v", analysis)
+	}
+	if analysis["fallback_mode"] != "local_rules" {
+		t.Fatalf("unexpected fallback mode: %+v", analysis)
+	}
+	cacheStatus, ok := payload["cache"].(map[string]interface{})
+	if !ok || cacheStatus["healthy"] != true {
+		t.Fatalf("unexpected cache status: %+v", payload["cache"])
 	}
 }
 

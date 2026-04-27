@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -73,6 +74,29 @@ func (a *OpenAICompatibleAnalyzer) AnalyzeRecommendation(ctx context.Context, in
 		return "", fmt.Errorf("llm response content is empty")
 	}
 	return content, nil
+}
+
+// Status 返回当前分析器运行状态，便于 system/status 暴露。
+func (a *OpenAICompatibleAnalyzer) Status() map[string]interface{} {
+	status := map[string]interface{}{
+		"enabled":       a != nil && a.client != nil && strings.TrimSpace(a.model) != "",
+		"provider":      "openai-compatible",
+		"model":         "",
+		"temperature":   0.0,
+		"max_tokens":    0,
+		"fallback_mode": fallbackMode(a),
+		"status":        analyzerStatus(a),
+	}
+	if a == nil {
+		return status
+	}
+	status["model"] = a.model
+	status["temperature"] = a.temperature
+	status["max_tokens"] = a.maxTokens
+	if client, ok := a.client.(*OpenAICompatibleClient); ok {
+		status["base_url"] = sanitizeBaseURL(client.BaseURL())
+	}
+	return status
 }
 
 func buildRecommendationAnalysisPrompt(input RecommendationAnalysisInput) string {
@@ -149,4 +173,54 @@ func (a *LocalFallbackAnalyzer) AnalyzeRecommendation(ctx context.Context, input
 
 	return fmt.Sprintf("根据您的分数和偏好，为您推荐了%d所院校。其中稳妥选择%d个，适中选择%d个，冲刺选择%d个。建议合理搭配，确保志愿填报的科学性和安全性。",
 		len(input.Recommendations), stableCount, moderateCount, reachCount), nil
+}
+
+func (a *LocalFallbackAnalyzer) Status() map[string]interface{} {
+	return map[string]interface{}{
+		"enabled":       false,
+		"provider":      "local-fallback",
+		"status":        "degraded",
+		"model":         "rule-based-summary",
+		"base_url":      "",
+		"max_tokens":    0,
+		"fallback_mode": "local_rules",
+	}
+}
+
+func analyzerStatus(a *OpenAICompatibleAnalyzer) string {
+	if a == nil || a.client == nil || strings.TrimSpace(a.model) == "" {
+		return "not_configured"
+	}
+	if a.fallback != nil {
+		return "degraded"
+	}
+	return "healthy"
+}
+
+func fallbackMode(a *OpenAICompatibleAnalyzer) string {
+	if a == nil || a.fallback == nil {
+		return "none"
+	}
+	if statusReporter, ok := a.fallback.(StatusReporter); ok {
+		if provider, ok := statusReporter.Status()["fallback_mode"].(string); ok && provider != "" {
+			return provider
+		}
+	}
+	return "static_fallback"
+}
+
+func sanitizeBaseURL(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	parsed.User = nil
+	parsed.Path = ""
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return strings.TrimRight(parsed.String(), "/")
 }

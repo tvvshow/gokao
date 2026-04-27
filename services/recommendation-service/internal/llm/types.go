@@ -82,3 +82,8 @@ type RecommendationCandidate struct {
 
 // DefaultSystemPrompt 默认系统提示词。
 const DefaultSystemPrompt = "你是一名高考志愿分析助手。请基于学生分数、地区偏好、风险偏好和推荐结果，输出简洁、专业、可执行的中文分析。"
+
+// StatusReporter 暴露分析器当前运行状态。
+type StatusReporter interface {
+	Status() map[string]interface{}
+}

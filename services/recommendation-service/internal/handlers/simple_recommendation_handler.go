@@ -458,7 +458,52 @@ func (h *SimpleRecommendationHandler) GetSystemStatus(c *gin.Context) {
 		return
 	}
 
+	status["performance"] = h.GetPerformanceStats()
+	status["cache"] = h.getCacheStatus()
+	status["analysis"] = h.getAnalysisStatus()
+	status["timestamp"] = time.Now().Format(time.RFC3339)
+
 	c.JSON(http.StatusOK, status)
+}
+
+func (h *SimpleRecommendationHandler) getCacheStatus() map[string]interface{} {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	status := map[string]interface{}{
+		"healthy": true,
+		"type":    "configured",
+	}
+	if h.cache == nil {
+		status["healthy"] = false
+		status["type"] = "none"
+		status["error"] = "cache is nil"
+		return status
+	}
+	if err := h.cache.HealthCheck(ctx); err != nil {
+		status["healthy"] = false
+		status["error"] = err.Error()
+	}
+	return status
+}
+
+func (h *SimpleRecommendationHandler) getAnalysisStatus() map[string]interface{} {
+	status := map[string]interface{}{
+		"enabled": false,
+		"status":  "unknown",
+	}
+	if h.analyzer == nil {
+		status["status"] = "not_configured"
+		return status
+	}
+	if reporter, ok := h.analyzer.(llm.StatusReporter); ok {
+		for k, v := range reporter.Status() {
+			status[k] = v
+		}
+		return status
+	}
+	status["status"] = "configured"
+	return status
 }
 
 // ClearCache 清空缓存

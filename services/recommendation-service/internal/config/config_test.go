@@ -55,7 +55,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	// 验证默认值
-	expectedPort := "10083"
+	expectedPort := "8084"
 	if config.Server.Port != expectedPort {
 		t.Errorf("期望端口 %s，实际 %s", expectedPort, config.Server.Port)
 	}
@@ -94,8 +94,8 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 
 	// 验证环境变量设置
-	if config.Server.Port != ":9999" {
-		t.Errorf("期望端口 :9999，实际 %s", config.Server.Port)
+	if config.Server.Port != "9999" {
+		t.Errorf("期望端口 9999，实际 %s", config.Server.Port)
 	}
 
 	if config.Server.Mode != "debug" {
@@ -116,6 +116,28 @@ func TestLoadFromEnv(t *testing.T) {
 
 	// 清除单例以不影响其他测试
 	resetConfigSingleton()
+}
+
+func TestLoadFromLegacyPortEnvAliases(t *testing.T) {
+	os.Setenv("PORT", ":8084")
+	os.Setenv("GIN_MODE", "release")
+	defer func() {
+		os.Unsetenv("PORT")
+		os.Unsetenv("GIN_MODE")
+		resetConfigSingleton()
+	}()
+
+	resetConfigSingleton()
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("从 legacy 环境变量加载配置失败: %v", err)
+	}
+	if config.Server.Port != "8084" {
+		t.Fatalf("expected normalized port 8084, got %s", config.Server.Port)
+	}
+	if config.Server.Mode != "release" {
+		t.Fatalf("expected mode release, got %s", config.Server.Mode)
+	}
 }
 
 func TestGetInstance(t *testing.T) {
@@ -163,8 +185,8 @@ func TestReload(t *testing.T) {
 		t.Error("配置重新加载后端口没有更新")
 	}
 
-	if newConfig.Server.Port != ":8888" {
-		t.Errorf("期望新端口 :8888，实际 %s", newConfig.Server.Port)
+	if newConfig.Server.Port != "8888" {
+		t.Errorf("期望新端口 8888，实际 %s", newConfig.Server.Port)
 	}
 
 	// 清除环境变量和单例

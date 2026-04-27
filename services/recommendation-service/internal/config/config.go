@@ -122,7 +122,7 @@ func loadConfig() (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		Server: &ServerConfig{
-			Port: "10083",
+			Port: "8084",
 			Mode: gin.ReleaseMode,
 		},
 		CPP: &CPPConfig{
@@ -188,10 +188,10 @@ func loadFromEnv(config *Config) {
 		config.LLM = defaultConfig().LLM
 	}
 
-	if port := os.Getenv("SERVER_PORT"); port != "" {
-		config.Server.Port = port
+	if port := firstNonEmptyEnv("SERVER_PORT", "PORT"); port != "" {
+		config.Server.Port = normalizePortValue(port)
 	}
-	if mode := os.Getenv("SERVER_MODE"); mode != "" {
+	if mode := firstNonEmptyEnv("SERVER_MODE", "GIN_MODE"); mode != "" {
 		config.Server.Mode = mode
 	}
 
@@ -286,6 +286,27 @@ func loadFromEnv(config *Config) {
 	if systemPrompt := os.Getenv("LLM_SYSTEM_PROMPT"); systemPrompt != "" {
 		config.LLM.SystemPrompt = systemPrompt
 	}
+}
+
+func firstNonEmptyEnv(keys ...string) string {
+	for _, key := range keys {
+		value := strings.TrimSpace(os.Getenv(key))
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func normalizePortValue(port string) string {
+	port = strings.TrimSpace(port)
+	if port == "" {
+		return port
+	}
+	if strings.HasPrefix(port, ":") {
+		return port[1:]
+	}
+	return port
 }
 
 func getEnvInt(key string) (int, bool) {

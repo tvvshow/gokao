@@ -114,7 +114,7 @@ func main() {
 			cfg.LLM.SystemPrompt,
 			fallback,
 		)
-		logger.Infof("LLM分析已启用: provider=%s base_url=%s model=%s", cfg.LLM.Provider, cfg.LLM.BaseURL, cfg.LLM.Model)
+		logger.Infof("LLM分析已启用: provider=%s model=%s", cfg.LLM.Provider, cfg.LLM.Model)
 	} else {
 		logger.Info("LLM分析未启用，使用本地分析回退")
 	}
@@ -182,7 +182,7 @@ func main() {
 
 	// Swagger文档
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	logger.Info("Swagger文档已启用: http://localhost:10083/swagger/index.html")
+	logger.Infof("Swagger文档已启用: http://localhost:%s/swagger/index.html", cfg.Server.Port)
 
 	// 创建HTTP服务器
 	server := &http.Server{

@@ -171,13 +171,22 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - PORT=8084
-      - GIN_MODE=release
+      - SERVER_PORT=8084
+      - SERVER_MODE=release
       - DATA_SERVICE_URL=http://data-service:8082
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ALGORITHM_TYPE=${ALGORITHM_TYPE:-hybrid}
       - LD_LIBRARY_PATH=/usr/local/lib
       - CPP_LIBRARY_PATH=/usr/local/lib/libvolunteer_matcher.so
+      - LLM_ENABLED=${RECOMMENDATION_LLM_ENABLED:-false}
+      - LLM_PROVIDER=${RECOMMENDATION_LLM_PROVIDER:-openai-compatible}
+      - LLM_BASE_URL=${RECOMMENDATION_LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_API_KEY=${RECOMMENDATION_LLM_API_KEY:-}
+      - LLM_MODEL=${RECOMMENDATION_LLM_MODEL:-gpt-4o-mini}
+      - LLM_TIMEOUT=${RECOMMENDATION_LLM_TIMEOUT:-20s}
+      - LLM_MAX_TOKENS=${RECOMMENDATION_LLM_MAX_TOKENS:-800}
+      - LLM_TEMPERATURE=${RECOMMENDATION_LLM_TEMPERATURE:-0.3}
+      - LLM_FALLBACK_ENABLED=${RECOMMENDATION_LLM_FALLBACK_ENABLED:-true}
     volumes:
       - ./logs:/app/logs
     depends_on:
