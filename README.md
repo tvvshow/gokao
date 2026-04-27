@@ -104,7 +104,10 @@ go run github.com/swaggo/swag/cmd/swag@v1.16.2 init -g main.go -o docs --parseDe
 ## 监控配置
 
 - `monitoring/prometheus.yml` 与 `monitoring/alerts/gaokao-alerts.yml` 已保留为当前监控基线
-- 抓取端口已对齐当前服务默认端口
+- 根 `docker compose up -d` 已接入 `prometheus`、`alertmanager`、`blackbox-exporter`
+- 抓取端口已对齐当前服务默认端口，并通过 blackbox 对核心服务 `/health` 做探测
+- Prometheus: `http://localhost:9090`
+- Alertmanager: `http://localhost:9093`
 - 说明文档见 `monitoring/README.md`
 
 ## 性能基线

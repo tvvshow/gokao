@@ -245,6 +245,51 @@ services:
     networks:
       - gaokao_network
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: gaokao_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - api-gateway
+      - monitoring-service
+    restart: unless-stopped
+    networks:
+      - gaokao_network
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: gaokao_alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    restart: unless-stopped
+    networks:
+      - gaokao_network
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: gaokao_blackbox_exporter
+    ports:
+      - "9115:9115"
+    restart: unless-stopped
+    networks:
+      - gaokao_network
+
   # 前端界面
   frontend:
     build:
@@ -284,6 +329,10 @@ volumes:
   redis_data:
     driver: local
   logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  alertmanager_data:
     driver: local
 
 networks:

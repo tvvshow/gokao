@@ -1,275 +1,57 @@
-# 高考志愿填报系统 - Prometheus告警规则
+# 高考志愿填报系统 - Prometheus 告警规则
 groups:
-  # 服务可用性告警
   - name: service-availability
     rules:
-      # API网关服务宕机
-      - alert: APIGatewayDown
-        expr: up{job="gaokao-go-services", instance=~"api-gateway.*"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          service: api-gateway
-        annotations:
-          summary: "API网关服务不可用"
-          description: "API网关服务 {{ $labels.instance }} 已经宕机超过1分钟"
-          impact: "所有API请求将失败，系统不可用"
-          action: "检查API网关容器状态和日志"
-
-      # 用户服务宕机
-      - alert: UserServiceDown
-        expr: up{job="gaokao-go-services", instance=~"user-service.*"} == 0
+      - alert: ServiceHealthCheckFailed
+        expr: probe_success{job="gaokao-health"} == 0
         for: 2m
         labels:
           severity: critical
-          service: user-service
         annotations:
-          summary: "用户服务不可用"
-          description: "用户服务 {{ $labels.instance }} 已经宕机超过2分钟"
-          impact: "用户注册、登录功能不可用"
-          action: "检查用户服务容器状态和日志"
+          summary: "{{ $labels.service }} 健康检查失败"
+          description: "{{ $labels.service }} 连续 2 分钟未通过健康检查，当前目标为 {{ $labels.instance }}"
+          action: "检查对应容器状态、服务日志与依赖连接"
 
-      # 推荐服务宕机
-      - alert: RecommendationServiceDown
-        expr: up{job="gaokao-go-services", instance=~"recommendation-service.*"} == 0
-        for: 3m
-        labels:
-          severity: high
-          service: recommendation-service
-        annotations:
-          summary: "推荐服务不可用"
-          description: "推荐服务 {{ $labels.instance }} 已经宕机超过3分钟"
-          impact: "志愿推荐功能不可用"
-          action: "检查推荐服务容器状态和日志"
-
-  # 性能指标告警
-  - name: performance-metrics
+  - name: gateway-performance
     rules:
-      # 高响应延迟
-      - alert: HighResponseLatency
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+      - alert: APIGatewayHighErrorRate
+        expr: |
+          sum(rate(gaokao_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(gaokao_http_requests_total[5m])), 1)
+          > 0.05
         for: 5m
         labels:
           severity: warning
+          service: api-gateway
         annotations:
-          summary: "高响应延迟检测"
-          description: "95%的请求延迟超过1秒 (当前值: {{ $value }}s)"
-          impact: "用户体验下降，可能导致用户流失"
-          action: "检查系统负载、数据库性能和网络状况"
+          summary: "API Gateway 5xx 错误率过高"
+          description: "API Gateway 在最近 5 分钟内 5xx 错误率超过 5%"
+          action: "检查网关日志、下游依赖与限流/代理配置"
 
-      # 错误率过高
-      - alert: HighErrorRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+      - alert: APIGatewayHighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(gaokao_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
         for: 5m
         labels:
           severity: warning
+          service: api-gateway
         annotations:
-          summary: "高错误率检测"
-          description: "HTTP 5xx错误率超过5% (当前值: {{ $value }}%)"
-          impact: "服务可靠性下降"
-          action: "检查应用日志，排查错误原因"
+          summary: "API Gateway P95 延迟过高"
+          description: "API Gateway 最近 5 分钟 P95 延迟超过 1 秒"
+          action: "检查热点路径、缓存命中率和下游服务响应时间"
 
-      # 内存使用率过高
-      - alert: HighMemoryUsage
-        expr: (process_resident_memory_bytes / machine_memory_bytes) > 0.8
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "高内存使用率"
-          description: "内存使用率超过80% (当前值: {{ $value }}%)"
-          impact: "可能导致服务性能下降或崩溃"
-          action: "检查内存泄漏，考虑增加内存或优化代码"
-
-      # CPU使用率过高
-      - alert: HighCPUUsage
-        expr: rate(process_cpu_seconds_total[5m]) > 0.8
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "高CPU使用率"
-          description: "CPU使用率超过80% (当前值: {{ $value }}%)"
-          impact: "服务响应变慢"
-          action: "检查CPU密集型操作，优化算法或扩容"
-
-  # 业务指标告警
-  - name: business-metrics
+  - name: monitoring-pipeline
     rules:
-      # 用户注册率下降
-      - alert: UserRegistrationDrop
-        expr: deriv(gaokao_user_registrations_total[1h]) < 0
-        for: 1h
+      - alert: MonitoringTargetDown
+        expr: up{job=~"prometheus|gaokao-http-metrics"} == 0
+        for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "用户注册率下降"
-          description: "用户注册数量在过去1小时内持续下降"
-          impact: "可能影响业务增长"
-          action: "检查注册流程和营销活动"
-
-      # 推荐成功率低
-      - alert: LowRecommendationSuccess
-        expr: gaokao_recommendation_success_total / gaokao_recommendation_requests_total < 0.7
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "推荐成功率低"
-          description: "推荐成功率低于70% (当前值: {{ $value }}%)"
-          impact: "用户体验下降，功能效果不佳"
-          action: "检查推荐算法和数据质量"
-
-      # 支付失败率高
-      - alert: HighPaymentFailureRate
-        expr: gaokao_payment_requests_total{status="failed"} / gaokao_payment_requests_total > 0.1
-        for: 15m
-        labels:
-          severity: critical
-        annotations:
-          summary: "高支付失败率"
-          description: "支付失败率超过10% (当前值: {{ $value }}%)"
-          impact: "直接影响收入，用户流失风险"
-          action: "立即检查支付通道和集成"
-
-  # 数据库监控告警
-  - name: database-monitoring
-    rules:
-      # 数据库连接数过高
-      - alert: HighDatabaseConnections
-        expr: pg_stat_activity_count > 100
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "数据库连接数过高"
-          description: "数据库活跃连接数超过100 (当前值: {{ $value }})"
-          impact: "数据库性能下降"
-          action: "检查连接泄漏，优化连接池配置"
-
-      # 数据库慢查询
-      - alert: DatabaseSlowQueries
-        expr: rate(pg_stat_statements_calls{query!~"(COMMIT|BEGIN|ROLLBACK)"}[5m]) > 10
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "数据库慢查询检测"
-          description: "检测到大量慢查询 (当前值: {{ $value }} queries/min)"
-          impact: "数据库性能下降"
-          action: "优化SQL查询，添加索引"
-
-  # 缓存监控告警
-  - name: cache-monitoring
-    rules:
-      # Redis内存使用率高
-      - alert: RedisHighMemoryUsage
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Redis内存使用率高"
-          description: "Redis内存使用率超过80% (当前值: {{ $value }}%)"
-          impact: "可能导致Redis性能下降或数据丢失"
-          action: "清理缓存数据或扩容Redis"
-
-      # Redis缓存命中率低
-      - alert: RedisLowHitRate
-        expr: redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total) < 0.5
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Redis缓存命中率低"
-          description: "Redis缓存命中率低于50% (当前值: {{ $value }}%)"
-          impact: "数据库压力增加，性能下降"
-          action: "优化缓存策略，检查缓存键设计"
-
-  # 系统资源告警
-  - name: system-resources
-    rules:
-      # 磁盘空间不足
-      - alert: LowDiskSpace
-        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.2
-        for: 10m
-        labels:
-          severity: critical
-        annotations:
-          summary: "磁盘空间不足"
-          description: "根目录磁盘可用空间低于20% (当前值: {{ $value }}%)"
-          impact: "可能导致服务崩溃和数据丢失"
-          action: "立即清理磁盘或扩容存储"
-
-      # 节点内存不足
-      - alert: NodeMemoryRunningOut
-        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.1
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "节点内存不足"
-          description: "可用内存低于10% (当前值: {{ $value }}%)"
-          impact: "系统可能变得不稳定"
-          action: "检查内存使用，考虑重启服务或扩容"
-
-  # 网络监控告警
-  - name: network-monitoring
-    rules:
-      # 网络丢包率高
-      - alert: HighNetworkPacketLoss
-        expr: rate(node_network_receive_drop_total[5m]) / rate(node_network_receive_packets_total[5m]) > 0.01
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "高网络丢包率"
-          description: "网络接收丢包率超过1% (当前值: {{ $value }}%)"
-          impact: "网络性能下降，服务不稳定"
-          action: "检查网络设备和配置"
-
-  # 自定义业务告警
-  - name: custom-business
-    rules:
-      # 高峰期流量异常
-      - alert: PeakTrafficAnomaly
-        expr: 
-          gaokao_concurrent_users > 1000
-          AND
-          rate(http_requests_total[5m]) < 10
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "高峰期流量异常"
-          description: "并发用户数高但请求率低，可能存在系统瓶颈"
-          impact: "用户体验严重下降"
-          action: "立即检查系统性能和负载均衡"
-
-      # 数据同步延迟
-      - alert: DataSyncDelay
-        expr: gaokao_data_sync_latency_seconds > 300
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: "数据同步延迟"
-          description: "数据同步延迟超过5分钟 (当前值: {{ $value }}秒)"
-          impact: "数据可能不是最新的"
-          action: "检查数据同步服务和网络连接"
-
-# 告警路由配置（在Alertmanager中配置）
-# route:
-#   group_by: ['alertname', 'cluster', 'service']
-#   group_wait: 30s
-#   group_interval: 5m
-#   repeat_interval: 4h
-#   receiver: 'slack-notifications'
-#   
-#   routes:
-#     - match:
-#         severity: critical
-#       receiver: 'pagerduty'
-#     - match:
-#         severity: warning
-#       receiver: 'slack-notifications'
+          summary: "监控目标不可抓取"
+          description: "Prometheus 无法抓取 {{ $labels.instance }}（job={{ $labels.job }}）超过 2 分钟"
+          action: "检查监控容器状态、网络连通性与抓取路径"
