@@ -17,6 +17,7 @@
 - **容器化**: Docker + Docker Compose部署
 - **监控**: 健康检查、性能指标
 - **安全**: JWT认证、CORS、请求限制
+- **链路上下文**: 支持 `X-Request-ID` / `X-Trace-ID` 透传与回写
 
 ## 📋 系统要求
 
@@ -133,7 +134,8 @@ user-service/
 | POST | `/api/v1/auth/refresh` | 刷新令牌 |
 | POST | `/api/v1/auth/logout` | 用户登出 |
 | GET | `/api/v1/auth/profile` | 获取用户信息 |
-| PUT | `/api/v1/auth/password` | 修改密码 |
+| POST | `/api/v1/auth/change-password` | 修改密码 |
+| GET | `/api/v1/auth/permissions` | 获取当前用户权限 |
 
 ### 用户管理接口
 

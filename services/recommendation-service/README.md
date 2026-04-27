@@ -8,6 +8,7 @@
 - `/api/v1/system/status` 的 LLM 状态字段已规范化
 - 启动期已支持热门推荐请求缓存预热
 - Swagger 文档已与实际路由同步，可重新生成
+- 已支持 `X-Request-ID` / `X-Trace-ID` 回写与透传
 
 ## 运行端口
 

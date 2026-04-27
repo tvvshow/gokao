@@ -89,6 +89,7 @@ npm run type-check
 - 网关健康检查: `http://localhost:8080/healthz`（兼容别名：`/health`）
 - 网关错误响应会附带 `request_id`，便于排查链路问题
 - 网关会生成并透传 `X-Trace-ID`，便于跨服务日志串联
+- data-service / recommendation-service / user-service 会回写 `X-Request-ID` 与 `X-Trace-ID`
 - recommendation-service Swagger: `http://localhost:8084/swagger/index.html`
 - 当修改 `services/api-gateway` 或 `services/recommendation-service` 接口注释后，需同步 Swagger:
 
@@ -99,6 +100,18 @@ go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDe
 cd ../recommendation-service
 go run github.com/swaggo/swag/cmd/swag@v1.16.2 init -g main.go -o docs --parseDependency --parseInternal
 ```
+
+## 监控配置
+
+- `monitoring/prometheus.yml` 与 `monitoring/alerts/gaokao-alerts.yml` 已保留为当前监控基线
+- 抓取端口已对齐当前服务默认端口
+- 说明文档见 `monitoring/README.md`
+
+## 性能基线
+
+- 已新增 `scripts/performance/k6-smoke.js` 作为最小可执行压测基线
+- 默认验证 gateway / user / data / recommendation / payment 五个服务的 `/health`
+- 使用说明见 `scripts/performance/README.md`
 
 ## 贡献规范
 

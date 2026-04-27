@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"fmt"
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"github.com/oktetopython/gaokao/pkg/auth"
+	"github.com/sirupsen/logrus"
 )
 
 // JWTAuth JWT认证中间件 (已废弃 - 请使用 pkg/auth)
@@ -83,21 +84,57 @@ func RequirePermission(requiredPermission string) gin.HandlerFunc {
 	}
 }
 
+// ContextHeaders 透传或生成请求链路标识
+func ContextHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = generateContextID()
+		}
+
+		traceID := c.GetHeader("X-Trace-ID")
+		if traceID == "" {
+			traceID = generateContextID()
+		}
+
+		c.Set("request_id", requestID)
+		c.Set("trace_id", traceID)
+		c.Header("X-Request-ID", requestID)
+		c.Header("X-Trace-ID", traceID)
+		c.Next()
+	}
+}
+
 // RequestLogger 请求日志中间件
 func RequestLogger() gin.HandlerFunc {
-	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
-			param.ClientIP,
-			param.TimeStamp.Format(time.RFC1123),
-			param.Method,
-			param.Path,
-			param.Request.Proto,
-			param.StatusCode,
-			param.Latency,
-			param.Request.UserAgent(),
-			param.ErrorMessage,
-		)
-	})
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
+
+		entry := logrus.WithFields(logrus.Fields{
+			"request_id": c.GetString("request_id"),
+			"trace_id":   c.GetString("trace_id"),
+			"method":     c.Request.Method,
+			"path":       path,
+			"status":     c.Writer.Status(),
+			"latency_ms": float64(time.Since(start).Microseconds()) / 1000.0,
+			"client_ip":  c.ClientIP(),
+		})
+
+		if userAgent := c.Request.UserAgent(); userAgent != "" {
+			entry = entry.WithField("user_agent", userAgent)
+		}
+		if errMsg := c.Errors.ByType(gin.ErrorTypePrivate).String(); errMsg != "" {
+			entry = entry.WithField("error", errMsg)
+		}
+
+		entry.Info("request completed")
+	}
 }
 
 // RateLimiter 简单的内存限流中间件（生产环境建议使用Redis）
@@ -107,4 +144,10 @@ func RateLimiter() gin.HandlerFunc {
 		// 目前暂时跳过，后续可以集成Redis限流
 		c.Next()
 	}
+}
+
+func generateContextID() string {
+	buf := make([]byte, 16)
+	_, _ = rand.Read(buf)
+	return hex.EncodeToString(buf)
 }

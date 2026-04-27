@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
@@ -146,12 +148,14 @@ func main() {
 	// 创建路由器
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(contextHeadersMiddleware())
 
 	// CORS中间件
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID, X-Trace-ID")
+		c.Header("Access-Control-Expose-Headers", "X-Request-ID, X-Trace-ID")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -262,3 +266,28 @@ func _docRecommendationCacheDelete() {}
 // @Failure 500 {object} handlers.ErrorResponse
 // @Router /system/model [post]
 func _docSystemModelUpdateCompat() {}
+
+func contextHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = generateContextID()
+		}
+		traceID := c.GetHeader("X-Trace-ID")
+		if traceID == "" {
+			traceID = generateContextID()
+		}
+
+		c.Set("request_id", requestID)
+		c.Set("trace_id", traceID)
+		c.Header("X-Request-ID", requestID)
+		c.Header("X-Trace-ID", traceID)
+		c.Next()
+	}
+}
+
+func generateContextID() string {
+	buf := make([]byte, 16)
+	_, _ = rand.Read(buf)
+	return hex.EncodeToString(buf)
+}

@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
-	"data-service/internal/handlers"
+	"crypto/rand"
+	"encoding/hex"
+	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,10 +17,18 @@ import (
 // Logger 日志中间件
 func Logger(logger *logrus.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 生成请求ID
-		requestID := uuid.New().String()
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+		traceID := c.GetHeader("X-Trace-ID")
+		if traceID == "" {
+			traceID = generateTraceID()
+		}
 		c.Set("request_id", requestID)
+		c.Set("trace_id", traceID)
 		c.Header("X-Request-ID", requestID)
+		c.Header("X-Trace-ID", traceID)
 
 		// 记录请求开始时间
 		start := time.Now()
@@ -26,6 +36,7 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 		// 记录请求信息
 		logger.WithFields(logrus.Fields{
 			"request_id": requestID,
+			"trace_id":   traceID,
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
 			"query":      c.Request.URL.RawQuery,
@@ -42,6 +53,7 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 		// 记录响应信息
 		logger.WithFields(logrus.Fields{
 			"request_id": requestID,
+			"trace_id":   traceID,
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
 			"status":     c.Writer.Status(),
@@ -62,8 +74,8 @@ func CORS() gin.HandlerFunc {
 		}
 
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Request-ID")
-		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-ID")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Request-ID, X-Trace-ID")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-ID, X-Trace-ID")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Max-Age", "86400")
 
@@ -74,6 +86,12 @@ func CORS() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func generateTraceID() string {
+	buf := make([]byte, 16)
+	_, _ = rand.Read(buf)
+	return hex.EncodeToString(buf)
 }
 
 // RateLimit 限流中间件
@@ -102,9 +120,9 @@ func RateLimit(logger *logrus.Logger) gin.HandlerFunc {
 		currentRequests := len(clientRequests[clientIP])
 		if currentRequests >= maxRequests {
 			logger.WithFields(logrus.Fields{
-				"ip":              clientIP,
+				"ip":               clientIP,
 				"current_requests": currentRequests,
-				"max_requests":    maxRequests,
+				"max_requests":     maxRequests,
 			}).Warn("请求超出限制")
 
 			c.JSON(http.StatusTooManyRequests, handlers.NewErrorResponseWithCode(
@@ -227,7 +245,7 @@ func Security() gin.HandlerFunc {
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Content-Security-Policy", "default-src 'self'")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-		
+
 		c.Next()
 	}
 }

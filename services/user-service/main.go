@@ -112,7 +112,8 @@ func main() {
 
 	// 创建Gin路由器
 	r := gin.New()
-	r.Use(gin.Logger())
+	r.Use(middleware.ContextHeaders())
+	r.Use(middleware.RequestLogger())
 	r.Use(gin.Recovery())
 	// r.Use(middleware.CORS()) // 注释掉，由API Gateway统一处理CORS
 
