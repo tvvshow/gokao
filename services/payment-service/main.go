@@ -16,6 +16,7 @@ import (
 	"github.com/oktetopython/gaokao/services/payment-service/internal/middleware"
 	"github.com/oktetopython/gaokao/services/payment-service/internal/repository"
 	"github.com/oktetopython/gaokao/services/payment-service/internal/service"
+	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -67,12 +68,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to initialize payment service:", err)
 	}
-	// membershipService := services.NewMembershipService(db, redisClient)
+	membershipService := services.NewMembershipService(db, redisClient)
 
 	// 初始化处理器
 	healthHandler := handlers.NewHealthHandler()
 	paymentHandler := handlers.NewPaymentHandler(paymentService, logger)
-	// membershipHandler := handlers.NewMembershipHandler(membershipService, log.Default())
+	membershipHandler := handlers.NewMembershipHandler(membershipService)
 
 	// 设置Gin模式
 	if cfg.Server.Mode == "release" {
@@ -115,6 +116,9 @@ func main() {
 		paymentGroup.GET("/statistics", paymentHandler.GetPaymentStatistics)
 		paymentGroup.POST("/callback/:channel", paymentHandler.PaymentCallback)
 		paymentGroup.GET("/webhook-test/:channel", paymentHandler.WebhookTest)
+
+		paymentMembershipGroup := paymentGroup.Group("/membership")
+		membershipHandler.RegisterRoutes(paymentMembershipGroup)
 	}
 
 	// 退款路由
@@ -124,15 +128,8 @@ func main() {
 		refundGroup.GET("/:refund_id", paymentHandler.QueryRefund)
 	}
 
-		// 会员路由
-	// membershipGroup := v1.Group("/memberships")
-	// {
-	// 	membershipGroup.POST("", membershipHandler.CreateMembership)
-	// 	membershipGroup.GET("/:user_id", membershipHandler.GetMembership)
-	// 	membershipGroup.PUT("/:user_id", membershipHandler.UpdateMembership)
-	// 	membershipGroup.DELETE("/:user_id", membershipHandler.DeleteMembership)
-	// 	membershipGroup.GET("", membershipHandler.ListMemberships)
-	// }
+	membershipGroup := v1.Group("/membership")
+	membershipHandler.RegisterRoutes(membershipGroup)
 
 	// 启动服务器
 	server := &http.Server{
