@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"data-service/internal/config"
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
 	"fmt"
 	"reflect"
 	"strings"
