@@ -2,10 +2,29 @@
 
 高考志愿推荐服务，当前支持规则推荐引擎，并已预留兼容 OpenAI Chat Completions 风格的大模型分析接口。
 
+## 已完成对齐项
+
+- 默认服务端口统一为 `8084`
+- `/api/v1/system/status` 的 LLM 状态字段已规范化
+- 启动期已支持热门推荐请求缓存预热
+- Swagger 文档已与实际路由同步，可重新生成
+
 ## 运行端口
 
 - 服务内部配置端口统一使用纯数字：`8084`
 - HTTP Server 启动时由代码拼接为 `:8084`
+
+## Data Service 连接
+
+- 默认本地地址：`http://localhost:8082`
+- Docker Compose 地址：`http://data-service:8082`
+- 环境变量：`DATA_SERVICE_URL`
+
+## 缓存预热环境变量
+
+- `CACHE_WARM_ENABLED`：是否启用启动期缓存预热
+- `CACHE_WARM_ASYNC`：是否异步执行预热
+- `CACHE_WARM_TIMEOUT`：单次预热总超时，例如 `10s`
 
 ## LLM 环境变量
 
@@ -53,3 +72,11 @@
 - `SERVER_MODE=release`
 - LLM 相关环境变量统一以 `RECOMMENDATION_LLM_*` 注入
 
+## Swagger
+
+当 recommendation-service 路由或注释发生变化后，重新生成文档：
+
+```bash
+cd services/recommendation-service
+go run github.com/swaggo/swag/cmd/swag@v1.16.2 init -g main.go -o docs --parseDependency --parseInternal
+```

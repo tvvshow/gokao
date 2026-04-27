@@ -86,11 +86,15 @@ npm run type-check
 ## API 与 Swagger
 
 - 网关入口: `http://localhost:8080`
-- 当修改 `services/api-gateway` 接口注释后，需同步 Swagger:
+- recommendation-service Swagger: `http://localhost:8084/swagger/index.html`
+- 当修改 `services/api-gateway` 或 `services/recommendation-service` 接口注释后，需同步 Swagger:
 
 ```bash
 cd services/api-gateway
 go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
+
+cd ../recommendation-service
+go run github.com/swaggo/swag/cmd/swag@v1.16.2 init -g main.go -o docs --parseDependency --parseInternal
 ```
 
 ## 贡献规范

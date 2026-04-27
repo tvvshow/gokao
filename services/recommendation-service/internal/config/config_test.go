@@ -60,6 +60,10 @@ func TestLoad(t *testing.T) {
 		t.Errorf("期望端口 %s，实际 %s", expectedPort, config.Server.Port)
 	}
 
+	if config.DataService.URL != "http://localhost:8082" {
+		t.Errorf("期望默认数据服务地址 http://localhost:8082，实际 %s", config.DataService.URL)
+	}
+
 	if config.CPP.MaxWorkers <= 0 {
 		t.Error("C++最大工作线程数应大于0")
 	}

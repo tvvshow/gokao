@@ -162,7 +162,7 @@ func defaultConfig() *Config {
 			MaxAge:     30,
 		},
 		DataService: &DataServiceConfig{
-			URL:          "http://localhost:10081",
+			URL:          "http://localhost:8082",
 			APIKey:       "",
 			SyncInterval: 30 * time.Minute,
 		},
