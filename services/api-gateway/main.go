@@ -494,7 +494,7 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		// NEW: safety warning if Swagger is enabled under release mode
 		if gin.Mode() == gin.ReleaseMode {
-			log.Println("[WARN] Swagger UI is enabled while GIN_MODE=release. For production, set ENABLE_SWAGGER=0 or block /swagger upstream.")
+			log.Println("[WARN] Swagger UI is enabled in release mode. For production, set ENABLE_SWAGGER=0 or block /swagger upstream.")
 		}
 	}
 
