@@ -245,7 +245,7 @@ type FrontendHistoricalData struct {
 // @Success 200 {object} APIResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/recommendations/generate [post]
+// @Router /recommendations/generate [post]
 func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 	var studentInfo StudentInfo
 	if err := c.ShouldBindJSON(&studentInfo); err != nil {
@@ -340,7 +340,7 @@ func (h *SimpleRecommendationHandler) GenerateRecommendations(c *gin.Context) {
 // @Success 200 {object} cppbridge.BatchRecommendationResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/recommendations/batch [post]
+// @Router /recommendations/batch [post]
 func (h *SimpleRecommendationHandler) BatchGenerateRecommendations(c *gin.Context) {
 	var batchRequest cppbridge.BatchRecommendationRequest
 	if err := c.ShouldBindJSON(&batchRequest); err != nil {
@@ -390,7 +390,7 @@ func (h *SimpleRecommendationHandler) BatchGenerateRecommendations(c *gin.Contex
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/recommendations/explain/{id} [get]
+// @Router /recommendations/explain/{id} [get]
 func (h *SimpleRecommendationHandler) ExplainRecommendation(c *gin.Context) {
 	recommendationID := c.Param("id")
 	if recommendationID == "" {
@@ -424,7 +424,7 @@ func (h *SimpleRecommendationHandler) ExplainRecommendation(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/recommendations/optimize [post]
+// @Router /recommendations/optimize [post]
 func (h *SimpleRecommendationHandler) OptimizeRecommendations(c *gin.Context) {
 	var request map[string]interface{}
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -456,7 +456,7 @@ func (h *SimpleRecommendationHandler) OptimizeRecommendations(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/system/status [get]
+// @Router /system/status [get]
 func (h *SimpleRecommendationHandler) GetSystemStatus(c *gin.Context) {
 	status, err := h.bridge.GetSystemStatus()
 	if err != nil {
@@ -523,7 +523,7 @@ func (h *SimpleRecommendationHandler) getAnalysisStatus() map[string]interface{}
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/system/cache/clear [post]
+// @Router /system/cache/clear [post]
 func (h *SimpleRecommendationHandler) ClearCache(c *gin.Context) {
 	// 清空推荐服务缓存
 	ctx := context.Background()
@@ -565,7 +565,7 @@ func (h *SimpleRecommendationHandler) ClearCache(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/system/model/update [put]
+// @Router /system/model/update [put]
 func (h *SimpleRecommendationHandler) UpdateModel(c *gin.Context) {
 	var request map[string]interface{}
 	if err := c.ShouldBindJSON(&request); err != nil {

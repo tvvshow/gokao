@@ -156,17 +156,7 @@ func NewSimpleHybridHandler(bridge cppbridge.HybridRecommendationBridge) *Simple
 	return handler
 }
 
-// GenerateHybridPlan 生成混合方案
-// @Summary 生成混合推荐方案
-// @Description 生成包含冲刺、稳妥、保底三个层次的混合推荐方案
-// @Tags hybrid
-// @Accept json
-// @Produce json
-// @Param request body cppbridge.RecommendationRequest true "推荐请求"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/hybrid/plan [post]
+// GenerateHybridPlan 生成混合方案（当前未注册到路由）
 func (h *SimpleHybridHandler) GenerateHybridPlan(c *gin.Context) {
 	var request cppbridge.RecommendationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -189,17 +179,7 @@ func (h *SimpleHybridHandler) GenerateHybridPlan(c *gin.Context) {
 	c.JSON(http.StatusOK, plan)
 }
 
-// UpdateFusionWeights 更新融合权重
-// @Summary 更新算法融合权重
-// @Description 动态调整传统算法和AI算法的融合权重
-// @Tags hybrid
-// @Accept json
-// @Produce json
-// @Param request body cppbridge.FusionWeights true "权重更新请求"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/hybrid/weights [put]
+// UpdateFusionWeights 更新融合权重（当前未注册到路由）
 func (h *SimpleHybridHandler) UpdateFusionWeights(c *gin.Context) {
 	var weights cppbridge.FusionWeights
 	if err := c.ShouldBindJSON(&weights); err != nil {
@@ -232,15 +212,7 @@ func (h *SimpleHybridHandler) UpdateFusionWeights(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetHybridConfig 获取混合配置
-// @Summary 获取混合推荐配置
-// @Description 获取当前的混合推荐引擎配置参数
-// @Tags hybrid
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/hybrid/config [get]
+// GetHybridConfig 获取混合配置（当前未注册到路由）
 func (h *SimpleHybridHandler) GetHybridConfig(c *gin.Context) {
 	config, err := h.bridge.GetHybridConfig()
 	if err != nil {
@@ -254,17 +226,7 @@ func (h *SimpleHybridHandler) GetHybridConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, config)
 }
 
-// CompareRecommendations 比较推荐结果
-// @Summary 比较不同算法的推荐结果
-// @Description 并行运行传统算法、AI算法和混合算法，比较推荐结果
-// @Tags hybrid
-// @Accept json
-// @Produce json
-// @Param request body cppbridge.RecommendationRequest true "推荐请求"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/hybrid/compare [post]
+// CompareRecommendations 比较推荐结果（当前未注册到路由）
 func (h *SimpleHybridHandler) CompareRecommendations(c *gin.Context) {
 	var request cppbridge.RecommendationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {

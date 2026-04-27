@@ -1,0 +1,1127 @@
+basePath: /api/v1
+definitions:
+  cppbridge.BatchRecommendationRequest:
+    properties:
+      algorithm:
+        type: string
+      batch_size:
+        type: integer
+      requests:
+        items:
+          $ref: '#/definitions/cppbridge.RecommendationRequest'
+        type: array
+      timeout:
+        type: integer
+    type: object
+  cppbridge.BatchRecommendationResponse:
+    properties:
+      failed_count:
+        type: integer
+      processed_at:
+        type: integer
+      responses:
+        items:
+          $ref: '#/definitions/cppbridge.RecommendationResponse'
+        type: array
+      success_count:
+        type: integer
+      total_count:
+        type: integer
+    type: object
+  cppbridge.Recommendation:
+    properties:
+      admission_score:
+        type: integer
+      algorithm:
+        type: string
+      city:
+        type: string
+      major_id:
+        type: string
+      major_name:
+        type: string
+      probability:
+        type: number
+      province:
+        description: 新增字段以支持前端格式
+        type: string
+      ranking:
+        type: integer
+      reasons:
+        items:
+          type: string
+        type: array
+      risk_level:
+        type: string
+      school_id:
+        type: string
+      school_level:
+        type: string
+      school_name:
+        type: string
+      school_type:
+        type: string
+      score:
+        type: number
+    type: object
+  cppbridge.RecommendationRequest:
+    properties:
+      algorithm:
+        type: string
+      biology:
+        type: integer
+      chemistry:
+        type: integer
+      chinese_score:
+        type: integer
+      english_score:
+        type: integer
+      filters:
+        additionalProperties: true
+        type: object
+      geography:
+        type: integer
+      history:
+        type: integer
+      math_score:
+        type: integer
+      max_recommendations:
+        type: integer
+      name:
+        type: string
+      physics:
+        type: integer
+      politics:
+        type: integer
+      preferences:
+        additionalProperties: true
+        type: object
+      province:
+        type: string
+      ranking:
+        type: integer
+      student_id:
+        type: string
+      subject_combination:
+        type: string
+      total_score:
+        type: integer
+    type: object
+  cppbridge.RecommendationResponse:
+    properties:
+      algorithm:
+        type: string
+      error_message:
+        type: string
+      generated_at:
+        type: integer
+      recommendations:
+        items:
+          $ref: '#/definitions/cppbridge.Recommendation'
+        type: array
+      student_id:
+        type: string
+      success:
+        type: boolean
+      total_count:
+        type: integer
+    type: object
+  handlers.APIResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.AlgorithmPerformance:
+    properties:
+      ai_algorithm:
+        $ref: '#/definitions/types.AnalyticsPerformanceMetrics'
+      comparison_metrics:
+        $ref: '#/definitions/types.ComparisonMetrics'
+      hybrid_algorithm:
+        $ref: '#/definitions/types.AnalyticsPerformanceMetrics'
+      last_updated:
+        type: string
+      traditional_algorithm:
+        $ref: '#/definitions/types.AnalyticsPerformanceMetrics'
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  handlers.RecommendationStats:
+    properties:
+      algorithm_breakdown:
+        additionalProperties:
+          type: integer
+        type: object
+      avg_response_time_ms:
+        type: number
+      success_rate:
+        type: number
+      time_range:
+        $ref: '#/definitions/types.TimeRange'
+      top_recommendations:
+        items:
+          $ref: '#/definitions/types.RecommendationItem'
+        type: array
+      total_requests:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  handlers.StudentInfo:
+    properties:
+      preferences:
+        $ref: '#/definitions/handlers.StudentPreferences'
+      province:
+        type: string
+      rank:
+        type: integer
+      scienceType:
+        type: string
+      score:
+        type: integer
+      year:
+        type: integer
+    type: object
+  handlers.StudentPreferences:
+    properties:
+      majorCategories:
+        items:
+          type: string
+        type: array
+      regions:
+        items:
+          type: string
+        type: array
+      riskTolerance:
+        type: string
+      specialRequirements:
+        type: string
+      universityTypes:
+        items:
+          type: string
+        type: array
+    type: object
+  handlers.SystemMetrics:
+    properties:
+      active_requests:
+        type: integer
+      avg_latency_ms:
+        type: number
+      cache_hit_rate:
+        type: number
+      cpu_usage:
+        type: number
+      disk_usage:
+        type: number
+      error_rate:
+        type: number
+      memory_usage:
+        type: number
+      qps:
+        type: number
+      service_health:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  handlers.UserBehaviorAnalysis:
+    properties:
+      engagement_metrics:
+        $ref: '#/definitions/types.EngagementMetrics'
+      last_analysis_time:
+        type: string
+      preference_profile:
+        $ref: '#/definitions/types.PreferenceProfile'
+      recommendation_feedback:
+        items:
+          $ref: '#/definitions/types.FeedbackItem'
+        type: array
+      request_patterns:
+        items:
+          $ref: '#/definitions/types.RequestPattern'
+        type: array
+      user_id:
+        type: string
+    type: object
+  services.WeightConfig:
+    properties:
+      competition_weight:
+        description: 竞争程度权重
+        type: number
+      created_at:
+        type: string
+      description:
+        type: string
+      employment_weight:
+        description: 就业前景权重
+        type: number
+      enable_adaptive_weights:
+        description: 高级配置
+        type: boolean
+      id:
+        type: string
+      interest_weight:
+        description: 专业兴趣权重
+        type: number
+      is_active:
+        type: boolean
+      is_default:
+        type: boolean
+      location_weight:
+        description: 地理位置权重
+        type: number
+      max_weight_threshold:
+        description: 最大权重阈值
+        type: number
+      min_weight_threshold:
+        description: 最小权重阈值
+        type: number
+      name:
+        type: string
+      score_match_weight:
+        description: 6维度权重 (总和应为1.0)
+        type: number
+      university_rank_weight:
+        description: 学校排名权重
+        type: number
+      updated_at:
+        type: string
+    type: object
+  types.AnalyticsPerformanceMetrics:
+    properties:
+      accuracy:
+        type: number
+      avg_response_time_ms:
+        type: number
+      f1_score:
+        type: number
+      precision:
+        type: number
+      recall:
+        type: number
+      success_rate:
+        type: number
+      throughput_qps:
+        type: number
+      user_satisfaction:
+        type: number
+    type: object
+  types.ComparisonMetrics:
+    properties:
+      best_performing:
+        type: string
+      optimal_weights:
+        additionalProperties:
+          type: number
+        type: object
+      performance_gain_percent:
+        type: number
+      recommendation_diff_percent:
+        type: number
+    type: object
+  types.EngagementMetrics:
+    properties:
+      avg_view_time_seconds:
+        type: number
+      click_through_rate:
+        type: number
+      conversion_rate:
+        type: number
+      favorite_rate:
+        type: number
+      share_rate:
+        type: number
+    type: object
+  types.FeedbackItem:
+    properties:
+      feedback:
+        type: string
+      rating:
+        type: integer
+      recommendation_id:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  types.PreferenceProfile:
+    properties:
+      preferred_locations:
+        items:
+          type: string
+        type: array
+      preferred_majors:
+        items:
+          type: string
+        type: array
+      preferred_schools:
+        items:
+          type: string
+        type: array
+      priorities:
+        additionalProperties:
+          type: number
+        type: object
+      score_range:
+        $ref: '#/definitions/types.ScoreRange'
+    type: object
+  types.RecommendationItem:
+    properties:
+      count:
+        type: integer
+      major_id:
+        type: string
+      major_name:
+        type: string
+      school_id:
+        type: string
+      school_name:
+        type: string
+      score:
+        type: number
+      success_rate:
+        type: number
+    type: object
+  types.RequestPattern:
+    properties:
+      avg_duration_ms:
+        type: number
+      frequency:
+        type: integer
+      request_type:
+        type: string
+      time_of_day:
+        type: string
+    type: object
+  types.ScoreRange:
+    properties:
+      max_score:
+        type: integer
+      min_score:
+        type: integer
+    type: object
+  types.TimeRange:
+    properties:
+      end_time:
+        type: string
+      start_time:
+        type: string
+    type: object
+host: localhost:8084
+info:
+  contact: {}
+  description: 混合推荐引擎API服务，融合传统算法和AI推荐
+  title: 高考志愿填报推荐服务 API
+  version: "1.0"
+paths:
+  /analytics/algorithms/performance:
+    get:
+      consumes:
+      - application/json
+      description: 获取各算法的性能对比和优化建议
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AlgorithmPerformance'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取算法性能分析
+      tags:
+      - analytics
+  /analytics/export:
+    get:
+      consumes:
+      - application/json
+      description: 导出指定时间范围的完整分析报告
+      parameters:
+      - description: 开始时间 (RFC3339格式)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: 结束时间 (RFC3339格式)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      - default: json
+        description: 导出格式 (json|csv|pdf)
+        in: query
+        name: format
+        type: string
+      - description: 用户ID（可选，导出特定用户报告）
+        in: query
+        name: user_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 导出分析报告
+      tags:
+      - analytics
+  /analytics/fusion-stats:
+    get:
+      consumes:
+      - application/json
+      description: 获取传统算法、AI算法和混合算法的统计对比
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取算法融合统计
+      tags:
+      - analytics
+  /analytics/performance:
+    get:
+      consumes:
+      - application/json
+      description: 获取系统性能相关指标
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取系统性能指标
+      tags:
+      - analytics
+  /analytics/quality-report:
+    post:
+      consumes:
+      - application/json
+      description: 生成指定时间范围内的推荐质量分析报告
+      parameters:
+      - description: 报告参数
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 生成推荐质量报告
+      tags:
+      - analytics
+  /analytics/realtime/metrics:
+    get:
+      consumes:
+      - application/json
+      description: 获取系统实时性能指标，支持WebSocket推送
+      parameters:
+      - default: 5
+        description: 更新间隔(秒)
+        in: query
+        name: interval
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SystemMetrics'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取实时系统指标
+      tags:
+      - analytics
+  /analytics/recommendations/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定用户在指定时间范围内的推荐统计数据
+      parameters:
+      - description: 用户ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: 开始时间 (RFC3339格式)
+        in: query
+        name: start_time
+        type: string
+      - description: 结束时间 (RFC3339格式)
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.RecommendationStats'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户推荐统计数据
+      tags:
+      - analytics
+  /analytics/system/metrics:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前系统的性能指标和健康状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SystemMetrics'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取系统性能指标
+      tags:
+      - analytics
+  /analytics/trends:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定时间范围内的推荐趋势分析
+      parameters:
+      - default: 24h
+        description: 时间范围 (1h|24h|7d|30d)
+        in: query
+        name: time_range
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取推荐趋势数据
+      tags:
+      - analytics
+  /analytics/users/{user_id}/behavior:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定用户的行为模式和偏好分析
+      parameters:
+      - description: 用户ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UserBehaviorAnalysis'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取用户行为分析报告
+      tags:
+      - analytics
+  /recommendations/batch:
+    post:
+      consumes:
+      - application/json
+      description: 为多个学生批量生成个性化的志愿填报推荐
+      parameters:
+      - description: 批量推荐请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/cppbridge.BatchRecommendationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/cppbridge.BatchRecommendationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 批量生成志愿推荐
+      tags:
+      - recommendations
+  /recommendations/cache:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 清空推荐缓存
+      tags:
+      - recommendations
+  /recommendations/explain/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 解释为什么推荐了某个学校和专业
+      parameters:
+      - description: 推荐ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 解释推荐结果
+      tags:
+      - recommendations
+  /recommendations/generate:
+    post:
+      consumes:
+      - application/json
+      description: 根据学生信息生成个性化的志愿填报推荐
+      parameters:
+      - description: 学生信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.StudentInfo'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 生成志愿推荐
+      tags:
+      - recommendations
+  /recommendations/optimize:
+    post:
+      consumes:
+      - application/json
+      description: 根据用户反馈优化推荐算法参数
+      parameters:
+      - description: 优化请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 优化推荐结果
+      tags:
+      - recommendations
+  /system/cache/clear:
+    post:
+      consumes:
+      - application/json
+      description: 清空推荐系统的缓存数据
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 清空系统缓存
+      tags:
+      - system
+  /system/model:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模型更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 更新AI模型（兼容旧路径）
+      tags:
+      - system
+  /system/model/update:
+    put:
+      consumes:
+      - application/json
+      description: 更新推荐系统的AI模型
+      parameters:
+      - description: 模型更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 更新AI模型
+      tags:
+      - system
+  /system/status:
+    get:
+      consumes:
+      - application/json
+      description: 获取推荐系统的运行状态和健康信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 获取系统状态
+      tags:
+      - system
+  /weights:
+    get:
+      description: 获取系统默认和所有自定义权重配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/services.WeightConfig'
+            type: object
+      summary: 获取所有权重配置
+      tags:
+      - weights
+  /weights/{key}:
+    delete:
+      description: 删除特定的权重配置
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 删除权重配置
+      tags:
+      - weights
+    get:
+      description: 根据key获取权重配置，如果不存在则返回默认配置
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.WeightConfig'
+      summary: 获取特定权重配置
+      tags:
+      - weights
+    post:
+      consumes:
+      - application/json
+      description: 创建或更新权重配置
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 权重配置
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/services.WeightConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 设置权重配置
+      tags:
+      - weights
+  /weights/{key}/export:
+    get:
+      description: 导出权重配置为JSON格式
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 权重配置JSON
+          schema:
+            type: string
+      summary: 导出权重配置
+      tags:
+      - weights
+  /weights/{key}/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 从JSON文件导入权重配置
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 权重配置JSON文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 导入权重配置
+      tags:
+      - weights
+  /weights/{key}/reset:
+    post:
+      description: 重置为默认权重配置
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 重置权重配置
+      tags:
+      - weights
+  /weights/presets:
+    post:
+      description: 创建系统预设的权重配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 创建预设权重配置
+      tags:
+      - weights
+  /weights/stats:
+    get:
+      description: 获取权重配置的统计信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取权重统计信息
+      tags:
+      - weights
+swagger: "2.0"

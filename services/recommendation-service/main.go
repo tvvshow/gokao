@@ -15,6 +15,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/oktetopython/gaokao/services/recommendation-service/docs"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/config"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/handlers"
@@ -26,7 +27,7 @@ import (
 // @title 高考志愿填报推荐服务 API
 // @version 1.0
 // @description 混合推荐引擎API服务，融合传统算法和AI推荐
-// @host localhost:10083
+// @host localhost:8084
 // @BasePath /api/v1
 func main() {
 	// 加载环境变量
@@ -241,3 +242,23 @@ func main() {
 
 	logger.Info("推荐服务已关闭")
 }
+
+// Doc-only placeholders (no-op) to keep Swagger synced with closure/shared handlers.
+// These functions are never called.
+// @Summary 清空推荐缓存
+// @Tags recommendations
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /recommendations/cache [delete]
+func _docRecommendationCacheDelete() {}
+
+// @Summary 更新AI模型（兼容旧路径）
+// @Tags system
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "模型更新请求"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /system/model [post]
+func _docSystemModelUpdateCompat() {}
