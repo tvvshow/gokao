@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"data-service/internal/config"
-	"data-service/internal/models"
 	"fmt"
 	"reflect"
 	"strings"
@@ -197,15 +196,7 @@ func (db *DB) migrate() error {
 	}
 
 	// 定义所有需要迁移的模型
-	models := []interface{}{
-		&models.University{},
-		&models.Major{},
-		&models.AdmissionData{},
-		&models.SearchIndex{},
-		&models.AnalysisResult{},
-		&models.HotSearch{},
-		&models.DataStatistics{},
-	}
+	models := migratableModels()
 
 	// 对所有模型执行迁移，确保字段更新
 	for _, model := range models {
