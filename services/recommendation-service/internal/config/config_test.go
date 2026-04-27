@@ -290,6 +290,37 @@ func TestLLMConfigDefaultsAndEnv(t *testing.T) {
 	}
 }
 
+func TestCacheWarmConfigDefaultsAndEnv(t *testing.T) {
+	os.Setenv("CACHE_WARM_ENABLED", "false")
+	os.Setenv("CACHE_WARM_ASYNC", "false")
+	os.Setenv("CACHE_WARM_TIMEOUT", "5s")
+	defer func() {
+		os.Unsetenv("CACHE_WARM_ENABLED")
+		os.Unsetenv("CACHE_WARM_ASYNC")
+		os.Unsetenv("CACHE_WARM_TIMEOUT")
+		resetConfigSingleton()
+	}()
+
+	resetConfigSingleton()
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+
+	if config.CacheWarm == nil {
+		t.Fatal("缓存预热配置为空")
+	}
+	if config.CacheWarm.Enabled {
+		t.Fatal("期望缓存预热已禁用")
+	}
+	if config.CacheWarm.Async {
+		t.Fatal("期望缓存预热同步执行")
+	}
+	if config.CacheWarm.RequestTimeout != 5*time.Second {
+		t.Fatalf("unexpected warm timeout: %s", config.CacheWarm.RequestTimeout)
+	}
+}
+
 func TestLogConfigValidation(t *testing.T) {
 	config, err := Load()
 	if err != nil {

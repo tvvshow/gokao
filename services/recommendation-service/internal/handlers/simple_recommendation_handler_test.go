@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -27,25 +28,54 @@ func (s stubAnalyzer) AnalyzeRecommendation(ctx context.Context, input llm.Recom
 }
 
 type stubBridge struct {
-	status map[string]interface{}
+	status        map[string]interface{}
+	mu            sync.Mutex
+	calls         int
+	failProvince  map[string]error
+	responseCount int
 }
 
-func (b stubBridge) Close() error { return nil }
-func (b stubBridge) GenerateRecommendations(request *cppbridge.RecommendationRequest) (*cppbridge.RecommendationResponse, error) {
+func (b *stubBridge) Close() error { return nil }
+func (b *stubBridge) GenerateRecommendations(request *cppbridge.RecommendationRequest) (*cppbridge.RecommendationResponse, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.calls++
+	if err := b.failProvince[request.Province]; err != nil {
+		return nil, err
+	}
+	b.responseCount++
+	return &cppbridge.RecommendationResponse{
+		StudentID:   request.StudentID,
+		TotalCount:  1,
+		GeneratedAt: 1710000000,
+		Algorithm:   request.Algorithm,
+		Success:     true,
+		Recommendations: []cppbridge.Recommendation{
+			{
+				SchoolID:    "u1",
+				SchoolName:  "测试大学",
+				MajorID:     "m1",
+				MajorName:   "计算机科学与技术",
+				Probability: 0.82,
+				RiskLevel:   "medium",
+				Province:    request.Province,
+				SchoolType:  "综合",
+			},
+		},
+	}, nil
+}
+func (b *stubBridge) GetHybridConfig() (map[string]interface{}, error)     { return nil, nil }
+func (b *stubBridge) UpdateFusionWeights(weights map[string]float64) error { return nil }
+func (b *stubBridge) CompareRecommendations(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
 	return nil, nil
 }
-func (b stubBridge) GetHybridConfig() (map[string]interface{}, error)     { return nil, nil }
-func (b stubBridge) UpdateFusionWeights(weights map[string]float64) error { return nil }
-func (b stubBridge) CompareRecommendations(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
+func (b *stubBridge) GetPerformanceMetrics() (map[string]interface{}, error) { return nil, nil }
+func (b *stubBridge) GenerateHybridPlan(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
 	return nil, nil
 }
-func (b stubBridge) GetPerformanceMetrics() (map[string]interface{}, error) { return nil, nil }
-func (b stubBridge) GenerateHybridPlan(request *cppbridge.RecommendationRequest) (map[string]interface{}, error) {
-	return nil, nil
-}
-func (b stubBridge) ClearCache() error                  { return nil }
-func (b stubBridge) UpdateModel(modelPath string) error { return nil }
-func (b stubBridge) GetSystemStatus() (map[string]interface{}, error) {
+func (b *stubBridge) ClearCache() error                  { return nil }
+func (b *stubBridge) UpdateModel(modelPath string) error { return nil }
+func (b *stubBridge) GetSystemStatus() (map[string]interface{}, error) {
 	if b.status == nil {
 		return map[string]interface{}{"status": "healthy", "engine": "test"}, nil
 	}
@@ -130,7 +160,7 @@ func TestBuildRecommendationAnalysisInput(t *testing.T) {
 
 func TestGetSystemStatusIncludesAnalysisAndCache(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := NewSimpleRecommendationHandler(stubBridge{status: map[string]interface{}{"status": "healthy", "engine": "test"}}, cache.NewMemoryCache(), llm.NewLocalFallbackAnalyzer())
+	handler := NewSimpleRecommendationHandler(&stubBridge{status: map[string]interface{}{"status": "healthy", "engine": "test"}}, cache.NewMemoryCache(), llm.NewLocalFallbackAnalyzer())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system/status", nil)
 	w := httptest.NewRecorder()
@@ -196,3 +226,115 @@ func sampleFrontendRecommendations() []FrontendRecommendation {
 }
 
 func intPtr(v int) *int { return &v }
+
+func TestGenerateCacheKeyIgnoresStudentIdentityAndMapOrder(t *testing.T) {
+	handler := NewSimpleRecommendationHandler(nil, cache.NewMemoryCache(), nil)
+
+	req1 := &cppbridge.RecommendationRequest{
+		StudentID:          "student-a",
+		Name:               "Alice",
+		TotalScore:         620,
+		Ranking:            12000,
+		Province:           "河北",
+		SubjectCombination: "物理",
+		MaxRecommendations: 30,
+		Algorithm:          "hybrid",
+		Preferences: map[string]interface{}{
+			"risk_tolerance":   "moderate",
+			"major_categories": []string{"计算机", "电子信息"},
+		},
+	}
+	req2 := &cppbridge.RecommendationRequest{
+		StudentID:          "student-b",
+		Name:               "Bob",
+		TotalScore:         620,
+		Ranking:            12000,
+		Province:           "河北",
+		SubjectCombination: "物理",
+		MaxRecommendations: 30,
+		Algorithm:          "hybrid",
+		Preferences: map[string]interface{}{
+			"major_categories": []string{"计算机", "电子信息"},
+			"risk_tolerance":   "moderate",
+		},
+	}
+
+	key1 := handler.generateCacheKey(req1)
+	key2 := handler.generateCacheKey(req2)
+	if key1 != key2 {
+		t.Fatalf("expected same cache key, got %q vs %q", key1, key2)
+	}
+}
+
+func TestWarmRecommendationCacheStoresHotRequests(t *testing.T) {
+	bridge := &stubBridge{}
+	handler := NewSimpleRecommendationHandler(bridge, cache.NewMemoryCache(), nil)
+	requests := []*cppbridge.RecommendationRequest{
+		{
+			StudentID:          "warm-1",
+			TotalScore:         610,
+			Province:           "山东",
+			SubjectCombination: "物理",
+			MaxRecommendations: 30,
+			Algorithm:          "hybrid",
+			Preferences: map[string]interface{}{
+				"risk_tolerance": "moderate",
+			},
+		},
+		{
+			StudentID:          "warm-2",
+			TotalScore:         610,
+			Province:           "山东",
+			SubjectCombination: "物理",
+			MaxRecommendations: 30,
+			Algorithm:          "hybrid",
+			Preferences: map[string]interface{}{
+				"risk_tolerance": "moderate",
+			},
+		},
+	}
+
+	summary := handler.WarmRecommendationCache(context.Background(), requests)
+	if summary.Attempted != 2 || summary.Warmed != 1 || summary.Skipped != 1 || summary.Failed != 0 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+
+	bridge.mu.Lock()
+	calls := bridge.calls
+	bridge.mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("expected 1 bridge call, got %d", calls)
+	}
+}
+
+func TestWarmRecommendationCacheContinuesOnFailure(t *testing.T) {
+	bridge := &stubBridge{
+		failProvince: map[string]error{
+			"河北": errors.New("upstream failed"),
+		},
+	}
+	handler := NewSimpleRecommendationHandler(bridge, cache.NewMemoryCache(), nil)
+	requests := []*cppbridge.RecommendationRequest{
+		{
+			StudentID:          "warm-fail",
+			TotalScore:         580,
+			Province:           "河北",
+			SubjectCombination: "物理",
+			MaxRecommendations: 30,
+			Algorithm:          "hybrid",
+		},
+		{
+			StudentID:          "warm-ok",
+			TotalScore:         605,
+			Province:           "河南",
+			SubjectCombination: "物理",
+			MaxRecommendations: 30,
+			Algorithm:          "hybrid",
+		},
+	}
+
+	summary := handler.WarmRecommendationCache(context.Background(), requests)
+	if summary.Attempted != 2 || summary.Warmed != 1 || summary.Failed != 1 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+}

@@ -136,6 +136,12 @@ func main() {
 	analyticsService := services.NewAnalyticsService(bridge)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
+	handlers.StartRecommendationCacheWarmup(context.Background(), logger, recommendationHandler, handlers.CacheWarmOptions{
+		Enabled:        cfg.CacheWarm != nil && cfg.CacheWarm.Enabled,
+		Async:          cfg.CacheWarm == nil || cfg.CacheWarm.Async,
+		RequestTimeout: cfg.CacheWarm.RequestTimeout,
+	})
+
 	// 创建路由器
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
@@ -171,7 +177,8 @@ func main() {
 		{
 			recommendations.POST("/generate", recommendationHandler.GenerateRecommendations)
 			recommendations.POST("/batch", recommendationHandler.BatchGenerateRecommendations)
-			recommendations.POST("/explain", recommendationHandler.ExplainRecommendation)
+			recommendations.GET("/explain/:id", recommendationHandler.ExplainRecommendation)
+			recommendations.POST("/explain/:id", recommendationHandler.ExplainRecommendation)
 			recommendations.POST("/optimize", recommendationHandler.OptimizeRecommendations)
 			recommendations.DELETE("/cache", recommendationHandler.ClearCache)
 		}
@@ -185,6 +192,8 @@ func main() {
 		{
 			system.GET("/status", recommendationHandler.GetSystemStatus)
 			system.POST("/model", recommendationHandler.UpdateModel)
+			system.PUT("/model/update", recommendationHandler.UpdateModel)
+			system.POST("/cache/clear", recommendationHandler.ClearCache)
 			system.GET("/data/stats", func(c *gin.Context) {
 				c.JSON(http.StatusOK, dataSyncService.GetCacheStats())
 			})

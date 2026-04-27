@@ -20,6 +20,7 @@ type Config struct {
 	Log         *LogConfig         `json:"log"`
 	DataService *DataServiceConfig `json:"data_service"`
 	LLM         *LLMConfig         `json:"llm"`
+	CacheWarm   *CacheWarmConfig   `json:"cache_warm"`
 }
 
 // ServerConfig 服务器配置
@@ -78,6 +79,13 @@ type LLMConfig struct {
 	Temperature     float64       `json:"temperature"`
 	FallbackEnabled bool          `json:"fallback_enabled"`
 	SystemPrompt    string        `json:"system_prompt"`
+}
+
+// CacheWarmConfig 推荐缓存预热配置
+type CacheWarmConfig struct {
+	Enabled        bool          `json:"enabled"`
+	Async          bool          `json:"async"`
+	RequestTimeout time.Duration `json:"request_timeout"`
 }
 
 var (
@@ -170,6 +178,11 @@ func defaultConfig() *Config {
 			FallbackEnabled: true,
 			SystemPrompt:    "你是一名高考志愿分析助手。请基于学生分数、地区偏好、风险偏好和推荐结果，输出简洁、专业、可执行的中文分析。",
 		},
+		CacheWarm: &CacheWarmConfig{
+			Enabled:        true,
+			Async:          true,
+			RequestTimeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -192,6 +205,9 @@ func loadFromEnv(config *Config) {
 	}
 	if config.LLM == nil {
 		config.LLM = defaultConfig().LLM
+	}
+	if config.CacheWarm == nil {
+		config.CacheWarm = defaultConfig().CacheWarm
 	}
 
 	if port := firstNonEmptyEnv("SERVER_PORT", "PORT"); port != "" {
@@ -300,6 +316,16 @@ func loadFromEnv(config *Config) {
 	}
 	if systemPrompt := os.Getenv("LLM_SYSTEM_PROMPT"); systemPrompt != "" {
 		config.LLM.SystemPrompt = systemPrompt
+	}
+
+	if enabled, ok := getEnvBool("CACHE_WARM_ENABLED"); ok {
+		config.CacheWarm.Enabled = enabled
+	}
+	if async, ok := getEnvBool("CACHE_WARM_ASYNC"); ok {
+		config.CacheWarm.Async = async
+	}
+	if timeout, ok := getEnvDuration("CACHE_WARM_TIMEOUT"); ok {
+		config.CacheWarm.RequestTimeout = timeout
 	}
 }
 

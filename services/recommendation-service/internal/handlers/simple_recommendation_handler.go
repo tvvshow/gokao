@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -74,6 +75,14 @@ type PerformanceStats struct {
 	cacheHits       int64
 	cacheMisses     int64
 	lastUpdate      time.Time
+}
+
+// CacheWarmupSummary 缓存预热结果
+type CacheWarmupSummary struct {
+	Attempted int `json:"attempted"`
+	Warmed    int `json:"warmed"`
+	Skipped   int `json:"skipped"`
+	Failed    int `json:"failed"`
 }
 
 // NewRecommendationCache 创建推荐缓存
@@ -644,7 +653,7 @@ func (h *SimpleRecommendationHandler) convertStudentInfoToRequest(studentInfo *S
 // validateAndSetDefaults 验证并设置默认值
 func (h *SimpleRecommendationHandler) validateAndSetDefaults(request *cppbridge.RecommendationRequest) error {
 	if request.StudentID == "" {
-		return fmt.Errorf("student_id is required")
+		request.StudentID = "cache_warmup"
 	}
 
 	if request.TotalScore <= 0 || request.TotalScore > 750 {
@@ -673,30 +682,55 @@ func (h *SimpleRecommendationHandler) validateAndSetDefaults(request *cppbridge.
 
 // generateCacheKey 生成缓存键
 func (h *SimpleRecommendationHandler) generateCacheKey(request *cppbridge.RecommendationRequest) string {
-	key := fmt.Sprintf("rec_%s_%d_%s_%s_%d",
-		request.StudentID,
-		request.TotalScore,
-		request.Province,
-		request.Algorithm,
-		request.MaxRecommendations)
-
-	// 添加偏好哈希
-	if request.Preferences != nil {
-		prefHash := h.hashPreferences(request.Preferences)
-		key += "_" + prefHash
+	fingerprint := struct {
+		TotalScore         int                    `json:"total_score"`
+		Ranking            int                    `json:"ranking"`
+		Province           string                 `json:"province"`
+		SubjectCombination string                 `json:"subject_combination"`
+		ChineseScore       int                    `json:"chinese_score"`
+		MathScore          int                    `json:"math_score"`
+		EnglishScore       int                    `json:"english_score"`
+		Physics            int                    `json:"physics,omitempty"`
+		Chemistry          int                    `json:"chemistry,omitempty"`
+		Biology            int                    `json:"biology,omitempty"`
+		History            int                    `json:"history,omitempty"`
+		Geography          int                    `json:"geography,omitempty"`
+		Politics           int                    `json:"politics,omitempty"`
+		Preferences        map[string]interface{} `json:"preferences,omitempty"`
+		Filters            map[string]interface{} `json:"filters,omitempty"`
+		MaxRecommendations int                    `json:"max_recommendations"`
+		Algorithm          string                 `json:"algorithm"`
+	}{
+		TotalScore:         request.TotalScore,
+		Ranking:            request.Ranking,
+		Province:           request.Province,
+		SubjectCombination: request.SubjectCombination,
+		ChineseScore:       request.ChineseScore,
+		MathScore:          request.MathScore,
+		EnglishScore:       request.EnglishScore,
+		Physics:            request.Physics,
+		Chemistry:          request.Chemistry,
+		Biology:            request.Biology,
+		History:            request.History,
+		Geography:          request.Geography,
+		Politics:           request.Politics,
+		Preferences:        request.Preferences,
+		Filters:            request.Filters,
+		MaxRecommendations: request.MaxRecommendations,
+		Algorithm:          request.Algorithm,
 	}
 
-	return key
-}
-
-// hashPreferences 计算偏好哈希
-func (h *SimpleRecommendationHandler) hashPreferences(preferences map[string]interface{}) string {
-	// 简化的哈希计算，实际应该使用更复杂的哈希算法
-	hash := ""
-	for k, v := range preferences {
-		hash += fmt.Sprintf("%s_%v", k, v)
+	data, err := json.Marshal(fingerprint)
+	if err != nil {
+		return fmt.Sprintf("rec_%s_%d_%s_%s_%d",
+			request.Province,
+			request.TotalScore,
+			request.SubjectCombination,
+			request.Algorithm,
+			request.MaxRecommendations)
 	}
-	return fmt.Sprintf("%x", len(hash))
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("rec_%x", sum[:12])
 }
 
 // getFromCache 从缓存获取
@@ -725,6 +759,68 @@ func (h *SimpleRecommendationHandler) setToCache(key string, response *cppbridge
 
 	// 设置30分钟过期时间
 	h.cache.Set(ctx, key, data, 30*time.Minute)
+}
+
+// WarmRecommendationCache 预热热门推荐请求缓存
+func (h *SimpleRecommendationHandler) WarmRecommendationCache(ctx context.Context, requests []*cppbridge.RecommendationRequest) CacheWarmupSummary {
+	summary := CacheWarmupSummary{}
+	for _, request := range requests {
+		if request == nil {
+			continue
+		}
+
+		select {
+		case <-ctx.Done():
+			return summary
+		default:
+		}
+
+		summary.Attempted++
+
+		cloned := cloneRecommendationRequest(request)
+		if err := h.validateAndSetDefaults(cloned); err != nil {
+			summary.Failed++
+			continue
+		}
+
+		cacheKey := h.generateCacheKey(cloned)
+		if cached := h.getFromCache(cacheKey); cached != nil {
+			summary.Skipped++
+			continue
+		}
+
+		response, err := h.generateEnhancedRecommendations(cloned)
+		if err != nil {
+			summary.Failed++
+			continue
+		}
+
+		h.setToCache(cacheKey, response)
+		summary.Warmed++
+	}
+
+	return summary
+}
+
+func cloneRecommendationRequest(src *cppbridge.RecommendationRequest) *cppbridge.RecommendationRequest {
+	if src == nil {
+		return nil
+	}
+	cloned := *src
+	cloned.Preferences = cloneInterfaceMap(src.Preferences)
+	cloned.Filters = cloneInterfaceMap(src.Filters)
+	return &cloned
+}
+
+func cloneInterfaceMap(src map[string]interface{}) map[string]interface{} {
+	if len(src) == 0 {
+		return nil
+	}
+	cloned := make(map[string]interface{}, len(src))
+	for key, value := range src {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 // cleanupExpiredEntries 清理过期条目 (现在由缓存接口自动处理)
