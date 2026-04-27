@@ -133,6 +133,8 @@ func main() {
 	// 初始化处理器
 	recommendationHandler := handlers.NewSimpleRecommendationHandler(bridge, cacheService, analyzer)
 	weightHandler := handlers.NewWeightHandler(weightService, logger)
+	analyticsService := services.NewAnalyticsService(bridge)
+	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// 创建路由器
 	router := gin.New()
@@ -176,6 +178,7 @@ func main() {
 
 		// 权重配置路由
 		weightHandler.RegisterRoutes(api)
+		analyticsHandler.RegisterRoutes(api)
 
 		// 系统管理路由
 		system := api.Group("/system")

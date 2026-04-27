@@ -163,10 +163,10 @@ func TestAnalyticsHandler_GetSystemMetrics(t *testing.T) {
 
 	// 设置模拟返回
 	mockMetrics := &SystemMetrics{
-		Timestamp:      time.Now(),
-		CPUUsage:       65.2,
-		MemoryUsage:    78.5,
-		ServiceHealth:  "healthy",
+		Timestamp:     time.Now(),
+		CPUUsage:      65.2,
+		MemoryUsage:   78.5,
+		ServiceHealth: "healthy",
 	}
 	mockService.On("GetSystemMetrics").Return(mockMetrics, nil)
 
@@ -264,9 +264,9 @@ func TestAnalyticsHandler_GetAlgorithmPerformance(t *testing.T) {
 	// 设置模拟返回
 	mockPerformance := &AlgorithmPerformance{
 		HybridAlgorithm: AnalyticsPerformanceMetrics{
-			AvgResponseTime:  95.5,
-			SuccessRate:      0.95,
-			Accuracy:         0.93,
+			AvgResponseTime: 95.5,
+			SuccessRate:     0.95,
+			Accuracy:        0.93,
 		},
 		ComparisonMetrics: ComparisonMetrics{
 			BestPerforming:  "hybrid",
@@ -483,4 +483,28 @@ func BenchmarkAnalyticsHandler_GetSystemMetrics(b *testing.B) {
 
 		handler.GetSystemMetrics(c)
 	}
+}
+
+func TestAnalyticsHandler_RegisterRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler, mockService := setupAnalyticsHandler()
+	router := gin.New()
+	api := router.Group("/api/v1")
+	handler.RegisterRoutes(api)
+
+	mockMetrics := &SystemMetrics{
+		Timestamp:     time.Now(),
+		CPUUsage:      45.0,
+		MemoryUsage:   52.0,
+		ServiceHealth: "healthy",
+	}
+	mockService.On("GetSystemMetrics").Return(mockMetrics, nil).Once()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/analytics/system/metrics", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
 }

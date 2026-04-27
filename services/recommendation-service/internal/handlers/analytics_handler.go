@@ -37,6 +37,23 @@ func NewAnalyticsHandler(analyticsService AnalyticsService) *AnalyticsHandler {
 	}
 }
 
+// RegisterRoutes 注册 analytics 路由
+func (h *AnalyticsHandler) RegisterRoutes(router *gin.RouterGroup) {
+	analytics := router.Group("/analytics")
+	{
+		analytics.GET("/recommendations/:user_id", h.GetRecommendationStats)
+		analytics.GET("/system/metrics", h.GetSystemMetrics)
+		analytics.GET("/users/:user_id/behavior", h.GetUserBehaviorAnalysis)
+		analytics.GET("/algorithms/performance", h.GetAlgorithmPerformance)
+		analytics.GET("/realtime/metrics", h.GetRealtimeMetrics)
+		analytics.GET("/export", h.ExportAnalyticsReport)
+		analytics.GET("/performance", h.GetPerformanceMetrics)
+		analytics.GET("/fusion-stats", h.GetFusionStatistics)
+		analytics.POST("/quality-report", h.GenerateQualityReport)
+		analytics.GET("/trends", h.GetRecommendationTrends)
+	}
+}
+
 // GetRecommendationStats 获取推荐统计
 // @Summary 获取用户推荐统计数据
 // @Description 获取指定用户在指定时间范围内的推荐统计数据
