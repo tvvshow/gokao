@@ -112,7 +112,7 @@ type LicenseConfig struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Port:         getEnvAsIntAlias([]string{"SERVER_PORT", "PORT"}, 10084),
+			Port:         getEnvAsIntAlias([]string{"SERVER_PORT", "PORT"}, 8085),
 			Mode:         getEnvAlias([]string{"SERVER_MODE", "GIN_MODE"}, "debug"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 10),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 10),

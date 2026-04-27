@@ -768,11 +768,14 @@ func (lb *LoadBalancer) GetService(serviceName string) *ServiceConfig {
 // 辅助函数
 // NEW: resolve port from env with default
 func getPortFromEnv() string {
-	p := os.Getenv("PORT")
+	p := os.Getenv("SERVER_PORT")
+	if p == "" {
+		p = os.Getenv("PORT")
+	}
 	if p == "" {
 		return "8080"
 	}
-	return p
+	return strings.TrimPrefix(p, ":")
 }
 
 // NEW: build listen addr from port

@@ -34,7 +34,7 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:10084
+// @host localhost:8085
 // @BasePath /api/v1
 
 func main() {
@@ -146,7 +146,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("Payment service started on port %d", 10084)
+	log.Printf("Payment service started on port %d", cfg.Server.Port)
 
 	// 等待中断信号
 	quit := make(chan os.Signal, 1)

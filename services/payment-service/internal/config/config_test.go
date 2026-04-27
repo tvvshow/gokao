@@ -25,6 +25,35 @@ func TestLoadSupportsServerAliases(t *testing.T) {
 	}
 }
 
+func TestLoadUsesUnifiedDefaultPort(t *testing.T) {
+	oldServerPort := os.Getenv("SERVER_PORT")
+	oldPort := os.Getenv("PORT")
+	oldMode := os.Getenv("SERVER_MODE")
+	oldGinMode := os.Getenv("GIN_MODE")
+	defer func() {
+		_ = os.Setenv("SERVER_PORT", oldServerPort)
+		_ = os.Setenv("PORT", oldPort)
+		_ = os.Setenv("SERVER_MODE", oldMode)
+		_ = os.Setenv("GIN_MODE", oldGinMode)
+	}()
+
+	_ = os.Unsetenv("SERVER_PORT")
+	_ = os.Unsetenv("PORT")
+	_ = os.Unsetenv("SERVER_MODE")
+	_ = os.Unsetenv("GIN_MODE")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if cfg.Server.Port != 8085 {
+		t.Fatalf("expected default port 8085, got %d", cfg.Server.Port)
+	}
+	if cfg.Server.Mode != "debug" {
+		t.Fatalf("expected default mode debug, got %s", cfg.Server.Mode)
+	}
+}
+
 func TestLoadSupportsDatabasePoolConfig(t *testing.T) {
 	os.Setenv("DB_MAX_OPEN_CONNS", "40")
 	os.Setenv("DB_MAX_IDLE_CONNS", "12")
