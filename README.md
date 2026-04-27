@@ -86,6 +86,7 @@ npm run type-check
 ## API 与 Swagger
 
 - 网关入口: `http://localhost:8080`
+- 网关健康检查: `http://localhost:8080/healthz`（兼容别名：`/health`）
 - recommendation-service Swagger: `http://localhost:8084/swagger/index.html`
 - 当修改 `services/api-gateway` 或 `services/recommendation-service` 接口注释后，需同步 Swagger:
 

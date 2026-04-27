@@ -37,6 +37,9 @@ import (
 	// Unified error handling
 	"github.com/oktetopython/gaokao/pkg/errors"
 
+	// JWT 认证
+	authPkg "github.com/oktetopython/gaokao/pkg/auth"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -54,11 +57,11 @@ import (
 
 // NEW: default rate limiter configuration
 const (
-	defaultRatePerSec         = 10 // tokens per second
-	defaultBurst              = 20 // max burst tokens
-	defaultPublicRate         = 100
-	defaultPublicBurst        = 200
-	defaultRecommendationRate = 20
+	defaultRatePerSec          = 10 // tokens per second
+	defaultBurst               = 20 // max burst tokens
+	defaultPublicRate          = 100
+	defaultPublicBurst         = 200
+	defaultRecommendationRate  = 20
 	defaultRecommendationBurst = 40
 )
 
@@ -79,15 +82,21 @@ func accessLogMiddleware() gin.HandlerFunc { // NEW: access log
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
 		entry := map[string]any{
 			"ts":         time.Now().Format(time.RFC3339Nano),
 			"level":      "info",
 			"msg":        "access",
 			"method":     c.Request.Method,
-			"path":       c.Request.URL.Path,
+			"path":       path,
 			"status":     c.Writer.Status(),
 			"latency_ms": float64(latency.Microseconds()) / 1000.0,
-			"request_id": c.Request.Header.Get("X-Request-ID"),
+			"request_id": c.GetString("request_id"),
+			"client_ip":  c.ClientIP(),
+			"user_id":    c.GetString("user_id"),
 		}
 		if b, err := json.Marshal(entry); err == nil {
 			log.Println(string(b))
@@ -389,124 +398,132 @@ func initRedisCache() (*cacheManager, error) {
 	}, nil
 }
 
-	// NEW: allow tests to customize limiter
-	func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
-		// Switch to gin.New to avoid duplicate logs, and add Recovery explicitly
-		r := gin.New()
-		r.Use(gin.Recovery())
+// NEW: allow tests to customize limiter
+func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
+	// Switch to gin.New to avoid duplicate logs, and add Recovery explicitly
+	r := gin.New()
+	r.Use(gin.Recovery())
 
-		// 创建日志记录器
-		logger := logrus.New()
-		logger.SetFormatter(&logrus.JSONFormatter{})
+	// 创建日志记录器
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{})
 
-		// 初始化Redis缓存
-		cache, err := initRedisCache()
-		if err != nil {
-			log.Printf("Warning: Redis cache initialization failed: %v. Caching will be disabled.", err)
-			cache = nil
-		}
-
-		// NEW: Register middlewares in order:
-		// 1) request ID for correlation
-		// 2) metrics (wrap around the whole chain)
-		// 3) access logging (wraps request to capture latency)
-		// 4) security headers (should be present on all responses)
-		// 5) CORS (may abort preflight; security headers already set)
-		// 6) Rate limiter (skip OPTIONS)
-		// 7) Unified error handling
-		r.Use(requestIDMiddleware())
-		m := newMetrics()
-		r.Use(m.middleware())
-		r.Use(accessLogMiddleware())
-
-		// 添加缓存中间件（如果Redis可用）
-		if cache != nil {
-			cacheTTL := getEnvAsDuration("CACHE_TTL", "5m")
-			r.Use(cacheMiddleware(cache, cacheTTL))
-		}
-
-		// 使用security中间件的CORS实现，不使用重复的securityHeadersMiddleware
-		securityMiddleware := middleware.NewSecurityMiddleware(&middleware.SecurityConfig{
-			JWTSecret:        os.Getenv("JWT_SECRET"),
-			JWTIssuer:        os.Getenv("JWT_ISSUER"),
-			JWTAudience:      os.Getenv("JWT_AUDIENCE"),
-			RateLimitEnabled: false,
-			SecurityHeaders:  true,
-		})
-		r.Use(securityMiddleware.SecurityHeaders())
-		
-		// 限制CORS来源，只允许特定的域名
-		allowedOrigins := []string{
-			"http://localhost:3000",      // 本地开发环境
-			"http://127.0.0.1:3000",      // 本地开发环境
-			"https://gaokaohub.com",      // 生产环境主域名
-			"https://www.gaokaohub.com",  // 生产环境www域名
-		}
-		
-		// 从环境变量获取额外的允许来源
-		if extraOrigins := os.Getenv("ALLOWED_ORIGINS"); extraOrigins != "" {
-			extraOriginsList := strings.Split(extraOrigins, ",")
-			allowedOrigins = append(allowedOrigins, extraOriginsList...)
-		}
-		
-		r.Use(securityMiddleware.CORS(allowedOrigins))
-		
-		// 添加输入验证中间件
-		inputValidationMiddleware := middleware.NewInputValidationMiddleware(&middleware.InputValidationConfig{
-			MaxBodySize:        10 * 1024 * 1024, // 10MB
-			Logger:             logger,
-			AllowedContentTypes: []string{"application/json", "application/x-www-form-urlencoded", "multipart/form-data"},
-		})
-		r.Use(inputValidationMiddleware.Middleware())
-		
-		r.Use(rateLimitMiddlewareWithConfig(ratePerSec, burst))
-		r.Use(errors.ErrorHandlerMiddleware())
-
-		// configure swagger base path
-		// docs.SwaggerInfo.BasePath = "/"
-
-		// NEW: /metrics endpoint
-		r.GET("/metrics", gin.WrapH(promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})))
-
-		// NEW: Swagger UI and spec (controlled by ENABLE_SWAGGER env; default: enabled)
-		// Set ENABLE_SWAGGER=0 or false to disable in production.
-		sw := os.Getenv("ENABLE_SWAGGER")
-		swaggerEnabled := sw == "" || strings.EqualFold(sw, "1") || strings.EqualFold(sw, "true") || strings.EqualFold(sw, "yes")
-		if swaggerEnabled {
-			r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-			// NEW: safety warning if Swagger is enabled under release mode
-			if gin.Mode() == gin.ReleaseMode {
-				log.Println("[WARN] Swagger UI is enabled while GIN_MODE=release. For production, set ENABLE_SWAGGER=0 or block /swagger upstream.")
-			}
-		}
-
-		// @Summary Liveness probe
-		// @Tags System
-		// @Success 200 {string} string "ok"
-		// @Router /healthz [get]
-		r.GET("/healthz", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
-
-		// @Summary Readiness probe
-		// @Tags System
-		// @Success 200 {string} string "ready"
-		// @Router /readyz [get]
-		r.GET("/readyz", func(c *gin.Context) { c.String(http.StatusOK, "ready") })
-
-		// @Summary Root
-		// @Tags System
-		// @Success 200 {string} string "GaokaoHub API Gateway"
-		// @Router / [get]
-		r.GET("/", func(c *gin.Context) { c.String(http.StatusOK, "GaokaoHub API Gateway") })
-
-		// Initialize ProxyManager and set up proxy routes
-		proxyManager := NewProxyManager(logger)
-		proxyManager.SetupProxyRoutes(r)
-
-		// Add a simple test route to verify proxy logic
-		r.GET("/test/proxy", proxyManager.createProxy("data"))
-
-		return r
+	// 初始化Redis缓存
+	cache, err := initRedisCache()
+	if err != nil {
+		log.Printf("Warning: Redis cache initialization failed: %v. Caching will be disabled.", err)
+		cache = nil
 	}
+
+	// NEW: Register middlewares in order:
+	// 1) request ID for correlation
+	// 2) metrics (wrap around the whole chain)
+	// 3) access logging (wraps request to capture latency)
+	// 4) security headers (should be present on all responses)
+	// 5) CORS (may abort preflight; security headers already set)
+	// 6) Rate limiter (skip OPTIONS)
+	// 7) Unified error handling
+	r.Use(requestIDMiddleware())
+	m := newMetrics()
+	r.Use(m.middleware())
+	r.Use(accessLogMiddleware())
+
+	// 添加缓存中间件（如果Redis可用）
+	if cache != nil {
+		cacheTTL := getEnvAsDuration("CACHE_TTL", "5m")
+		r.Use(cacheMiddleware(cache, cacheTTL))
+	}
+
+	// 使用security中间件的CORS实现，不使用重复的securityHeadersMiddleware
+	securityMiddleware := middleware.NewSecurityMiddleware(&middleware.SecurityConfig{
+		JWTSecret:        os.Getenv("JWT_SECRET"),
+		JWTIssuer:        os.Getenv("JWT_ISSUER"),
+		JWTAudience:      os.Getenv("JWT_AUDIENCE"),
+		RateLimitEnabled: false,
+		SecurityHeaders:  true,
+	})
+	r.Use(securityMiddleware.SecurityHeaders())
+
+	// 限制CORS来源，只允许特定的域名
+	allowedOrigins := []string{
+		"http://localhost:3000",     // 本地开发环境
+		"http://127.0.0.1:3000",     // 本地开发环境
+		"https://gaokaohub.com",     // 生产环境主域名
+		"https://www.gaokaohub.com", // 生产环境www域名
+	}
+
+	// 从环境变量获取额外的允许来源
+	if extraOrigins := os.Getenv("ALLOWED_ORIGINS"); extraOrigins != "" {
+		extraOriginsList := strings.Split(extraOrigins, ",")
+		allowedOrigins = append(allowedOrigins, extraOriginsList...)
+	}
+
+	r.Use(securityMiddleware.CORS(allowedOrigins))
+
+	// 添加输入验证中间件
+	inputValidationMiddleware := middleware.NewInputValidationMiddleware(&middleware.InputValidationConfig{
+		MaxBodySize:         10 * 1024 * 1024, // 10MB
+		Logger:              logger,
+		AllowedContentTypes: []string{"application/json", "application/x-www-form-urlencoded", "multipart/form-data"},
+	})
+	r.Use(inputValidationMiddleware.Middleware())
+
+	r.Use(rateLimitMiddlewareWithConfig(ratePerSec, burst))
+	r.Use(errors.ErrorHandlerMiddleware())
+
+	// configure swagger base path
+	// docs.SwaggerInfo.BasePath = "/"
+
+	// NEW: /metrics endpoint
+	r.GET("/metrics", gin.WrapH(promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})))
+
+	// NEW: Swagger UI and spec (controlled by ENABLE_SWAGGER env; default: enabled)
+	// Set ENABLE_SWAGGER=0 or false to disable in production.
+	sw := os.Getenv("ENABLE_SWAGGER")
+	swaggerEnabled := sw == "" || strings.EqualFold(sw, "1") || strings.EqualFold(sw, "true") || strings.EqualFold(sw, "yes")
+	if swaggerEnabled {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		// NEW: safety warning if Swagger is enabled under release mode
+		if gin.Mode() == gin.ReleaseMode {
+			log.Println("[WARN] Swagger UI is enabled while GIN_MODE=release. For production, set ENABLE_SWAGGER=0 or block /swagger upstream.")
+		}
+	}
+
+	// @Summary Liveness probe
+	// @Tags System
+	// @Success 200 {string} string "ok"
+	// @Router /healthz [get]
+	r.GET("/healthz", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+	r.GET("/health", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+
+	// @Summary Readiness probe
+	// @Tags System
+	// @Success 200 {string} string "ready"
+	// @Router /readyz [get]
+	r.GET("/readyz", func(c *gin.Context) { c.String(http.StatusOK, "ready") })
+
+	// @Summary Root
+	// @Tags System
+	// @Success 200 {string} string "GaokaoHub API Gateway"
+	// @Router / [get]
+	r.GET("/", func(c *gin.Context) { c.String(http.StatusOK, "GaokaoHub API Gateway") })
+
+	// JWT 认证中间件
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "gaokao-dev-secret-key-change-in-production"
+	}
+	authMiddleware := authPkg.NewAuthMiddleware(jwtSecret)
+
+	// Initialize ProxyManager and set up proxy routes
+	proxyManager := NewProxyManager(logger)
+	proxyManager.SetupProxyRoutes(r, authMiddleware)
+
+	// Add a simple test route to verify proxy logic
+	r.GET("/test/proxy", proxyManager.createProxy("data", "/test/proxy", "/api/v1"))
+
+	return r
+}
 
 // ServiceConfig 服务配置
 type ServiceConfig struct {
@@ -527,7 +544,7 @@ func NewProxyManager(logger *logrus.Logger) *ProxyManager {
 	services := map[string]*ServiceConfig{
 		"user": {
 			Name:    "user-service",
-			BaseURL: getEnv("USER_SERVICE_URL", "http://user-service:8081"),
+			BaseURL: getEnv("USER_SERVICE_URL", "http://user-service:8083"),
 			Prefix:  "/api/v1/users",
 			Timeout: 30 * time.Second,
 		},
@@ -558,32 +575,60 @@ func NewProxyManager(logger *logrus.Logger) *ProxyManager {
 }
 
 // SetupProxyRoutes 设置代理路由
-func (pm *ProxyManager) SetupProxyRoutes(router *gin.Engine) {
-	api := router.Group("/v1")
+func (pm *ProxyManager) SetupProxyRoutes(router *gin.Engine, auth *authPkg.AuthMiddleware) {
+	pm.setupProxyRoutes(router, "/api/v1", auth)
+	pm.setupProxyRoutes(router, "/v1", auth)
+}
 
-	// 用户服务路由
+func (pm *ProxyManager) setupProxyRoutes(router *gin.Engine, basePrefix string, auth *authPkg.AuthMiddleware) {
+	api := router.Group(basePrefix)
+
+	// 兼容旧客户端直接调用 /auth/*。
+	legacyAuthGroup := api.Group("/auth")
+	legacyAuthGroup.Use(pm.createProxy("user", basePrefix+"/auth", "/api/v1/auth"))
+	legacyAuthGroup.Any("/*path")
+
+	// /users/auth/* 公开，其余 /users/* 维持鉴权。
 	userGroup := api.Group("/users")
-	userGroup.Use(pm.createProxy("user"))
-	userGroup.Any("/*path")
+	userGroup.Any("/*path", pm.createUserProxy(basePrefix, auth))
 
-	// 数据服务路由
-	dataGroup := api.Group("/data")
-	dataGroup.Use(pm.createProxy("data"))
-	dataGroup.Any("/*path")
-
-	// 支付服务路由
 	paymentGroup := api.Group("/payments")
-	paymentGroup.Use(pm.createProxy("payment"))
+	paymentGroup.Use(auth.RequireAuth(), pm.createProxy("payment", basePrefix+"/payments", "/api/v1/payments"))
 	paymentGroup.Any("/*path")
 
-	// 推荐服务路由
+	// 数据查询与推荐页面按前端设计支持匿名访问，有 token 时透传用户信息。
+	dataGroup := api.Group("/data")
+	dataGroup.Use(auth.OptionalAuth(), pm.createProxy("data", basePrefix+"/data", "/api/v1"))
+	dataGroup.Any("/*path")
+
 	recommendationGroup := api.Group("/recommendations")
-	recommendationGroup.Use(pm.createProxy("recommendation"))
+	recommendationGroup.Use(auth.OptionalAuth(), pm.createProxy("recommendation", basePrefix+"/recommendations", "/api/v1/recommendations"))
 	recommendationGroup.Any("/*path")
 }
 
+func (pm *ProxyManager) createUserProxy(basePrefix string, auth *authPkg.AuthMiddleware) gin.HandlerFunc {
+	authProxy := pm.createProxy("user", basePrefix+"/users/auth", "/api/v1/auth")
+	userProxy := pm.createProxy("user", basePrefix+"/users", "/api/v1/users")
+	requireAuth := auth.RequireAuth()
+	authPrefix := strings.TrimRight(basePrefix, "/") + "/users/auth"
+
+	return func(c *gin.Context) {
+		if c.Request.URL.Path == authPrefix || strings.HasPrefix(c.Request.URL.Path, authPrefix+"/") {
+			authProxy(c)
+			return
+		}
+
+		requireAuth(c)
+		if c.IsAborted() {
+			return
+		}
+
+		userProxy(c)
+	}
+}
+
 // createProxy 创建代理中间件
-func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
+func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix string) gin.HandlerFunc {
 	service, exists := pm.services[serviceName]
 	if !exists {
 		return func(c *gin.Context) {
@@ -616,8 +661,8 @@ func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 
-		// 统一重写为后端服务使用的 /api/v1/* 路径
-		req.URL.Path = normalizeServicePath(req.URL.Path, serviceName)
+		// 按服务真实路由重写，避免前端 /api/v1/{service}/... 与后端 /api/v1/... 漂移。
+		req.URL.Path = rewriteServicePath(req.URL.Path, externalPrefix, backendPrefix)
 
 		// 添加请求头
 		req.Header.Set("X-Forwarded-Service", service.Name)
@@ -673,8 +718,6 @@ func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
 		// 记录请求开始时间
 		startTime := time.Now()
 
-		
-
 		// 获取用户信息并设置到请求头
 		if userID, exists := c.Get("user_id"); exists {
 			c.Request.Header.Set("X-User-ID", userID.(string))
@@ -727,58 +770,18 @@ func (pm *ProxyManager) createProxy(serviceName string) gin.HandlerFunc {
 	}
 }
 
-func normalizeServicePath(requestPath, serviceName string) string {
-	prefixes := serviceRoutePrefixes(serviceName)
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(requestPath, prefix) {
-			rest := strings.TrimPrefix(requestPath, prefix)
-			if rest == "" {
-				return "/api/v1"
-			}
-			if !strings.HasPrefix(rest, "/") {
-				rest = "/" + rest
-			}
-			return "/api/v1" + rest
-		}
+func rewriteServicePath(requestPath, externalPrefix, backendPrefix string) string {
+	rest := strings.TrimPrefix(requestPath, externalPrefix)
+	if rest == requestPath {
+		return requestPath
 	}
-
-	// 回退：保持原始路径，避免误改未知路由。
-	return requestPath
-}
-
-func serviceRoutePrefixes(serviceName string) []string {
-	switch serviceName {
-	case "user":
-		return []string{
-			"/v1/users",
-			"/api/v1/users",
-			"/user/v1/users",
-			"/api/user/v1/users",
-		}
-	case "data":
-		return []string{
-			"/v1/data",
-			"/api/v1/data",
-			"/data/v1",
-			"/api/data/v1",
-		}
-	case "payment":
-		return []string{
-			"/v1/payments",
-			"/api/v1/payments",
-			"/payment/v1/payments",
-			"/api/payment/v1/payments",
-		}
-	case "recommendation":
-		return []string{
-			"/v1/recommendations",
-			"/api/v1/recommendations",
-			"/recommendation/v1/recommendations",
-			"/api/recommendation/v1/recommendations",
-		}
-	default:
-		return nil
+	if rest == "" || rest == "/" {
+		return strings.TrimRight(backendPrefix, "/")
 	}
+	if !strings.HasPrefix(rest, "/") {
+		rest = "/" + rest
+	}
+	return strings.TrimRight(backendPrefix, "/") + rest
 }
 
 // LoadBalancer 负载均衡器
@@ -907,8 +910,6 @@ func generateRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-
-
 // Helper functions
 func getEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
@@ -950,6 +951,12 @@ func getEnvAsDuration(key, defaultValue string) time.Duration {
 // @Success 200 {string} string "ok"
 // @Router /healthz [get]
 func _docHealthz() {}
+
+// @Summary Legacy liveness probe
+// @Tags System
+// @Success 200 {string} string "ok"
+// @Router /health [get]
+func _docHealth() {}
 
 // @Summary Readiness probe
 // @Tags System
