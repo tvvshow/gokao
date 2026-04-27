@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/oktetopython/gaokao/pkg/auth v0.0.0
 	github.com/oktetopython/gaokao/pkg/errors v0.0.0
 	github.com/oktetopython/gaokao/pkg/middleware v0.0.0
@@ -13,7 +14,6 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.2
-	golang.org/x/time v0.12.0
 )
 
 require (
@@ -36,7 +36,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
@@ -62,3 +61,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
+
+replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
+
+replace github.com/oktetopython/gaokao/pkg/middleware => ../../pkg/middleware
