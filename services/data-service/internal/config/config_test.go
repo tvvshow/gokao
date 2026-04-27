@@ -20,3 +20,18 @@ func TestLoadSupportsServerAliases(t *testing.T) {
 		t.Fatalf("expected release, got %s", cfg.Environment)
 	}
 }
+
+func TestLoadUsesUnifiedDefaultPort(t *testing.T) {
+	os.Unsetenv("SERVER_PORT")
+	os.Unsetenv("SERVER_MODE")
+	os.Unsetenv("PORT")
+	os.Unsetenv("GIN_MODE")
+
+	cfg := Load()
+	if cfg.Port != "8082" {
+		t.Fatalf("expected default port 8082, got %s", cfg.Port)
+	}
+	if cfg.Environment != "debug" {
+		t.Fatalf("expected default mode debug, got %s", cfg.Environment)
+	}
+}

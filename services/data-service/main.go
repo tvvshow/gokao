@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"data-service/internal/config"
-	"data-service/internal/database"
-	"data-service/internal/handlers"
-	"data-service/internal/middleware"
-	"data-service/internal/services"
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
+	"github.com/oktetopython/gaokao/services/data-service/internal/middleware"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 	"os"
 	"os/signal"
@@ -32,7 +32,7 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:10082
+// @host localhost:8082
 // @BasePath /
 
 func main() {
@@ -206,7 +206,7 @@ func main() {
 	// Swagger文档
 	if cfg.EnableSwagger {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-		logger.Info("Swagger文档已启用: http://localhost:10082/swagger/index.html")
+		logger.Infof("Swagger文档已启用: http://localhost:%s/swagger/index.html", cfg.Port)
 	}
 
 	// 创建HTTP服务器

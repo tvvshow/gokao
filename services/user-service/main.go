@@ -29,7 +29,7 @@ import (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8081
+// @host localhost:8083
 // @BasePath /api/v1
 
 // @securityDefinitions.apikey BearerAuth
@@ -84,7 +84,7 @@ func main() {
 	roleService := services.NewRoleService(db, redisClient, cfg)
 	userService := services.NewUserService(db, redisClient, cfg)
 	authService := services.NewAuthService(db, redisClient, cfg)
-	
+
 	// 初始化设备服务
 	deviceServiceConfig := &services.DeviceServiceConfig{
 		EnableCache:          true,
@@ -140,6 +140,9 @@ func main() {
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.RefreshToken)
 			auth.POST("/logout", perm.RequireAuth(), authHandler.Logout)
+			auth.GET("/profile", perm.RequireAuth(), authHandler.GetProfile)
+			auth.POST("/change-password", perm.RequireAuth(), authHandler.ChangePassword)
+			auth.GET("/permissions", perm.RequireAuth(), authHandler.GetPermissions)
 		}
 
 		// 用户相关路由（需要JWT）
@@ -149,23 +152,36 @@ func main() {
 			users.GET("/profile", userHandler.GetProfile)
 			users.PUT("/profile", userHandler.UpdateProfile)
 			users.POST("/change-password", userHandler.ChangePassword)
+			users.GET("/membership", userHandler.GetMembership)
 			users.GET("/", perm.AdminOnly(), userHandler.ListUsers)
 			users.GET("/:id", perm.AdminOnly(), userHandler.GetUser)
 			users.PUT("/:id", perm.AdminOnly(), userHandler.UpdateUser)
 			users.DELETE("/:id", perm.AdminOnly(), userHandler.DeleteUser)
+			users.POST("/:id/roles", perm.AdminOnly(), userHandler.AssignRole)
+			users.DELETE("/:id/roles/:role_id", perm.AdminOnly(), userHandler.RevokeRole)
+			users.GET("/:id/roles", perm.AdminOnly(), userHandler.GetUserRoles)
 		}
 
 		// 角色权限相关路由（需要权限控制）
 		roles := v1.Group("/roles")
 		roles.Use(perm.RequireAuth())
 		{
-		    roles.GET("/", perm.RequirePermission("role:read"), roleHandler.ListRoles)
-		    roles.POST("/", perm.RequirePermission("role:write"), roleHandler.CreateRole)
-		    roles.GET("/:id", perm.RequirePermission("role:read"), roleHandler.GetRole)
-		    roles.PUT("/:id", perm.RequirePermission("role:write"), roleHandler.UpdateRole)
-		    roles.DELETE("/:id", perm.RequirePermission("role:delete"), roleHandler.DeleteRole)
-		    roles.POST("/:id/permissions", perm.RequirePermission("permission:manage"), roleHandler.AssignPermissions)
-		    roles.DELETE("/:id/permissions/:permissionId", perm.RequirePermission("permission:manage"), roleHandler.RevokePermission)
+			roles.GET("/", perm.RequirePermission("role:read"), roleHandler.ListRoles)
+			roles.POST("/", perm.RequirePermission("role:write"), roleHandler.CreateRole)
+			roles.GET("/:id", perm.RequirePermission("role:read"), roleHandler.GetRole)
+			roles.PUT("/:id", perm.RequirePermission("role:write"), roleHandler.UpdateRole)
+			roles.DELETE("/:id", perm.RequirePermission("role:delete"), roleHandler.DeleteRole)
+			roles.GET("/:id/permissions", perm.RequirePermission("role:read"), roleHandler.GetRolePermissions)
+			roles.POST("/:id/permissions", perm.RequirePermission("permission:manage"), roleHandler.AssignPermissions)
+			roles.DELETE("/:id/permissions/:permissionId", perm.RequirePermission("permission:manage"), roleHandler.RevokePermission)
+		}
+
+		// 权限管理路由
+		permissions := v1.Group("/permissions")
+		permissions.Use(perm.RequireAuth())
+		{
+			permissions.GET("/", perm.RequirePermission("permission:read"), roleHandler.ListPermissions)
+			permissions.POST("/", perm.RequirePermission("permission:write"), roleHandler.CreatePermission)
 		}
 	}
 

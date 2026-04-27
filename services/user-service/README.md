@@ -70,8 +70,8 @@ make run
 
 启动服务后，访问以下地址查看API文档：
 
-- **Swagger UI**: http://localhost:8080/swagger/index.html
-- **健康检查**: http://localhost:8080/health
+- **Swagger UI**: http://localhost:8083/swagger/index.html
+- **健康检查**: http://localhost:8083/health
 
 ## 🔧 开发命令
 

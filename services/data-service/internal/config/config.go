@@ -44,8 +44,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:        normalizePortValue(firstNonEmptyEnv("SERVER_PORT", "PORT", "10082")),
-		Environment: firstNonEmptyEnv("SERVER_MODE", "GIN_MODE", "debug"),
+		Port:        defaultString(normalizePortValue(firstNonEmptyEnv("SERVER_PORT", "PORT")), "8082"),
+		Environment: defaultString(firstNonEmptyEnv("SERVER_MODE", "GIN_MODE"), "debug"),
 
 		DatabaseURL:            getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/gaokao_data?sslmode=disable"),
 		MaxOpenConns:           getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
@@ -86,6 +86,13 @@ func normalizePortValue(port string) string {
 		return port[1:]
 	}
 	return port
+}
+
+func defaultString(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func getEnv(key, defaultValue string) string {
