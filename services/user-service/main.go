@@ -172,7 +172,7 @@ func main() {
 	// 启动服务器
 	port := cfg.Port
 	if port == "" {
-		port = "10081"
+		port = "8083"
 	}
 
 	logrus.Infof("🚀 User Service starting on port %s", port)
