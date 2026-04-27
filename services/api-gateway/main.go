@@ -76,6 +76,14 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"too many requests"`
 }
 
+func abortWithAPIError(c *gin.Context, logger *logrus.Logger, apiErr *errors.ErrorResponse) {
+	if apiErr == nil {
+		apiErr = errors.InternalServerError("Internal server error")
+	}
+	errors.HandleError(c, apiErr, logger)
+	c.Abort()
+}
+
 // NEW: structured access log middleware (method, path, status, latency_ms, request_id)
 func accessLogMiddleware() gin.HandlerFunc { // NEW: access log
 	return func(c *gin.Context) {
@@ -291,7 +299,7 @@ func (rl *rateLimiter) allow(key string) (ok bool, retryAfterSec int) {
 	return false, sec
 }
 
-func rateLimitMiddlewareWithConfig(ratePerSec, burst int) gin.HandlerFunc {
+func rateLimitMiddlewareWithConfig(ratePerSec, burst int, logger *logrus.Logger) gin.HandlerFunc {
 	limiters := buildRouteRateLimitRules(ratePerSec, burst)
 	return func(c *gin.Context) {
 		// Only limit non-OPTIONS (preflight handled earlier by CORS)
@@ -309,8 +317,7 @@ func rateLimitMiddlewareWithConfig(ratePerSec, burst int) gin.HandlerFunc {
 			limiter := selectRateLimiter(limiters, c.Request.URL.Path)
 			key := c.ClientIP()
 			if ok, retry := limiter.allow(key); !ok {
-				c.Writer.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+				abortWithAPIError(c, logger, errors.TooManyRequestsError(retry))
 				return
 			}
 		}
@@ -468,7 +475,7 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
 	})
 	r.Use(inputValidationMiddleware.Middleware())
 
-	r.Use(rateLimitMiddlewareWithConfig(ratePerSec, burst))
+	r.Use(rateLimitMiddlewareWithConfig(ratePerSec, burst, logger))
 	r.Use(errors.ErrorHandlerMiddleware())
 
 	// configure swagger base path
@@ -632,11 +639,7 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 	service, exists := pm.services[serviceName]
 	if !exists {
 		return func(c *gin.Context) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error":   "service_not_found",
-				"message": fmt.Sprintf("Service %s not found", serviceName),
-			})
-			c.Abort()
+			abortWithAPIError(c, pm.logger, errors.NotFoundError(fmt.Sprintf("service %s", serviceName)))
 		}
 	}
 
@@ -645,11 +648,9 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 	if err != nil {
 		pm.logger.WithError(err).Errorf("Failed to parse service URL: %s", service.BaseURL)
 		return func(c *gin.Context) {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "service_configuration_error",
-				"message": "Service configuration error",
-			})
-			c.Abort()
+			abortWithAPIError(c, pm.logger, errors.NewError(errors.ErrConfigError, "Service configuration error", map[string]interface{}{
+				"service": serviceName,
+			}))
 		}
 	}
 
@@ -683,19 +684,14 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 	// 自定义错误处理
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		pm.logger.WithError(err).Errorf("Proxy error for service %s", serviceName)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadGateway)
-
-		response := gin.H{
-			"error":   "service_unavailable",
-			"message": fmt.Sprintf("Service %s is currently unavailable", serviceName),
+		requestID := r.Header.Get("X-Request-ID")
+		apiErr := errors.ServiceUnavailableError(fmt.Sprintf("Service %s is currently unavailable", serviceName), 0).WithRequestID(requestID)
+		apiErr.Details = map[string]interface{}{
 			"service": serviceName,
 		}
-
-		if jsonBytes, err := json.Marshal(response); err == nil {
-			w.Write(jsonBytes)
-		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(apiErr.JSON()))
 	}
 
 	// 自定义响应修改

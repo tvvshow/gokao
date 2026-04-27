@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oktetopython/gaokao/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -155,12 +157,23 @@ func TestRateLimiter_AllowsThenLimits(t *testing.T) {
 	// Third should be 429 immediately
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("X-Request-ID", "rate-limit-req")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusTooManyRequests {
 		t.Fatalf("expected 429 after exceeding burst, got %d", w.Code)
 	}
 	if ra := w.Header().Get("Retry-After"); ra == "" {
 		t.Fatalf("expected Retry-After header on 429")
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode 429 body: %v", err)
+	}
+	if got := payload["error"]; got != "too_many_requests" {
+		t.Fatalf("expected error code too_many_requests, got %#v", got)
+	}
+	if got := payload["request_id"]; got != "rate-limit-req" {
+		t.Fatalf("expected propagated request_id, got %#v", got)
 	}
 
 	// After ~600ms (>= 0.5s), with 2 rps, at least 1 token should be available
@@ -325,6 +338,35 @@ func TestNewProxyManagerUsesUnifiedDefaultUserServicePort(t *testing.T) {
 	pm := NewProxyManager(logger)
 	if got := pm.services["user"].BaseURL; got != "http://user-service:8083" {
 		t.Fatalf("expected default user service url http://user-service:8083, got %s", got)
+	}
+}
+
+func TestAbortWithAPIErrorIncludesRequestID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	logger := logrus.New()
+	r := gin.New()
+	r.Use(requestIDMiddleware())
+	r.GET("/boom", func(c *gin.Context) {
+		abortWithAPIError(c, logger, errors.TooManyRequestsError(3))
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
+	req.Header.Set("X-Request-ID", "req-err-1")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429, got %d", w.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode error body: %v", err)
+	}
+	if got := payload["request_id"]; got != "req-err-1" {
+		t.Fatalf("expected request_id req-err-1, got %#v", got)
+	}
+	if got := payload["error"]; got != "too_many_requests" {
+		t.Fatalf("expected error too_many_requests, got %#v", got)
 	}
 }
 

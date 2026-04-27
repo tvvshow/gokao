@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -23,15 +24,15 @@ const (
 	ErrConfigError        ErrorCode = "config_error"
 
 	// 客户端错误
-	ErrInvalidRequest    ErrorCode = "invalid_request"
-	ErrValidationFailed  ErrorCode = "validation_failed"
-	ErrUnauthorized      ErrorCode = "unauthorized"
-	ErrForbidden         ErrorCode = "forbidden"
-	ErrNotFound          ErrorCode = "not_found"
-	ErrMethodNotAllowed  ErrorCode = "method_not_allowed"
-	ErrRequestTimeout    ErrorCode = "request_timeout"
-	ErrTooManyRequests   ErrorCode = "too_many_requests"
-	ErrConflict          ErrorCode = "conflict"
+	ErrInvalidRequest     ErrorCode = "invalid_request"
+	ErrValidationFailed   ErrorCode = "validation_failed"
+	ErrUnauthorized       ErrorCode = "unauthorized"
+	ErrForbidden          ErrorCode = "forbidden"
+	ErrNotFound           ErrorCode = "not_found"
+	ErrMethodNotAllowed   ErrorCode = "method_not_allowed"
+	ErrRequestTimeout     ErrorCode = "request_timeout"
+	ErrTooManyRequests    ErrorCode = "too_many_requests"
+	ErrConflict           ErrorCode = "conflict"
 	ErrPreconditionFailed ErrorCode = "precondition_failed"
 
 	// 业务错误
@@ -44,13 +45,13 @@ const (
 
 // ErrorResponse 统一错误响应结构
 type ErrorResponse struct {
-	Code             ErrorCode     `json:"error"`
-	Message          string        `json:"message"`
-	Details          interface{}   `json:"details,omitempty"`
-	RequestID        string        `json:"request_id,omitempty"`
-	Timestamp        string        `json:"timestamp"`
-	DocumentationURL string        `json:"documentation_url,omitempty"`
-	RetryAfter       int           `json:"retry_after,omitempty"`
+	Code             ErrorCode    `json:"error"`
+	Message          string       `json:"message"`
+	Details          interface{}  `json:"details,omitempty"`
+	RequestID        string       `json:"request_id,omitempty"`
+	Timestamp        string       `json:"timestamp"`
+	DocumentationURL string       `json:"documentation_url,omitempty"`
+	RetryAfter       int          `json:"retry_after,omitempty"`
 	Errors           []FieldError `json:"errors,omitempty"`
 }
 
@@ -73,18 +74,18 @@ var ErrorMapping = map[ErrorCode]int{
 	ErrServiceUnavailable: http.StatusServiceUnavailable,
 	ErrDatabaseError:      http.StatusInternalServerError,
 	ErrCacheError:         http.StatusInternalServerError,
-	ErrConfigError:       http.StatusInternalServerError,
+	ErrConfigError:        http.StatusInternalServerError,
 
 	// 客户端错误
-	ErrInvalidRequest:    http.StatusBadRequest,
-	ErrValidationFailed:  http.StatusBadRequest,
-	ErrUnauthorized:      http.StatusUnauthorized,
-	ErrForbidden:         http.StatusForbidden,
-	ErrNotFound:          http.StatusNotFound,
-	ErrMethodNotAllowed:  http.StatusMethodNotAllowed,
-	ErrRequestTimeout:    http.StatusRequestTimeout,
-	ErrTooManyRequests:   http.StatusTooManyRequests,
-	ErrConflict:          http.StatusConflict,
+	ErrInvalidRequest:     http.StatusBadRequest,
+	ErrValidationFailed:   http.StatusBadRequest,
+	ErrUnauthorized:       http.StatusUnauthorized,
+	ErrForbidden:          http.StatusForbidden,
+	ErrNotFound:           http.StatusNotFound,
+	ErrMethodNotAllowed:   http.StatusMethodNotAllowed,
+	ErrRequestTimeout:     http.StatusRequestTimeout,
+	ErrTooManyRequests:    http.StatusTooManyRequests,
+	ErrConflict:           http.StatusConflict,
 	ErrPreconditionFailed: http.StatusPreconditionFailed,
 
 	// 业务错误
@@ -103,15 +104,15 @@ var ErrorMessages = map[ErrorCode]string{
 	ErrCacheError:         "Cache operation failed",
 	ErrConfigError:        "Configuration error occurred",
 
-	ErrInvalidRequest:    "Invalid request parameters",
-	ErrValidationFailed:  "Request validation failed",
-	ErrUnauthorized:      "Authentication required",
-	ErrForbidden:         "Access forbidden",
-	ErrNotFound:          "Resource not found",
-	ErrMethodNotAllowed:  "Method not allowed",
-	ErrRequestTimeout:    "Request timeout",
-	ErrTooManyRequests:   "Too many requests",
-	ErrConflict:          "Resource conflict",
+	ErrInvalidRequest:     "Invalid request parameters",
+	ErrValidationFailed:   "Request validation failed",
+	ErrUnauthorized:       "Authentication required",
+	ErrForbidden:          "Access forbidden",
+	ErrNotFound:           "Resource not found",
+	ErrMethodNotAllowed:   "Method not allowed",
+	ErrRequestTimeout:     "Request timeout",
+	ErrTooManyRequests:    "Too many requests",
+	ErrConflict:           "Resource conflict",
 	ErrPreconditionFailed: "Precondition failed",
 
 	ErrPaymentFailed:     "Payment processing failed",
@@ -128,9 +129,10 @@ func NewError(code ErrorCode, message string, details interface{}) *ErrorRespons
 	}
 
 	return &ErrorResponse{
-		Code:    code,
-		Message: message,
-		Details: details,
+		Code:      code,
+		Message:   message,
+		Details:   details,
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 }
 
@@ -176,6 +178,10 @@ func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 
 // HandleError 处理错误并返回统一格式的响应
 func HandleError(c *gin.Context, err error, logger *logrus.Logger) {
+	if logger == nil {
+		logger = logrus.StandardLogger()
+	}
+
 	var errorResp *ErrorResponse
 
 	// 如果是自定义错误响应，直接使用
@@ -199,6 +205,13 @@ func HandleError(c *gin.Context, err error, logger *logrus.Logger) {
 		}
 	}
 
+	if errorResp.RequestID == "" {
+		errorResp.RequestID = c.GetString("request_id")
+	}
+	if errorResp.Timestamp == "" {
+		errorResp.Timestamp = time.Now().Format(time.RFC3339)
+	}
+
 	// 设置HTTP状态码
 	statusCode := ErrorMapping[errorResp.Code]
 	if statusCode == 0 {
@@ -208,17 +221,17 @@ func HandleError(c *gin.Context, err error, logger *logrus.Logger) {
 	// 记录错误日志
 	if statusCode >= 500 {
 		logger.WithFields(logrus.Fields{
-			"error":     err.Error(),
+			"error":      err.Error(),
 			"request_id": c.GetString("request_id"),
-			"path":      c.Request.URL.Path,
-			"method":    c.Request.Method,
+			"path":       c.Request.URL.Path,
+			"method":     c.Request.Method,
 		}).Error("Server error occurred")
 	} else {
 		logger.WithFields(logrus.Fields{
-			"error":     err.Error(),
+			"error":      err.Error(),
 			"request_id": c.GetString("request_id"),
-			"path":      c.Request.URL.Path,
-			"method":    c.Request.Method,
+			"path":       c.Request.URL.Path,
+			"method":     c.Request.Method,
 		}).Warn("Client error occurred")
 	}
 
