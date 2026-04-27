@@ -417,7 +417,7 @@ func TestRunWithShutdownContext_Cancel(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		done <- runWithShutdownContext(srv, ctx)
+		done <- runWithShutdownContext(ctx, srv)
 	}()
 
 	time.Sleep(50 * time.Millisecond)

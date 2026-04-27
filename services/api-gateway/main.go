@@ -65,13 +65,12 @@ const (
 	defaultRecommendationBurst = 40
 )
 
-// NEW: response schemas for Swagger
-// NEW: API v1 ping response schema
+// PingResponse is the API v1 ping response schema for Swagger.
 type PingResponse struct {
 	Message string `json:"message" example:"pong"`
 }
 
-// NEW: common error response schema (e.g., rate limiting)
+// ErrorResponse is the common error response schema for Swagger.
 type ErrorResponse struct {
 	Error string `json:"error" example:"too many requests"`
 }
@@ -284,7 +283,7 @@ func (rl *rateLimiter) allow(key string) (ok bool, retryAfterSec int) {
 	b.last = now
 
 	if b.tokens >= 1 {
-		b.tokens -= 1
+		b.tokens--
 		return true, 0
 	}
 
@@ -856,7 +855,7 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 }
 
 // NEW: core runner that can be controlled via context (test-friendly)
-func runWithShutdownContext(srv *http.Server, ctx context.Context) error {
+func runWithShutdownContext(ctx context.Context, srv *http.Server) error {
 	// Start server
 	errCh := make(chan error, 1)
 	go func() {
@@ -880,7 +879,7 @@ func runWithShutdownContext(srv *http.Server, ctx context.Context) error {
 func runWithGracefulShutdown(srv *http.Server) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return runWithShutdownContext(srv, ctx)
+	return runWithShutdownContext(ctx, srv)
 }
 
 func main() {
@@ -972,18 +971,24 @@ func getEnvAsDuration(key, defaultValue string) time.Duration {
 // @Tags System
 // @Success 200 {string} string "ok"
 // @Router /healthz [get]
+//
+//nolint:unused // Swagger annotation placeholder for closure-based handler.
 func _docHealthz() {}
 
 // @Summary Legacy liveness probe
 // @Tags System
 // @Success 200 {string} string "ok"
 // @Router /health [get]
+//
+//nolint:unused // Swagger annotation placeholder for closure-based handler.
 func _docHealth() {}
 
 // @Summary Readiness probe
 // @Tags System
 // @Success 200 {string} string "ready"
 // @Router /readyz [get]
+//
+//nolint:unused // Swagger annotation placeholder for closure-based handler.
 func _docReadyz() {}
 
 // @Summary Ping
@@ -992,4 +997,6 @@ func _docReadyz() {}
 // @Success 200 {object} PingResponse
 // @Failure 429 {object} ErrorResponse "Too Many Requests"
 // @Router /api/v1/ping [get]
+//
+//nolint:unused // Swagger annotation placeholder for closure-based handler.
 func _docPing() {}

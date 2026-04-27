@@ -1,3 +1,4 @@
+// Package main contains api-gateway tests.
 package main
 
 import (
