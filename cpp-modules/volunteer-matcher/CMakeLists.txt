@@ -608,20 +608,22 @@ if(DOXYGEN_FOUND)
 endif()
 
 # 性能分析
-add_custom_target(profile
-    COMMAND valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes
-            $<TARGET_FILE:volunteer_matcher_tests>
-    DEPENDS volunteer_matcher_tests
-    COMMENT "Running performance profiling"
-)
+if(BUILD_TESTS)
+    add_custom_target(profile
+        COMMAND valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes
+                $<TARGET_FILE:volunteer_matcher_tests>
+        DEPENDS volunteer_matcher_tests
+        COMMENT "Running performance profiling"
+    )
 
-# 内存检查
-add_custom_target(memcheck
-    COMMAND valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all
-            $<TARGET_FILE:volunteer_matcher_tests>
-    DEPENDS volunteer_matcher_tests
-    COMMENT "Running memory check"
-)
+    # 内存检查
+    add_custom_target(memcheck
+        COMMAND valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all
+                $<TARGET_FILE:volunteer_matcher_tests>
+        DEPENDS volunteer_matcher_tests
+        COMMENT "Running memory check"
+    )
+endif()
 
 # 清理目标
 add_custom_target(distclean

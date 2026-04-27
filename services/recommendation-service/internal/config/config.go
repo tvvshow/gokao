@@ -30,12 +30,15 @@ type ServerConfig struct {
 
 // CPPConfig C++配置
 type CPPConfig struct {
-	ConfigPath      string `json:"config_path"`
-	LibraryPath     string `json:"library_path"`
-	MaxWorkers      int    `json:"max_workers"`
-	CacheEnabled    bool   `json:"cache_enabled"`
-	CacheSize       int    `json:"cache_size"`
-	CacheTTLMinutes int    `json:"cache_ttl_minutes"`
+	ConfigPath       string `json:"config_path"`
+	LibraryPath      string `json:"library_path"`
+	UniversitiesPath string `json:"universities_path"`
+	MajorsPath       string `json:"majors_path"`
+	HistoricalPath   string `json:"historical_path"`
+	MaxWorkers       int    `json:"max_workers"`
+	CacheEnabled     bool   `json:"cache_enabled"`
+	CacheSize        int    `json:"cache_size"`
+	CacheTTLMinutes  int    `json:"cache_ttl_minutes"`
 }
 
 // RedisConfig Redis配置
@@ -126,12 +129,15 @@ func defaultConfig() *Config {
 			Mode: gin.ReleaseMode,
 		},
 		CPP: &CPPConfig{
-			ConfigPath:      "./config/hybrid_config.json",
-			LibraryPath:     "/usr/local/lib/libvolunteer_matcher.so",
-			MaxWorkers:      4,
-			CacheEnabled:    true,
-			CacheSize:       1000,
-			CacheTTLMinutes: 30,
+			ConfigPath:       "./config/hybrid_config.json",
+			LibraryPath:      "/usr/local/lib/libvolunteer_matcher.so",
+			UniversitiesPath: "",
+			MajorsPath:       "",
+			HistoricalPath:   "",
+			MaxWorkers:       4,
+			CacheEnabled:     true,
+			CacheSize:        1000,
+			CacheTTLMinutes:  30,
 		},
 		Redis: &RedisConfig{
 			Enabled:  false,
@@ -200,6 +206,15 @@ func loadFromEnv(config *Config) {
 	}
 	if path := os.Getenv("CPP_LIBRARY_PATH"); path != "" {
 		config.CPP.LibraryPath = path
+	}
+	if path := os.Getenv("CPP_UNIVERSITIES_FILE"); path != "" {
+		config.CPP.UniversitiesPath = path
+	}
+	if path := os.Getenv("CPP_MAJORS_FILE"); path != "" {
+		config.CPP.MajorsPath = path
+	}
+	if path := os.Getenv("CPP_HISTORICAL_FILE"); path != "" {
+		config.CPP.HistoricalPath = path
 	}
 	if workers, ok := getEnvInt("CPP_MAX_WORKERS"); ok {
 		config.CPP.MaxWorkers = workers

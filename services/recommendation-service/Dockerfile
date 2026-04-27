@@ -29,7 +29,7 @@ COPY services/recommendation-service ./
 RUN CGO_ENABLED=1 \
     CGO_CFLAGS="-I/tmp/volunteer-matcher/include" \
     CGO_LDFLAGS="-L/tmp/volunteer-matcher/build -lvolunteer_matcher -lstdc++ -Wl,-rpath,/usr/local/lib" \
-    go build -ldflags="-s -w" -o recommendation-service .
+    go build -tags cppengine -ldflags="-s -w" -o recommendation-service .
 
 # 运行阶段
 FROM alpine:3.20
@@ -46,6 +46,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
 COPY --from=builder /tmp/volunteer-matcher/build/libvolunteer_matcher.so /usr/local/lib/
+COPY --from=builder /tmp/volunteer-matcher/data /app/data
 COPY --from=builder /app/recommendation-service .
 COPY --from=builder /app/config ./config
 

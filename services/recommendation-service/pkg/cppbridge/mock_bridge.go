@@ -1,4 +1,5 @@
-// +build !cgo
+//go:build !cgo || !cppengine
+// +build !cgo !cppengine
 
 // 注意：此文件为在非CGO环境下的编译占位符，不应在生产环境中使用。
 // 在生产环境中，请确保使用CGO_ENABLED=1进行编译以启用真实的C++推荐引擎。
@@ -10,14 +11,14 @@ import (
 
 // MockHybridRecommendationBridge 是一个编译占位符，用于在非CGO环境下编译
 // 它会返回错误，表明需要在CGO环境下运行
-type MockHybridRecommendationBridge struct {}
+type MockHybridRecommendationBridge struct{}
 
 // 确保MockHybridRecommendationBridge实现HybridRecommendationBridge接口
 var _ HybridRecommendationBridge = (*MockHybridRecommendationBridge)(nil)
 
 // NewHybridRecommendationBridge 创建新的模拟桥接器
-func NewHybridRecommendationBridge(configPath string) (HybridRecommendationBridge, error) {
-	return &MockHybridRecommendationBridge{}, nil
+func NewHybridRecommendationBridge(cfg BridgeConfig) (HybridRecommendationBridge, error) {
+	return nil, fmt.Errorf("cpp recommendation bridge is not enabled in this build")
 }
 
 // Close 关闭桥接器

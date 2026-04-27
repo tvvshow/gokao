@@ -67,23 +67,34 @@ func main() {
 	var bridge cppbridge.HybridRecommendationBridge
 	var bridgeType string
 
-	// 尝试使用增强版规则引擎
-	enhancedBridge, err := cppbridge.NewEnhancedRuleRecommendationBridge(dataSyncService, weightService, logger)
-	if err != nil {
-		logger.Warnf("初始化增强版推荐引擎失败，使用简化版: %v", err)
-
-		// 回退到简化版规则引擎
-		bridge, err = cppbridge.NewSimpleRuleRecommendationBridge(cfg.CPP.ConfigPath)
-		if err != nil {
-			logger.Fatalf("初始化推荐桥接器失败: %v", err)
-		}
-		bridgeType = "simple_rule"
+	cppBridge, err := cppbridge.NewHybridRecommendationBridge(cppbridge.BridgeConfig{
+		ConfigPath:       cfg.CPP.ConfigPath,
+		UniversitiesPath: cfg.CPP.UniversitiesPath,
+		MajorsPath:       cfg.CPP.MajorsPath,
+		HistoricalPath:   cfg.CPP.HistoricalPath,
+	})
+	if err == nil {
+		bridge = cppBridge
+		bridgeType = "cpp_engine"
 	} else {
-		bridge = enhancedBridge
-		bridgeType = "enhanced_rule"
+		logger.Warnf("初始化C++推荐引擎失败，回退增强规则引擎: %v", err)
 
-		// 启动数据同步服务
-		go dataSyncService.Start(context.Background())
+		enhancedBridge, enhancedErr := cppbridge.NewEnhancedRuleRecommendationBridge(dataSyncService, weightService, logger)
+		if enhancedErr != nil {
+			logger.Warnf("初始化增强版推荐引擎失败，使用简化版: %v", enhancedErr)
+
+			bridge, err = cppbridge.NewSimpleRuleRecommendationBridge(cfg.CPP.ConfigPath)
+			if err != nil {
+				logger.Fatalf("初始化推荐桥接器失败: %v", err)
+			}
+			bridgeType = "simple_rule"
+		} else {
+			bridge = enhancedBridge
+			bridgeType = "enhanced_rule"
+
+			// 启动数据同步服务
+			go dataSyncService.Start(context.Background())
+		}
 	}
 	defer bridge.Close()
 
