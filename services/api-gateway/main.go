@@ -103,6 +103,7 @@ func accessLogMiddleware() gin.HandlerFunc { // NEW: access log
 			"status":     c.Writer.Status(),
 			"latency_ms": float64(latency.Microseconds()) / 1000.0,
 			"request_id": c.GetString("request_id"),
+			"trace_id":   c.GetString("trace_id"),
 			"client_ip":  c.ClientIP(),
 			"user_id":    c.GetString("user_id"),
 		}
@@ -424,6 +425,7 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
 
 	// NEW: Register middlewares in order:
 	// 1) request ID for correlation
+	// 1.1) trace ID for cross-service tracing
 	// 2) metrics (wrap around the whole chain)
 	// 3) access logging (wraps request to capture latency)
 	// 4) security headers (should be present on all responses)
@@ -431,6 +433,7 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
 	// 6) Rate limiter (skip OPTIONS)
 	// 7) Unified error handling
 	r.Use(requestIDMiddleware())
+	r.Use(traceIDMiddleware())
 	m := newMetrics()
 	r.Use(m.middleware())
 	r.Use(accessLogMiddleware())
@@ -727,6 +730,9 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 		if requestID, exists := c.Get("request_id"); exists {
 			c.Request.Header.Set("X-Request-ID", requestID.(string))
 		}
+		if traceID, exists := c.Get("trace_id"); exists {
+			c.Request.Header.Set("X-Trace-ID", traceID.(string))
+		}
 
 		// 设置超时
 		ctx := c.Request.Context()
@@ -744,6 +750,7 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 			"path":       c.Request.URL.Path,
 			"user_id":    c.GetString("user_id"),
 			"request_id": c.GetString("request_id"),
+			"trace_id":   c.GetString("trace_id"),
 		}).Info("Proxying request to service")
 
 		// 执行代理
@@ -759,6 +766,7 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 			"duration":    duration.String(),
 			"user_id":     c.GetString("user_id"),
 			"request_id":  c.GetString("request_id"),
+			"trace_id":    c.GetString("trace_id"),
 		}).Info("Request completed")
 
 		// 阻止Gin继续处理
@@ -900,7 +908,25 @@ func requestIDMiddleware() gin.HandlerFunc {
 	}
 }
 
+func traceIDMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tid := c.Request.Header.Get("X-Trace-ID")
+		if tid == "" {
+			tid = generateTraceID()
+		}
+		c.Set("trace_id", tid)
+		c.Writer.Header().Set("X-Trace-ID", tid)
+		c.Next()
+	}
+}
+
 func generateRequestID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func generateTraceID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)

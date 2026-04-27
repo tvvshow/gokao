@@ -88,6 +88,7 @@ npm run type-check
 - 网关入口: `http://localhost:8080`
 - 网关健康检查: `http://localhost:8080/healthz`（兼容别名：`/health`）
 - 网关错误响应会附带 `request_id`，便于排查链路问题
+- 网关会生成并透传 `X-Trace-ID`，便于跨服务日志串联
 - recommendation-service Swagger: `http://localhost:8084/swagger/index.html`
 - 当修改 `services/api-gateway` 或 `services/recommendation-service` 接口注释后，需同步 Swagger:
 

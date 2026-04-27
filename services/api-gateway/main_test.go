@@ -73,6 +73,7 @@ func TestAccessLogMiddleware_EmitsLog(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
 		req.Header.Set("X-Request-ID", "req-log-1")
+		req.Header.Set("X-Trace-ID", "trace-log-1")
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
 			t.Fatalf("unexpected status: %d", w.Code)
@@ -84,6 +85,9 @@ func TestAccessLogMiddleware_EmitsLog(t *testing.T) {
 	}
 	if !strings.Contains(out, "\"request_id\":\"req-log-1\"") {
 		t.Fatalf("expected request id in access log, got: %s", out)
+	}
+	if !strings.Contains(out, "\"trace_id\":\"trace-log-1\"") {
+		t.Fatalf("expected trace id in access log, got: %s", out)
 	}
 	if !strings.Contains(out, "\"path\":\"/healthz\"") {
 		t.Fatalf("expected matched path in access log, got: %s", out)
@@ -137,6 +141,33 @@ func TestRequestID_GeneratedWhenMissing(t *testing.T) {
 
 	if got := w.Header().Get("X-Request-ID"); got == "" {
 		t.Fatalf("expected X-Request-ID to be generated")
+	}
+}
+
+func TestTraceID_PropagationFromHeader(t *testing.T) {
+	r := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("X-Trace-ID", "trace-abc123")
+
+	r.ServeHTTP(w, req)
+
+	if got := w.Header().Get("X-Trace-ID"); got != "trace-abc123" {
+		t.Fatalf("expected X-Trace-ID to propagate, got %q", got)
+	}
+}
+
+func TestTraceID_GeneratedWhenMissing(t *testing.T) {
+	r := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/healthz", nil)
+
+	r.ServeHTTP(w, req)
+
+	if got := w.Header().Get("X-Trace-ID"); got == "" {
+		t.Fatalf("expected X-Trace-ID to be generated")
 	}
 }
 
