@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -44,12 +42,12 @@ func DefaultTestConfig() *TestConfig {
 
 // TestEnvironment 测试环境
 type TestEnvironment struct {
-	Config     *TestConfig
-	DB         *gorm.DB
-	Redis      *redis.Client
-	SQLMock    sqlmock.Sqlmock
+	Config      *TestConfig
+	DB          *gorm.DB
+	Redis       *redis.Client
+	SQLMock     sqlmock.Sqlmock
 	CleanupFunc func()
-	ctx        context.Context
+	ctx         context.Context
 }
 
 // SetupTestEnvironment 设置测试环境
@@ -145,7 +143,7 @@ func (env *TestEnvironment) setupRedis(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     env.Config.RedisURL,
 		Password: "", // 无密码
-		DB:       1,   // 使用测试数据库
+		DB:       1,  // 使用测试数据库
 	})
 
 	// 测试连接
@@ -230,6 +228,12 @@ func (env *TestEnvironment) Teardown() {
 	if env.CleanupFunc != nil {
 		env.CleanupFunc()
 	}
+}
+
+// CleanupDatabase 清理测试数据库中的业务数据。
+func (env *TestEnvironment) CleanupDatabase(t *testing.T) {
+	t.Helper()
+	env.cleanupDatabase(t)
 }
 
 // WithContext 使用指定的上下文

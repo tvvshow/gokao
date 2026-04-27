@@ -2,11 +2,11 @@ package integration
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"gaokao/pkg/testutil"
+	"github.com/oktetopython/gaokao/pkg/testutil"
 )
 
 // APIIntegrationTestSuite API集成测试套件
@@ -173,7 +173,7 @@ func (suite *APIIntegrationTestSuite) TestRecommendationsAPI() {
 	userData := map[string]interface{}{
 		"province":    "北京",
 		"score":       650,
-		"ranking":      1000,
+		"ranking":     1000,
 		"preferences": []string{"计算机", "电子信息"},
 	}
 
@@ -223,7 +223,7 @@ func (suite *APIIntegrationTestSuite) TestAPIPerformance() {
 	avgLatency := duration / numRequests
 
 	suite.T().Logf("Average latency for %d requests: %v", numRequests, avgLatency)
-	assert.True(suite.T(), avgLatency < 100*time.Millisecond, 
+	assert.True(suite.T(), avgLatency < 100*time.Millisecond,
 		"Average latency should be less than 100ms, got %v", avgLatency)
 }
 
@@ -304,16 +304,16 @@ func (suite *APIIntegrationTestSuite) handleUniversities(w http.ResponseWriter, 
 	// 模拟大学数据
 	universities := []map[string]interface{}{
 		{
-			"id":      1,
-			"name":    "清华大学",
+			"id":       1,
+			"name":     "清华大学",
 			"province": "北京",
-			"ranking": 1,
+			"ranking":  1,
 		},
 		{
-			"id":      2,
-			"name":    "北京大学",
+			"id":       2,
+			"name":     "北京大学",
 			"province": "北京",
-			"ranking": 2,
+			"ranking":  2,
 		},
 	}
 
@@ -331,13 +331,13 @@ func (suite *APIIntegrationTestSuite) handleMajors(w http.ResponseWriter, r *htt
 	// 模拟专业数据
 	majors := []map[string]interface{}{
 		{
-			"id":     1,
-			"name":   "计算机科学与技术",
+			"id":       1,
+			"name":     "计算机科学与技术",
 			"category": "工学",
 		},
 		{
-			"id":     2,
-			"name":   "电子信息工程",
+			"id":       2,
+			"name":     "电子信息工程",
 			"category": "工学",
 		},
 	}
@@ -386,9 +386,9 @@ func (suite *APIIntegrationTestSuite) handleRecommendations(w http.ResponseWrite
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"recommendations": recommendations,
-		"algorithm":      "rule-based",
-		"confidence":     0.92,
-		"generated_at":   time.Now().Format(time.RFC3339),
+		"algorithm":       "rule-based",
+		"confidence":      0.92,
+		"generated_at":    time.Now().Format(time.RFC3339),
 	})
 }
 
