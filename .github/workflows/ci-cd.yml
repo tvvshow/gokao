@@ -98,7 +98,7 @@ jobs:
     
     - name: Go Security Check
       run: |
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@v2.25.0
         gosec ./...
     
     - name: Frontend Lint
