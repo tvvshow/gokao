@@ -53,21 +53,21 @@ type JWTConfig struct {
 
 // PaymentConfig 支付配置
 type PaymentConfig struct {
-	Alipay  AlipayConfig  `json:"alipay"`
-	WeChat  WeChatConfig  `json:"wechat"`
+	Alipay   AlipayConfig   `json:"alipay"`
+	WeChat   WeChatConfig   `json:"wechat"`
 	UnionPay UnionPayConfig `json:"unionpay"`
 }
 
 // AlipayConfig 支付宝配置
 type AlipayConfig struct {
-	AppID         string `json:"app_id"`
-	PrivateKey    string `json:"private_key"`
-	PublicKey     string `json:"public_key"`
-	NotifyURL     string `json:"notify_url"`
-	ReturnURL     string `json:"return_url"`
-	SignType      string `json:"sign_type"`
-	Sandbox       bool   `json:"sandbox"`
-	EncryptKey    string `json:"encrypt_key"`
+	AppID      string `json:"app_id"`
+	PrivateKey string `json:"private_key"`
+	PublicKey  string `json:"public_key"`
+	NotifyURL  string `json:"notify_url"`
+	ReturnURL  string `json:"return_url"`
+	SignType   string `json:"sign_type"`
+	Sandbox    bool   `json:"sandbox"`
+	EncryptKey string `json:"encrypt_key"`
 }
 
 // WeChatConfig 微信支付配置
@@ -93,8 +93,8 @@ type UnionPayConfig struct {
 
 // RateLimitConfig 限流配置
 type RateLimitConfig struct {
-	RPS    int `json:"rps"`
-	Burst  int `json:"burst"`
+	RPS    int  `json:"rps"`
+	Burst  int  `json:"burst"`
 	Enable bool `json:"enable"`
 }
 
@@ -110,8 +110,8 @@ type LicenseConfig struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Port:         getEnvAsInt("PORT", 10084),
-			Mode:         getEnv("GIN_MODE", "debug"),
+			Port:         getEnvAsIntAlias([]string{"SERVER_PORT", "PORT"}, 10084),
+			Mode:         getEnvAlias([]string{"SERVER_MODE", "GIN_MODE"}, "debug"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 10),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 10),
 		},
@@ -193,6 +193,26 @@ func loadFromFile(cfg *Config, filename string) error {
 	}
 
 	return json.Unmarshal(data, cfg)
+}
+
+func getEnvAlias(keys []string, defaultValue string) string {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsIntAlias(keys []string, defaultValue int) int {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			if parsed, err := strconv.Atoi(value); err == nil {
+				return parsed
+			}
+		}
+	}
+	return defaultValue
 }
 
 // getEnv 获取环境变量，如果不存在则返回默认值
