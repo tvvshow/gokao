@@ -1,11 +1,18 @@
 package services
 
 import (
-	"data-service/internal/database"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
 
 	"gorm.io/gorm"
 )
+
+type migrationDefinition struct {
+	Version     string
+	Name        string
+	SQL         string
+	RollbackSQL string
+}
 
 // MigrationService 数据库迁移服务
 type MigrationService struct {
@@ -21,20 +28,8 @@ func NewMigrationService(db *database.DB) *MigrationService {
 	}
 }
 
-// ApplyAllMigrations 应用所有待处理的迁移
-func (s *MigrationService) ApplyAllMigrations() error {
-	// 确保迁移表存在
-	if err := s.migrator.SetupMigrationTable(); err != nil {
-		return fmt.Errorf("设置迁移表失败: %w", err)
-	}
-
-	// 定义迁移列表
-	migrations := []struct {
-		Version     string
-		Name        string
-		SQL         string
-		RollbackSQL string
-	}{
+func defaultMigrationDefinitions() []migrationDefinition {
+	return []migrationDefinition{
 		{
 			Version: "001",
 			Name:    "Create universities table",
@@ -70,8 +65,8 @@ func (s *MigrationService) ApplyAllMigrations() error {
 		},
 		{
 			Version: "003",
-			Name:    "Create admissions table",
-			SQL: `CREATE TABLE IF NOT EXISTS admissions (
+			Name:    "Create admission_data table",
+			SQL: `CREATE TABLE IF NOT EXISTS admission_data (
 				id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 				year INTEGER NOT NULL,
 				province VARCHAR(100) NOT NULL,
@@ -86,7 +81,7 @@ func (s *MigrationService) ApplyAllMigrations() error {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);`,
-			RollbackSQL: "DROP TABLE IF EXISTS admissions;",
+			RollbackSQL: "DROP TABLE IF EXISTS admission_data;",
 		},
 		{
 			Version: "004",
@@ -95,23 +90,39 @@ func (s *MigrationService) ApplyAllMigrations() error {
 			      CREATE INDEX IF NOT EXISTS idx_universities_level ON universities(level);
 			      CREATE INDEX IF NOT EXISTS idx_majors_university_id ON majors(university_id);
 			      CREATE INDEX IF NOT EXISTS idx_majors_category ON majors(category);
-			      CREATE INDEX IF NOT EXISTS idx_admissions_year ON admissions(year);
-			      CREATE INDEX IF NOT EXISTS idx_admissions_province ON admissions(province);
-			      CREATE INDEX IF NOT EXISTS idx_admissions_university_id ON admissions(university_id);
-			      CREATE INDEX IF NOT EXISTS idx_admissions_major_id ON admissions(major_id);`,
+			      CREATE INDEX IF NOT EXISTS idx_admission_data_year ON admission_data(year);
+			      CREATE INDEX IF NOT EXISTS idx_admission_data_province ON admission_data(province);
+			      CREATE INDEX IF NOT EXISTS idx_admission_data_university_id ON admission_data(university_id);
+			      CREATE INDEX IF NOT EXISTS idx_admission_data_major_id ON admission_data(major_id);`,
 			RollbackSQL: `DROP INDEX IF EXISTS idx_universities_province;
 			              DROP INDEX IF EXISTS idx_universities_level;
 			              DROP INDEX IF EXISTS idx_majors_university_id;
 			              DROP INDEX IF EXISTS idx_majors_category;
-			              DROP INDEX IF EXISTS idx_admissions_year;
-			              DROP INDEX IF EXISTS idx_admissions_province;
-			              DROP INDEX IF EXISTS idx_admissions_university_id;
-			              DROP INDEX IF EXISTS idx_admissions_major_id;`,
+			              DROP INDEX IF EXISTS idx_admission_data_year;
+			              DROP INDEX IF EXISTS idx_admission_data_province;
+			              DROP INDEX IF EXISTS idx_admission_data_university_id;
+			              DROP INDEX IF EXISTS idx_admission_data_major_id;`,
 		},
+	}
+}
+
+func rollbackStatements() map[string]string {
+	statements := make(map[string]string, len(defaultMigrationDefinitions()))
+	for _, migration := range defaultMigrationDefinitions() {
+		statements[migration.Version] = migration.RollbackSQL
+	}
+	return statements
+}
+
+// ApplyAllMigrations 应用所有待处理的迁移
+func (s *MigrationService) ApplyAllMigrations() error {
+	// 确保迁移表存在
+	if err := s.migrator.SetupMigrationTable(); err != nil {
+		return fmt.Errorf("设置迁移表失败: %w", err)
 	}
 
 	// 应用所有迁移
-	for _, m := range migrations {
+	for _, m := range defaultMigrationDefinitions() {
 		if err := s.migrator.ApplyMigration(m.Version, m.Name, m.SQL); err != nil {
 			return fmt.Errorf("应用迁移 %s 失败: %w", m.Version, err)
 		}
@@ -143,23 +154,8 @@ func (s *MigrationService) RollbackMigration(version string) error {
 		return fmt.Errorf("设置迁移表失败: %w", err)
 	}
 
-	// 定义迁移列表（用于查找回滚SQL）
-	migrations := map[string]string{
-		"001": "DROP TABLE IF EXISTS universities;",
-		"002": "DROP TABLE IF EXISTS majors;",
-		"003": "DROP TABLE IF EXISTS admissions;",
-		"004": `DROP INDEX IF EXISTS idx_universities_province;
-		        DROP INDEX IF EXISTS idx_universities_level;
-		        DROP INDEX IF EXISTS idx_majors_university_id;
-		        DROP INDEX IF EXISTS idx_majors_category;
-		        DROP INDEX IF EXISTS idx_admissions_year;
-		        DROP INDEX IF EXISTS idx_admissions_province;
-		        DROP INDEX IF EXISTS idx_admissions_university_id;
-		        DROP INDEX IF EXISTS idx_admissions_major_id;`,
-	}
-
 	// 查找回滚SQL
-	rollbackSQL, exists := migrations[version]
+	rollbackSQL, exists := rollbackStatements()[version]
 	if !exists {
 		return fmt.Errorf("未找到版本 %s 的回滚SQL", version)
 	}
