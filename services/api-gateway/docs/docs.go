@@ -41,6 +41,22 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Legacy liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "tags": [

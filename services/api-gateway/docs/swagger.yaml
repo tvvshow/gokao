@@ -35,6 +35,16 @@ paths:
       summary: Ping
       tags:
       - API v1
+  /health:
+    get:
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Legacy liveness probe
+      tags:
+      - System
   /healthz:
     get:
       responses:
