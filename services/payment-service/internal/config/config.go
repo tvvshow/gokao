@@ -28,14 +28,16 @@ type ServerConfig struct {
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	Host         string `json:"host"`
-	Port         int    `json:"port"`
-	User         string `json:"user"`
-	Password     string `json:"password"`
-	Database     string `json:"database"`
-	SSLMode      string `json:"ssl_mode"`
-	MaxOpenConns int    `json:"max_open_conns"`
-	MaxIdleConns int    `json:"max_idle_conns"`
+	Host            string `json:"host"`
+	Port            int    `json:"port"`
+	User            string `json:"user"`
+	Password        string `json:"password"`
+	Database        string `json:"database"`
+	SSLMode         string `json:"ssl_mode"`
+	MaxOpenConns    int    `json:"max_open_conns"`
+	MaxIdleConns    int    `json:"max_idle_conns"`
+	ConnMaxLifetime int    `json:"conn_max_lifetime"`
+	ConnMaxIdleTime int    `json:"conn_max_idle_time"`
 }
 
 // RedisConfig Redis配置
@@ -116,14 +118,16 @@ func Load() (*Config, error) {
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 10),
 		},
 		Database: DatabaseConfig{
-			Host:         getEnv("DB_HOST", "localhost"),
-			Port:         getEnvAsInt("DB_PORT", 5432),
-			User:         getEnv("DB_USER", "postgres"),
-			Password:     getEnv("DB_PASSWORD", "password"),
-			Database:     getEnv("DB_NAME", "gaokao_users"),
-			SSLMode:      getEnv("DB_SSL_MODE", "disable"),
-			MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-			MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			Host:            getEnv("DB_HOST", "localhost"),
+			Port:            getEnvAsInt("DB_PORT", 5432),
+			User:            getEnv("DB_USER", "postgres"),
+			Password:        getEnv("DB_PASSWORD", "password"),
+			Database:        getEnv("DB_NAME", "gaokao_users"),
+			SSLMode:         getEnv("DB_SSL_MODE", "disable"),
+			MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime: getEnvAsInt("DB_CONN_MAX_LIFETIME", 1800),
+			ConnMaxIdleTime: getEnvAsInt("DB_CONN_MAX_IDLE_TIME", 900),
 		},
 		Redis: RedisConfig{
 			Addr:     getEnv("REDIS_ADDR", "localhost:6379"),

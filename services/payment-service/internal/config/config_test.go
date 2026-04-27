@@ -24,3 +24,33 @@ func TestLoadSupportsServerAliases(t *testing.T) {
 		t.Fatalf("expected release, got %s", cfg.Server.Mode)
 	}
 }
+
+func TestLoadSupportsDatabasePoolConfig(t *testing.T) {
+	os.Setenv("DB_MAX_OPEN_CONNS", "40")
+	os.Setenv("DB_MAX_IDLE_CONNS", "12")
+	os.Setenv("DB_CONN_MAX_LIFETIME", "3600")
+	os.Setenv("DB_CONN_MAX_IDLE_TIME", "1200")
+	defer func() {
+		os.Unsetenv("DB_MAX_OPEN_CONNS")
+		os.Unsetenv("DB_MAX_IDLE_CONNS")
+		os.Unsetenv("DB_CONN_MAX_LIFETIME")
+		os.Unsetenv("DB_CONN_MAX_IDLE_TIME")
+	}()
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if cfg.Database.MaxOpenConns != 40 {
+		t.Fatalf("expected MaxOpenConns 40, got %d", cfg.Database.MaxOpenConns)
+	}
+	if cfg.Database.MaxIdleConns != 12 {
+		t.Fatalf("expected MaxIdleConns 12, got %d", cfg.Database.MaxIdleConns)
+	}
+	if cfg.Database.ConnMaxLifetime != 3600 {
+		t.Fatalf("expected ConnMaxLifetime 3600, got %d", cfg.Database.ConnMaxLifetime)
+	}
+	if cfg.Database.ConnMaxIdleTime != 1200 {
+		t.Fatalf("expected ConnMaxIdleTime 1200, got %d", cfg.Database.ConnMaxIdleTime)
+	}
+}
