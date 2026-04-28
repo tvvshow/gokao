@@ -3,19 +3,23 @@
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
-WORKDIR /app
+WORKDIR /app/services/user-service
 
 # 安装必要的包
 RUN apk add --no-cache git ca-certificates tzdata
 
 # 复制go mod文件
-COPY go.mod go.sum ./
+COPY services/user-service/go.mod services/user-service/go.sum ./
+COPY pkg/auth /app/pkg/auth
+COPY pkg/database /app/pkg/database
+COPY pkg/errors /app/pkg/errors
+COPY pkg/logger /app/pkg/logger
 
 # 下载依赖
 RUN go mod download
 
 # 复制源代码
-COPY . .
+COPY services/user-service ./
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
@@ -37,10 +41,10 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /root/
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /app/main .
+COPY --from=builder /app/services/user-service/main .
 
 # 复制配置文件（如果有的话）
-COPY --from=builder /app/.env.example .env.example
+COPY --from=builder /app/services/user-service/.env.example .env.example
 
 # 更改文件所有者
 RUN chown -R appuser:appgroup /root
