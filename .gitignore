@@ -182,7 +182,7 @@ models/*.pb
 # Data files
 data/
 *.csv
-*.json
+data/**/*.json
 *.parquet
 
 # Backup files
