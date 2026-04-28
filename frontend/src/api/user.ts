@@ -151,7 +151,9 @@ export const userApi = {
     const response = (await api.get('/api/v1/users/membership')) as unknown;
 
     const raw = unwrapDataOrSelf<Record<string, unknown> | MembershipInfo>(
-      response as WrappedResponse<Record<string, unknown> | MembershipInfo> | MembershipInfo
+      response as
+        | WrappedResponse<Record<string, unknown> | MembershipInfo>
+        | MembershipInfo
     );
     return {
       success: true,

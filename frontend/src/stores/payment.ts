@@ -101,7 +101,9 @@ function normalizeMembershipStatus(
   const isVIP = Boolean(raw.is_vip ?? raw.isVIP ?? false);
   const planCode = String(raw.plan_code ?? raw.planCode ?? '');
   const isPremiumLike =
-    planCode === 'premium' || planCode === 'enterprise' || planCode === 'ultimate';
+    planCode === 'premium' ||
+    planCode === 'enterprise' ||
+    planCode === 'ultimate';
   const endTime =
     (raw.end_time as string | undefined) || (raw.endTime as string | undefined);
   const remainingDays = Number(raw.remaining_days ?? raw.remainingDays ?? 0);
@@ -178,8 +180,14 @@ export const usePaymentStore = defineStore('payment', () => {
     loading.value = true;
     try {
       try {
-        const response = (await api.get('/api/v1/payments/membership/status')) as
-          | { success: boolean; data: Record<string, unknown>; message?: string }
+        const response = (await api.get(
+          '/api/v1/payments/membership/status'
+        )) as
+          | {
+              success: boolean;
+              data: Record<string, unknown>;
+              message?: string;
+            }
           | Record<string, unknown>;
         const raw = isWrappedResponse<Record<string, unknown>>(response)
           ? response.data
@@ -207,7 +215,9 @@ export const usePaymentStore = defineStore('payment', () => {
     loading.value = true;
     try {
       try {
-        const response = (await api.get('/api/v1/payments/membership/plans')) as
+        const response = (await api.get(
+          '/api/v1/payments/membership/plans'
+        )) as
           | { success: boolean; data: unknown[]; message?: string }
           | unknown[];
 
@@ -244,8 +254,13 @@ export const usePaymentStore = defineStore('payment', () => {
           limit: 50,
         })) as
           | { payments?: unknown[]; total?: number }
-          | { success: boolean; data: { payments?: unknown[]; total?: number } };
-        const rawPayments = isWrappedResponse<{ payments?: unknown[] }>(response)
+          | {
+              success: boolean;
+              data: { payments?: unknown[]; total?: number };
+            };
+        const rawPayments = isWrappedResponse<{ payments?: unknown[] }>(
+          response
+        )
           ? response.data?.payments
           : (response as { payments?: unknown[] }).payments;
 

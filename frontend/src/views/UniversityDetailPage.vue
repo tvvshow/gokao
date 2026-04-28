@@ -57,14 +57,24 @@
               <div class="flex items-center gap-3 mb-3">
                 <h1 class="page-title mb-0">{{ university.name }}</h1>
                 <div class="flex space-x-1">
-                  <span v-if="university.is985" class="badge badge-985">985</span>
-                  <span v-if="university.is211" class="badge badge-211">211</span>
-                  <span v-if="university.isDoubleFirstClass" class="badge badge-double">
+                  <span v-if="university.is985" class="badge badge-985"
+                    >985</span
+                  >
+                  <span v-if="university.is211" class="badge badge-211"
+                    >211</span
+                  >
+                  <span
+                    v-if="university.isDoubleFirstClass"
+                    class="badge badge-double"
+                  >
                     双一流
                   </span>
                 </div>
               </div>
-              <p v-if="university.description" class="text-gray-600 dark:text-gray-300">
+              <p
+                v-if="university.description"
+                class="text-gray-600 dark:text-gray-300"
+              >
                 {{ university.description }}
               </p>
               <div class="flex items-center gap-4 mt-3 text-sm text-gray-500">
@@ -93,10 +103,7 @@
           <!-- 左侧内容 (占2列) -->
           <div class="lg:col-span-2 space-y-6">
             <!-- 录取分数线趋势 -->
-            <div
-              v-if="hasScoreData"
-              class="card score-card"
-            >
+            <div v-if="hasScoreData" class="card score-card">
               <h2 class="section-title">
                 <TrendingUpIcon class="w-5 h-5 mr-2" />
                 录取分数线
@@ -223,9 +230,7 @@
                 <div class="info-row">
                   <span class="label">校园面积</span>
                   <span class="value">{{
-                    university.campusArea
-                      ? `${university.campusArea}亩`
-                      : '-'
+                    university.campusArea ? `${university.campusArea}亩` : '-'
                   }}</span>
                 </div>
                 <div class="info-row">
@@ -237,8 +242,12 @@
               </div>
 
               <!-- 联系方式 -->
-              <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <div
+                class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+              >
+                <h3
+                  class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
+                >
                   联系方式
                 </h3>
                 <div class="contact-grid">
@@ -269,10 +278,7 @@
             </div>
 
             <!-- 优势专业 -->
-            <div
-              v-if="university.strongMajors?.length"
-              class="card"
-            >
+            <div v-if="university.strongMajors?.length" class="card">
               <h2 class="section-title">
                 <StarIcon class="w-5 h-5 mr-2" />
                 优势专业
@@ -368,10 +374,7 @@
             </div>
 
             <!-- 特色标签 -->
-            <div
-              v-if="university.features?.length"
-              class="card"
-            >
+            <div v-if="university.features?.length" class="card">
               <h2 class="section-title">特色标签</h2>
               <div class="tags-container">
                 <span

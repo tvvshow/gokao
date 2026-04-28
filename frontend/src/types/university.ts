@@ -67,21 +67,21 @@ export interface UniversitySearchParams {
 export const UNIVERSITY_LEVEL_MAP: Record<string, string> = {
   '985': '985',
   '211': '211',
-  '双一流': 'double_first_class',
-  '本科': 'ordinary',
+  双一流: 'double_first_class',
+  本科: 'ordinary',
 };
 
 export const UNIVERSITY_TYPE_MAP: Record<string, string> = {
-  '综合类': 'comprehensive',
-  '理工类': 'science',
-  '师范类': 'teacher',
-  '财经类': 'finance',
-  '医药类': 'medical',
-  '艺术类': 'art',
-  '农林类': 'agriculture',
-  '政法类': 'law',
-  '语言类': 'language',
-  '体育类': 'sports',
+  综合类: 'comprehensive',
+  理工类: 'science',
+  师范类: 'teacher',
+  财经类: 'finance',
+  医药类: 'medical',
+  艺术类: 'art',
+  农林类: 'agriculture',
+  政法类: 'law',
+  语言类: 'language',
+  体育类: 'sports',
 };
 
 export interface UniversitySearchResponse {

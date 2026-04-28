@@ -145,9 +145,7 @@ const toggleFavorite = (recommendation: Recommendation) => {
 // Export recommendations report
 const exportRecommendations = async () => {
   try {
-    const blob = await recommendationApi.exportReport(
-      recommendations.value
-    );
+    const blob = await recommendationApi.exportReport(recommendations.value);
     // 直接返回Blob，创建下载链接
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

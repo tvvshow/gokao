@@ -56,10 +56,7 @@
             <div class="flex-1">
               <div class="flex items-center gap-3 mb-3">
                 <h1 class="page-title mb-0">{{ major.name }}</h1>
-                <span
-                  v-if="major.isPopular"
-                  class="badge badge-popular"
-                >
+                <span v-if="major.isPopular" class="badge badge-popular">
                   <TrendingUpIcon class="w-3 h-3" />
                   热门
                 </span>
@@ -112,18 +109,13 @@
                 </div>
                 <div class="info-row">
                   <span class="label">是否热门</span>
-                  <span class="value">{{
-                    major.isPopular ? '是' : '否'
-                  }}</span>
+                  <span class="value">{{ major.isPopular ? '是' : '否' }}</span>
                 </div>
               </div>
             </div>
 
             <!-- 就业与薪酬 -->
-            <div
-              v-if="hasEmploymentData"
-              class="card employment-card"
-            >
+            <div v-if="hasEmploymentData" class="card employment-card">
               <h2 class="section-title">
                 <BriefcaseIcon class="w-5 h-5 mr-2" />
                 就业与薪酬
@@ -136,16 +128,11 @@
                   <div class="employment-content">
                     <div class="employment-value">
                       {{
-                        major.employmentRate
-                          ? `${major.employmentRate}%`
-                          : '-'
+                        major.employmentRate ? `${major.employmentRate}%` : '-'
                       }}
                     </div>
                     <div class="employment-label">就业率</div>
-                    <div
-                      v-if="major.employmentRate"
-                      class="employment-bar"
-                    >
+                    <div v-if="major.employmentRate" class="employment-bar">
                       <div
                         class="employment-bar-fill"
                         :style="{ width: `${major.employmentRate}%` }"
@@ -160,9 +147,7 @@
                   <div class="employment-content">
                     <div class="employment-value">
                       {{
-                        major.averageSalary
-                          ? `${major.averageSalary}K`
-                          : '-'
+                        major.averageSalary ? `${major.averageSalary}K` : '-'
                       }}
                     </div>
                     <div class="employment-label">平均年薪</div>
@@ -239,17 +224,12 @@
                     <div class="stat-label">学制</div>
                   </div>
                 </div>
-                <div
-                  v-if="major.employmentRate"
-                  class="quick-stat"
-                >
+                <div v-if="major.employmentRate" class="quick-stat">
                   <div class="stat-icon stat-employment">
                     <BriefcaseIcon class="w-5 h-5" />
                   </div>
                   <div class="stat-content">
-                    <div class="stat-value">
-                      {{ major.employmentRate }}%
-                    </div>
+                    <div class="stat-value">{{ major.employmentRate }}%</div>
                     <div class="stat-label">就业率</div>
                   </div>
                 </div>
@@ -348,7 +328,9 @@ import type { Major } from '@/types/university';
 const route = useRoute();
 const router = useRouter();
 
-const major = ref<Major & { university?: { name?: string; id?: string } } | null>(null);
+const major = ref<
+  (Major & { university?: { name?: string; id?: string } }) | null
+>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const isFavorite = ref(false);
@@ -358,12 +340,40 @@ const relatedMajors = computed(() => {
   if (!major.value) return [];
   const category = major.value.category;
   const mockMajors: Major[] = [
-    { id: '1', name: '计算机科学与技术', code: '080901', category, degree: '工学学士', duration: 4 },
-    { id: '2', name: '软件工程', code: '080902', category, degree: '工学学士', duration: 4 },
-    { id: '3', name: '网络工程', code: '080903', category, degree: '工学学士', duration: 4 },
-    { id: '4', name: '信息安全', code: '080904', category, degree: '工学学士', duration: 4 },
+    {
+      id: '1',
+      name: '计算机科学与技术',
+      code: '080901',
+      category,
+      degree: '工学学士',
+      duration: 4,
+    },
+    {
+      id: '2',
+      name: '软件工程',
+      code: '080902',
+      category,
+      degree: '工学学士',
+      duration: 4,
+    },
+    {
+      id: '3',
+      name: '网络工程',
+      code: '080903',
+      category,
+      degree: '工学学士',
+      duration: 4,
+    },
+    {
+      id: '4',
+      name: '信息安全',
+      code: '080904',
+      category,
+      degree: '工学学士',
+      duration: 4,
+    },
   ];
-  return mockMajors.filter(m => m.category === category).slice(0, 4);
+  return mockMajors.filter((m) => m.category === category).slice(0, 4);
 });
 
 // 模拟开设院校数据

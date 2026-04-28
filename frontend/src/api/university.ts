@@ -213,10 +213,9 @@ export const universityApi = {
     return {
       success: true,
       data: normalizeUniversity(raw as Record<string, unknown>),
-      message:
-        isWrappedResponse<Record<string, unknown>>(response)
-          ? response.message
-          : undefined,
+      message: isWrappedResponse<Record<string, unknown>>(response)
+        ? response.message
+        : undefined,
     };
   },
 

@@ -326,23 +326,23 @@ defineExpose({
 }
 
 /* 隐藏数字输入框的上下箭头 */
-.el-input[type="number"] .el-input__inner {
+.el-input[type='number'] .el-input__inner {
   -moz-appearance: textfield;
 }
 
-.el-input[type="number"] .el-input__inner::-webkit-outer-spin-button,
-.el-input[type="number"] .el-input__inner::-webkit-inner-spin-button {
+.el-input[type='number'] .el-input__inner::-webkit-outer-spin-button,
+.el-input[type='number'] .el-input__inner::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
 /* 全局隐藏所有数字输入框箭头 */
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield;
 }
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }

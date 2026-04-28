@@ -469,11 +469,14 @@ const handleSearch = async (resetPage = true) => {
       }
       // 映射院校类型（中文→英文）
       if (searchForm.value.type) {
-        params.type = UNIVERSITY_TYPE_MAP[searchForm.value.type] || searchForm.value.type;
+        params.type =
+          UNIVERSITY_TYPE_MAP[searchForm.value.type] || searchForm.value.type;
       }
       // 映射院校层次（中文→英文）
       if (searchForm.value.level) {
-        params.level = UNIVERSITY_LEVEL_MAP[searchForm.value.level] || searchForm.value.level;
+        params.level =
+          UNIVERSITY_LEVEL_MAP[searchForm.value.level] ||
+          searchForm.value.level;
       }
 
       response = await universityApi.search(params as UniversitySearchParams);
@@ -488,10 +491,13 @@ const handleSearch = async (resetPage = true) => {
         params.province = searchForm.value.province;
       }
       if (searchForm.value.type) {
-        params.type = UNIVERSITY_TYPE_MAP[searchForm.value.type] || searchForm.value.type;
+        params.type =
+          UNIVERSITY_TYPE_MAP[searchForm.value.type] || searchForm.value.type;
       }
       if (searchForm.value.level) {
-        params.level = UNIVERSITY_LEVEL_MAP[searchForm.value.level] || searchForm.value.level;
+        params.level =
+          UNIVERSITY_LEVEL_MAP[searchForm.value.level] ||
+          searchForm.value.level;
       }
 
       response = await universityApi.list(params);

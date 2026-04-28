@@ -160,7 +160,6 @@ import {
   BookOpenIcon,
   SparklesIcon,
   BarChartIcon,
-  CrownIcon,
   BellIcon,
   UserIcon,
   SettingsIcon,

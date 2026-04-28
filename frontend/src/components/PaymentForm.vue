@@ -12,7 +12,10 @@
         <div class="price">¥{{ plan.price }}</div>
         <div class="duration">{{ plan.duration_days }}天</div>
         <ul class="features">
-          <li v-for="(item, index) in normalizedFeatures(plan.features)" :key="index">
+          <li
+            v-for="(item, index) in normalizedFeatures(plan.features)"
+            :key="index"
+          >
             <span v-if="item.included">✓</span>
             <span v-else>✗</span>
             {{ item.name }}
@@ -107,13 +110,18 @@ interface FeatureItem {
   included: boolean;
 }
 
-const normalizedFeatures = (features: string[] | Record<string, boolean>): FeatureItem[] => {
+const normalizedFeatures = (
+  features: string[] | Record<string, boolean>
+): FeatureItem[] => {
   if (Array.isArray(features)) {
     // 数组格式：直接显示所有特性
-    return features.map(name => ({ name, included: true }));
+    return features.map((name) => ({ name, included: true }));
   } else {
     // 对象格式：键为特性名，值为是否包含
-    return Object.entries(features).map(([name, included]) => ({ name, included: Boolean(included) }));
+    return Object.entries(features).map(([name, included]) => ({
+      name,
+      included: Boolean(included),
+    }));
   }
 };
 

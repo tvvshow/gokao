@@ -118,7 +118,10 @@ const formatDate = (date: string | null | undefined) => {
   return new Date(date).toLocaleDateString('zh-CN');
 };
 
-const calculatePercentage = (used: number | undefined, max: number | undefined) => {
+const calculatePercentage = (
+  used: number | undefined,
+  max: number | undefined
+) => {
   if (!used || !max || max === -1 || max === 0) return 0;
   return Math.min(100, (used / max) * 100);
 };

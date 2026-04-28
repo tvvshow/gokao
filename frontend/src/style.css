@@ -450,23 +450,23 @@
 }
 
 /* 隐藏所有数字输入框的上下箭头 - 全局样式 */
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield !important;
 }
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
   margin: 0 !important;
 }
 
 /* Element Plus 输入框特殊处理 */
-.el-input__inner[type="number"] {
+.el-input__inner[type='number'] {
   -moz-appearance: textfield !important;
 }
 
-.el-input__inner[type="number"]::-webkit-outer-spin-button,
-.el-input__inner[type="number"]::-webkit-inner-spin-button {
+.el-input__inner[type='number']::-webkit-outer-spin-button,
+.el-input__inner[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
   margin: 0 !important;
 }

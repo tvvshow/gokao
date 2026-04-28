@@ -16,12 +16,15 @@ export const useRecommendationStore = defineStore('recommendation', () => {
   const error = ref<string | null>(null);
 
   // 中文type映射为英文enum
-  const mapRecommendationType = (chineseType: string): 'aggressive' | 'moderate' | 'conservative' => {
-    const typeMap: Record<string, 'aggressive' | 'moderate' | 'conservative'> = {
-      '冲刺': 'aggressive',
-      '稳妥': 'moderate',
-      '保底': 'conservative',
-    };
+  const mapRecommendationType = (
+    chineseType: string
+  ): 'aggressive' | 'moderate' | 'conservative' => {
+    const typeMap: Record<string, 'aggressive' | 'moderate' | 'conservative'> =
+      {
+        冲刺: 'aggressive',
+        稳妥: 'moderate',
+        保底: 'conservative',
+      };
     return typeMap[chineseType] || 'moderate';
   };
 
@@ -37,9 +40,9 @@ export const useRecommendationStore = defineStore('recommendation', () => {
       if (response.success) {
         studentInfo.value = studentData;
         // 转换type字段：中文 -> 英文enum
-        recommendations.value = response.data.recommendations.map(rec => ({
+        recommendations.value = response.data.recommendations.map((rec) => ({
           ...rec,
-          type: mapRecommendationType(rec.type)
+          type: mapRecommendationType(rec.type),
         }));
         return recommendations.value;
       } else {
@@ -160,9 +163,7 @@ export const useRecommendationStore = defineStore('recommendation', () => {
     }
 
     try {
-      const blob = await recommendationApi.exportReport(
-        recommendations.value
-      );
+      const blob = await recommendationApi.exportReport(recommendations.value);
       return blob;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '导出失败';

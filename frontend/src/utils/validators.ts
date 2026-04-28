@@ -89,7 +89,9 @@ import type { FormItemRule } from 'element-plus';
 /**
  * Create Element Plus form validator for password strength
  */
-export function createPasswordValidator(minLength: number = 8): FormItemRule['validator'] {
+export function createPasswordValidator(
+  minLength: number = 8
+): FormItemRule['validator'] {
   return (_rule, value: string, callback) => {
     if (!value) {
       callback(new Error('请输入密码'));
@@ -144,7 +146,9 @@ export function sanitizeInput(input: string): string {
 /**
  * Validate and sanitize form data object
  */
-export function sanitizeFormData<T extends Record<string, unknown>>(data: T): T {
+export function sanitizeFormData<T extends Record<string, unknown>>(
+  data: T
+): T {
   const sanitized = { ...data };
 
   for (const key in sanitized) {
@@ -205,7 +209,9 @@ export function containsXSSPatterns(input: string): boolean {
 /**
  * Create a safe text validator that checks for XSS
  */
-export function createSafeTextValidator(fieldName: string = '输入'): FormItemRule['validator'] {
+export function createSafeTextValidator(
+  fieldName: string = '输入'
+): FormItemRule['validator'] {
   return (_rule, value: string, callback) => {
     if (value && containsXSSPatterns(value)) {
       callback(new Error(`${fieldName}包含不安全的内容`));

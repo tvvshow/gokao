@@ -193,7 +193,10 @@ const handleSearch = async () => {
       params.category = searchForm.category;
     }
 
-    const response = await api.majors.list(params) as { data: Major[]; total?: number };
+    const response = (await api.majors.list(params)) as {
+      data: Major[];
+      total?: number;
+    };
     majors.value = response.data;
     total.value = response.total || response.data.length;
 
