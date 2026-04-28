@@ -259,6 +259,19 @@ type DeviceLicense struct {
 	User User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
+// IsVIP 判断用户会员是否处于有效状态（非 free 且未过期）。
+func (u *User) IsVIP() bool {
+	if u == nil || u.MembershipLevel == "free" {
+		return false
+	}
+
+	if u.MembershipExpiry == nil {
+		return true
+	}
+
+	return u.MembershipExpiry.After(time.Now())
+}
+
 // TableName 设置表名
 func (User) TableName() string {
 	return "users"

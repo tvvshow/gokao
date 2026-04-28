@@ -456,6 +456,40 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// GetMembership 获取当前用户会员信息
+// @Summary 获取会员信息
+// @Description 获取当前登录用户的会员等级与到期时间
+// @Tags 用户管理
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /api/v1/users/membership [get]
+func (h *UserHandler) GetMembership(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	user, err := h.userService.GetUserByID(userID.(uuid.UUID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"membership_level":  user.MembershipLevel,
+		"membership_expiry": user.MembershipExpiry,
+		"is_vip":            user.IsVIP(),
+	})
+}
+
 // UpdateProfile 更新当前用户资料
 // @Summary 更新当前用户资料
 // @Description 更新当前登录用户的资料信息
