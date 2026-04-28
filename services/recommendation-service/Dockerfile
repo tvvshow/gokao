@@ -48,7 +48,6 @@ WORKDIR /app
 COPY --from=builder /tmp/volunteer-matcher/build/libvolunteer_matcher.so /usr/local/lib/
 COPY --from=builder /tmp/volunteer-matcher/data /app/data
 COPY --from=builder /app/recommendation-service .
-COPY --from=builder /app/config ./config
 
 RUN mkdir -p logs && chown -R appuser:appgroup /app
 USER appuser
