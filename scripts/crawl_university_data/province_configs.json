@@ -1,0 +1,251 @@
+[
+  {
+    "name": "北京",
+    "url": "https://www.bjeea.cn",
+    "selectors": [
+      "university-list",
+      "school-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "天津",
+    "url": "http://www.zhaokao.net",
+    "selectors": [
+      "college-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "河北",
+    "url": "http://www.hebeea.edu.cn",
+    "selectors": [
+      "university-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "山西",
+    "url": "http://www.sxkszx.cn",
+    "selectors": [
+      "school-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "内蒙古",
+    "url": "https://www.nm.zsks.cn",
+    "selectors": [
+      "college-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "辽宁",
+    "url": "https://www.lnzsks.com",
+    "selectors": [
+      "university-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "吉林",
+    "url": "http://www.jleea.edu.cn",
+    "selectors": [
+      "school-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "黑龙江",
+    "url": "https://www.lzk.hl.cn",
+    "selectors": [
+      "college-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "上海",
+    "url": "https://www.shmeea.edu.cn",
+    "selectors": [
+      "university-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "江苏",
+    "url": "https://www.jseea.cn",
+    "selectors": [
+      "school-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "浙江",
+    "url": "https://www.zjzs.net",
+    "selectors": [
+      "college-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "安徽",
+    "url": "https://www.ahzsks.cn",
+    "selectors": [
+      "university-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "福建",
+    "url": "https://www.eeafj.cn",
+    "selectors": [
+      "school-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "江西",
+    "url": "http://www.jxeea.cn",
+    "selectors": [
+      "college-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "山东",
+    "url": "http://www.sdzk.cn",
+    "selectors": [
+      "university-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "河南",
+    "url": "http://www.haeea.cn",
+    "selectors": [
+      "school-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "湖北",
+    "url": "http://www.hbea.edu.cn",
+    "selectors": [
+      "college-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "湖南",
+    "url": "http://jyt.hunan.gov.cn/jyt/sjyt/hnsjyksy",
+    "selectors": [
+      "university-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "广东",
+    "url": "https://eea.gd.gov.cn",
+    "selectors": [
+      "school-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "广西",
+    "url": "https://www.gxeea.cn",
+    "selectors": [
+      "college-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "海南",
+    "url": "http://ea.hainan.gov.cn",
+    "selectors": [
+      "university-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "重庆",
+    "url": "https://www.cqksy.cn",
+    "selectors": [
+      "school-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "四川",
+    "url": "https://www.sceea.cn",
+    "selectors": [
+      "college-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "贵州",
+    "url": "http://zsksy.guizhou.gov.cn",
+    "selectors": [
+      "university-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "云南",
+    "url": "https://www.ynzs.cn",
+    "selectors": [
+      "school-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "西藏",
+    "url": "http://zsks.edu.xizang.gov.cn",
+    "selectors": [
+      "college-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "陕西",
+    "url": "http://www.sneac.com",
+    "selectors": [
+      "university-data"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "甘肃",
+    "url": "https://www.ganseea.cn",
+    "selectors": [
+      "school-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "青海",
+    "url": "http://www.qhjyks.com",
+    "selectors": [
+      "college-info"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "宁夏",
+    "url": "https://www.nxjyks.cn",
+    "selectors": [
+      "university-list"
+    ],
+    "enabled": true
+  },
+  {
+    "name": "新疆",
+    "url": "http://www.xjzk.gov.cn",
+    "selectors": [
+      "school-data"
+    ],
+    "enabled": true
+  }
+]

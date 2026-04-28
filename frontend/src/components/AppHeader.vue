@@ -201,7 +201,7 @@ const handleUserCommand = (command: string) => {
     //   router.push('/membership');
     //   break;
     case 'settings':
-      router.push('/settings');
+      router.push('/profile');
       break;
     case 'logout':
       userStore.logout();

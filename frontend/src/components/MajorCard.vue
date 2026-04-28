@@ -70,11 +70,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _emit = defineEmits<{
-  view: [id: string];
-}>();
-
 const router = useRouter();
 
 const viewEmploymentData = () => {

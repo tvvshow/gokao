@@ -1,6 +1,6 @@
 # 高考志愿填报系统 - 全面综合分析报告 (修订版 v3.3)
 
-报告日期: 2026-04-29 (最后修订)  
+报告日期: 2026-04-28 (最后修订)  
 分析范围: 后端 6 微服务 + 前端 Vue3 + 17 pkg 模块 + C++ 算法 + CI/CD + Docker 部署  
 核对人: 用户本人核验  
 修订说明: 经用户核对，已剔除 3 处过时/错误结论，重算真实缺口
@@ -14,7 +14,7 @@
 **核心结论**:
 - 主功能路径（推荐生成、用户认证、数据查询）存在，可走通
 - **JWT 鉴权已收敛**：`/users/*`、`/payments/*`、`/recommendations/*` 已 RequireAuth；`/data/*` 保持 OptionalAuth
-- **C++ 引擎已通过 `linux/amd64 + cgo` 默认生效**，legacycpp 分支已移除
+- **C++ 引擎已通过 cppengine 标签生效**，legacycpp 分支已移除
 - **连接池已配置** (data-service, user-service, payment-service)，需统一治理参数而非从零补代码
 - 前端-后端主 API 契约已闭合（含 `health` 路径兼容）
 - 基础设施较完整：Prometheus + Alertmanager + Blackbox Exporter、健康检查、Graceful Shutdown
@@ -68,9 +68,9 @@
 
 | 文件 | 构建标签 | 状态 |
 |------|---------|------|
-| `volunteer_matcher_bridge.go` | `//go:build cgo && linux && amd64` | ✅ **默认生产平台生效** |
+| `volunteer_matcher_bridge.go` | `//go:build cgo && cppengine` | ✅ **生效中** |
 | `hybrid_bridge.go` | `//go:build cgo && legacycpp` | ✅ 已移除 |
-| Dockerfile | `CGO_ENABLED=1 GOOS=linux GOARCH=amd64` 构建链路 | ✅ 匹配生效路径 |
+| Dockerfile | `go build -tags cppengine` | ✅ 匹配生效路径 |
 
 ### 2.6 连接池配置状态 (验证通过)
 
@@ -80,7 +80,7 @@
 | user-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | payment-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | api-gateway | N/A (反向代理) | - | - | HTTP transport 需确认 |
-| recommendation-service | N/A | N/A | N/A | 当前服务主链路未使用数据库连接池 |
+| recommendation-service | ⚠️ 待确认 | - | - | |
 
 ---
 
@@ -94,7 +94,7 @@
 
 ### 3.2 C++ legacycpp 分支 (已清理)
 
-`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径（linux/amd64+cgo 启用 C++，其他环境自动回退 mock）。
+`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径 `cppengine`。
 
 ### 3.3 API 契约状态 (已闭合)
 
@@ -187,7 +187,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | Token 刷新 | ✅ | POST /auth/refresh |
 | 输入验证 (body size/content-type) | ✅ | 10MB, SQL/XSS 正则 |
 | CORS | ✅ | Gateway 统一，白名单 |
-| 硬编码密钥 | ✅ | `cmd/migrator/main.go` 已改为仅环境变量注入 DSN |
+| 硬编码密钥 | ✅ 已清理 | migrator 改为 `DATA_SERVICE_DATABASE_URL` / `DATABASE_URL` 环境变量 |
 | LLM API Key | ✅ | 环境变量注入，非代码 |
 
 ---
@@ -215,31 +215,9 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | golangci-lint + ESLint | ✅ |
 | Go 测试 | ✅ |
 | 前端测试 | ✅ 已在 CI 运行 |
-| Docker 构建 + ghcr.io 推送 | ✅（代码与流程已具备；本地验收受网络环境影响） |
+| Docker 构建 + ghcr.io 推送 | ✅ |
 | 自动部署 | ❌ |
 | 回滚 | ❌ |
-
----
-
-## 8. 2026-04-29 最新推进记录
-
-### 8.1 已完成
-
-| 项目 | 状态 |
-|------|------|
-| recommendation-service C++ 引擎激活策略切换为 `linux/amd64 + cgo` | ✅ |
-| mock 回退标签同步（非目标平台自动回退） | ✅ |
-| C++ 链接参数修复（补齐 `jsoncpp`） | ✅ |
-| `go test ./...`：api-gateway / data-service / user-service / recommendation-service | ✅ |
-| 前端 `npm run lint`、`npm run type-check` | ✅ |
-| 前端格式与 ESLint 迁移告警收敛（移除 `.eslintignore`） | ✅ |
-| 新增统一上线闸门脚本 `scripts/go-live-gate.sh` | ✅ |
-
-### 8.2 当前阻塞（非代码缺陷）
-
-| 项目 | 现象 | 结论 |
-|------|------|------|
-| `docker compose build` | 拉取 `docker.io` 基础镜像失败（`registry-1.docker.io:443 connect refused`） | 当前环境网络阻塞，需恢复 Docker Hub 网络后复验 |
 
 ---
 
@@ -254,6 +232,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 
 ### 第 2 步: 死代码清理 (Medium)
 - ✅ 已完成：删除 `hybrid_bridge.go` (legacycpp)
+- ✅ 已完成：删除 `memory_safe.go` (legacycpp)
 - 持续项：清理 legacycpp 相关文档与构建说明，避免误用
 
 ### 第 3 步: API 契约维持 (Medium)
@@ -299,3 +278,35 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 *报告版本: v3.3 (核验修订版)*  
 *生成时间: 2026-04-28*  
 *修订: 完成鉴权收敛、legacycpp 清理、migrator 脱敏与前端共享工具收敛*
+
+---
+
+## 10. 本轮对比补充（已完 / 未完）
+
+### 10.1 已完成（相对 v3.3 对账）
+
+| 项目 | 结果 | 证据 |
+|------|------|------|
+| API Gateway 推荐路由鉴权 | ✅ `OptionalAuth` → `RequireAuth` | `services/api-gateway/main.go` |
+| recommendation-service legacycpp 清理 | ✅ 删除 `hybrid_bridge.go`、`memory_safe.go` | `services/recommendation-service/pkg/cppbridge/` |
+| data-service migrator 脱敏 | ✅ 移除硬编码 DSN，改环境变量 | `services/data-service/cmd/migrator/main.go` |
+| user-service 登录/刷新响应统一 | ✅ 返回 `{success, data}`，兼容旧字段 | `services/user-service/internal/handlers/auth_handler.go` |
+| 前端 API 响应/存储工具收敛 | ✅ 新增共享工具并接入主 API 模块 | `frontend/src/utils/api-response.ts`、`frontend/src/utils/storage.ts` |
+| payment 会员套餐来源 | ✅ 后端优先拉取，前端仅兜底 | `frontend/src/stores/payment.ts`、`frontend/src/views/MembershipPage.vue` |
+| payment 订单列表用户标识解析 | ✅ 优先 `X-User-ID` / `user_id` 且安全 UUID 解析 | `services/payment-service/internal/handlers/payment_handler.go` |
+| api-gateway Trivy 告警依赖修复 | ✅ `golang.org/x/crypto` 升级到 `v0.45.0` | `services/api-gateway/go.mod` |
+
+### 10.2 未完成（当前剩余）
+
+| 项目 | 状态 | 说明 |
+|------|------|------|
+| CI `Verify Swagger docs up-to-date` | ⚠️ 未闭环 | 需在最新 `origin/main` 基线重生 `services/api-gateway/docs/*` 并提交 |
+| 其他服务 `x/crypto` 版本治理 | ⚠️ 未统一 | `payment-service` / `data-service` / `recommendation-service` 仍有 `v0.41.0` 传递依赖 |
+| `/data/*` 匿名访问边界文档化 | ⚠️ 未完成 | 鉴权策略已实现，但边界说明仍需补全 |
+| 前端 localStorage 主存储彻底迁移 | ⚠️ 部分完成 | 已改“后端优先 + 本地兜底”，尚未完全去本地主存储 |
+
+### 10.3 下一步执行顺序（建议）
+
+1. 基于 `origin/main` 重新生成并提交 `api-gateway` Swagger 文档，先恢复 CI 绿色基线。  
+2. 统一评估并升级各服务 `golang.org/x/crypto` 版本，避免后续 Trivy 告警反复出现。  
+3. 将 payment/recommendation 的本地持久化进一步改为后端主存储。  

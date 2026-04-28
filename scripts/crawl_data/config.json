@@ -1,0 +1,6 @@
+{
+  "base_url": "https://api.gaokao-data.com/v1",
+  "api_key": "your_api_key_here",
+  "output_dir": "./data",
+  "max_retries": 3
+}

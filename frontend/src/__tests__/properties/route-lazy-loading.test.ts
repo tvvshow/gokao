@@ -14,6 +14,7 @@ import * as path from 'path';
 
 // Patterns for lazy loading
 const LAZY_LOAD_PATTERN = /component\s*:\s*\(\)\s*=>\s*import\s*\(/g;
+const STATIC_IMPORT_PATTERN = /component\s*:\s*\w+(?!.*import)/g;
 const ROUTE_DEFINITION_PATTERN = /{\s*path\s*:/g;
 
 /**

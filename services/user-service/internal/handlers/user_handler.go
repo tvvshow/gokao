@@ -672,3 +672,38 @@ func (h *UserHandler) GetUserRoles(c *gin.Context) {
 		"roles": roles,
 	})
 }
+
+// GetMembership 获取当前用户会员信息
+// @Summary 获取会员信息
+// @Description 获取当前登录用户的会员状态、等级、到期时间等
+// @Tags 用户管理
+// @Produce json
+// @Success 200 {object} map[string]interface{} "会员信息"
+// @Failure 401 {object} map[string]interface{} "未认证"
+// @Security BearerAuth
+// @Router /api/v1/users/membership [get]
+func (h *UserHandler) GetMembership(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	user, err := h.userService.GetUserByID(userID.(uuid.UUID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"membership_level":  user.MembershipLevel,
+		"membership_expiry": user.MembershipExpiry,
+		"max_devices":       user.MaxDevices,
+		"trial_used":        user.TrialUsed,
+		"trial_expiry":      user.TrialExpiry,
+	})
+}

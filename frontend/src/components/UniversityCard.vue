@@ -145,13 +145,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _emit = defineEmits<{
-  view: [id: string];
-  compare: [university: University];
-  favorite: [university: University];
-}>();
-
 const router = useRouter();
 
 // 获取标签类型

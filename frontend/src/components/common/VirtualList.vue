@@ -28,9 +28,11 @@
 <script setup lang="ts" generic="T">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
+/* eslint-disable no-unused-vars */
 defineSlots<{
   default(props: { item: T; index: number }): unknown;
 }>();
+/* eslint-enable no-unused-vars */
 
 const props = withDefaults(
   defineProps<{

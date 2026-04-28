@@ -1,0 +1,7 @@
+{
+  "db_host": "localhost",
+  "db_port": 5432,
+  "db_user": "gaokao_user",
+  "db_password": "gaokao_password",
+  "db_name": "gaokao_db"
+}

@@ -49,6 +49,7 @@ import {
 } from '@/components/recommendation';
 import { useRecommendationStore } from '@/stores/recommendation';
 import { recommendationApi } from '@/api/recommendation';
+import { universityApi } from '@/api/university';
 import type { StudentInfo, Recommendation } from '@/types/recommendation';
 
 const router = useRouter();
@@ -136,10 +137,17 @@ const addToCompare = (recommendation: Recommendation) => {
 
 // Toggle favorite
 const toggleFavorite = (recommendation: Recommendation) => {
-  recommendation.university.isFavorite = !recommendation.university.isFavorite;
-  ElMessage.success(
-    recommendation.university.isFavorite ? '已收藏' : '已取消收藏'
-  );
+  universityApi
+    .toggleFavorite(recommendation.university.id)
+    .then((response) => {
+      recommendation.university.isFavorite = response.data.isFavorite;
+      ElMessage.success(
+        recommendation.university.isFavorite ? '已收藏' : '已取消收藏'
+      );
+    })
+    .catch(() => {
+      ElMessage.error('收藏状态更新失败');
+    });
 };
 
 // Export recommendations report
@@ -150,7 +158,9 @@ const exportRecommendations = async () => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `志愿推荐报告_${studentForm.score}分_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`;
+    link.download = `志愿推荐报告_${studentForm.score}分_${new Date()
+      .toLocaleDateString()
+      .replace(/\//g, '-')}.txt`;
     link.click();
     window.URL.revokeObjectURL(url);
     ElMessage.success('报告导出成功');

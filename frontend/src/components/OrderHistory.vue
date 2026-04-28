@@ -147,6 +147,7 @@ const getStatusText = (status: string) => {
     pending: '待支付',
     paid: '已支付',
     canceled: '已取消',
+    cancelled: '已取消',
     expired: '已过期',
     refunded: '已退款',
     refunding: '退款中',

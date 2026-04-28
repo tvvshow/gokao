@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useDark, useToggle } from '@vueuse/core';
+import { useDark } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 import AppHeader from '@/components/AppHeader.vue';
 import AppFooter from '@/components/AppFooter.vue';
@@ -45,8 +45,6 @@ const router = useRouter();
 
 // 暗色模式支持
 const isDark = useDark();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _toggleDark = useToggle(isDark);
 
 // Handle page-level errors
 const handlePageError = (error: Error) => {

@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-09-02 08:34:01",
+  "total_provinces": 1,
+  "successful_provinces": 1,
+  "total_universities": 1,
+  "results": [
+    {
+      "province": "宁夏",
+      "success": true,
+      "universities": [
+        {
+          "name": "宁夏大学",
+          "province": "宁夏",
+          "city": "宁夏市",
+          "university_type": "本科",
+          "is_985": false,
+          "is_211": false,
+          "website": "https://www.nxu.edu.cn",
+          "description": "宁夏省重点综合性大学",
+          "established_year": 1950
+        }
+      ],
+      "error_message": "",
+      "urls_discovered": 3,
+      "processing_time": 0.0008294582366943359
+    }
+  ]
+}

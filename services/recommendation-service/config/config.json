@@ -1,0 +1,45 @@
+{
+  "server": {
+    "port": "8084",
+    "mode": "release"
+  },
+  "cpp": {
+    "config_path": "./config/hybrid_config.json",
+    "library_path": "/usr/local/lib/libvolunteer_matcher.so",
+    "max_workers": 8,
+    "cache_enabled": true,
+    "cache_size": 2000,
+    "cache_ttl_minutes": 60
+  },
+  "redis": {
+    "enabled": true,
+    "host": "redis",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "log": {
+    "level": "info",
+    "file": "logs/recommendation-service.log",
+    "max_size": 100,
+    "max_backups": 10,
+    "max_age": 30
+  },
+  "data_service": {
+    "url": "http://data-service:8082",
+    "api_key": "",
+    "sync_interval": 1800000000000
+  },
+  "llm": {
+    "enabled": false,
+    "provider": "openai-compatible",
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "",
+    "model": "gpt-4o-mini",
+    "timeout": 15000000000,
+    "max_tokens": 800,
+    "temperature": 0.3,
+    "fallback_enabled": true,
+    "system_prompt": "你是一名高考志愿分析助手。请基于学生分数、地区偏好、风险偏好和推荐结果，输出简洁、专业、可执行的中文分析。"
+  }
+}

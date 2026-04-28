@@ -15,6 +15,8 @@
 - `archive/fix-reports/`: 历史修复报告与交付说明。
 - `archive/misc/`: 旧版指南、推进记录与杂项资料。
 
+审计文档迁移说明：`archive/audit-reports/README.md` 维护主版本保留原则，已被新版本替代的旧报告统一转入 `archive/obsolete/`。
+
 ## 维护规则
 
 - 新文档优先放到对应业务目录；仅“当前生效的总览文档”放在 `docs/` 顶层。

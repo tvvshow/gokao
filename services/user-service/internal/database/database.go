@@ -86,6 +86,7 @@ func autoMigrate(db *gorm.DB) error {
 		&models.AuditLog{},
 		&models.RefreshToken{},
 		&models.DeviceFingerprint{},
+		&models.DeviceLicense{},
 		&models.MembershipOrder{},
 		&models.UserSession{},
 	)

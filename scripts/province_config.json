@@ -1,0 +1,190 @@
+{
+  "provinces": [
+    {
+      "name": "北京",
+      "code": "BJ",
+      "base_url": "https://www.bjeea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "上海",
+      "code": "SH",
+      "base_url": "https://www.shmeea.edu.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "天津",
+      "code": "TJ",
+      "base_url": "https://www.zhaokao.net",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "重庆",
+      "code": "CQ",
+      "base_url": "https://www.cqksy.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "河北",
+      "code": "HE",
+      "base_url": "https://www.hebeea.edu.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "山西",
+      "code": "SX",
+      "base_url": "https://www.sxkszx.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "内蒙古",
+      "code": "NM",
+      "base_url": "https://www.nm.zsks.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "辽宁",
+      "code": "LN",
+      "base_url": "https://www.lnzsks.com",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "吉林",
+      "code": "JL",
+      "base_url": "https://www.jleea.edu.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "黑龙江",
+      "code": "HL",
+      "base_url": "https://www.lzk.hl.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "江苏",
+      "code": "JS",
+      "base_url": "https://www.jseea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "浙江",
+      "code": "ZJ",
+      "base_url": "https://www.zjzs.net",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "安徽",
+      "code": "AH",
+      "base_url": "https://www.ahzsks.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "福建",
+      "code": "FJ",
+      "base_url": "https://www.eeafj.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "江西",
+      "code": "JX",
+      "base_url": "https://www.jxeea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "山东",
+      "code": "SD",
+      "base_url": "https://www.sdzk.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "河南",
+      "code": "HA",
+      "base_url": "https://www.haeea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "湖北",
+      "code": "HB",
+      "base_url": "https://www.hbea.edu.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "湖南",
+      "code": "HN",
+      "base_url": "https://jyt.hunan.gov.cn/jyt/sjyt/hnsjyksy",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "广东",
+      "code": "GD",
+      "base_url": "https://eea.gd.gov.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "广西",
+      "code": "GX",
+      "base_url": "https://www.gxeea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "海南",
+      "code": "HI",
+      "base_url": "https://ea.hainan.gov.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "四川",
+      "code": "SC",
+      "base_url": "https://www.sceea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "贵州",
+      "code": "GZ",
+      "base_url": "https://zsksy.guizhou.gov.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "云南",
+      "code": "YN",
+      "base_url": "https://www.ynzs.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "西藏",
+      "code": "XZ",
+      "base_url": "http://zsks.edu.xizang.gov.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "陕西",
+      "code": "SN",
+      "base_url": "https://www.sneea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "甘肃",
+      "code": "GS",
+      "base_url": "https://www.ganseea.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "青海",
+      "code": "QH",
+      "base_url": "http://www.qhjyks.com",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "宁夏",
+      "code": "NX",
+      "base_url": "https://www.nxjyks.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    },
+    {
+      "name": "新疆",
+      "code": "XJ",
+      "base_url": "http://www.xjzk.gov.cn",
+      "search_keywords": ["高校", "大学", "学院", "高等院校", "本科院校"]
+    }
+  ]
+}

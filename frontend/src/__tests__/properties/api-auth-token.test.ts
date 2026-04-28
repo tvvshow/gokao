@@ -7,7 +7,7 @@
  * For any API request that requires authentication, the request header
  * must contain an Authorization header in the format "Bearer {token}"
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fc from 'fast-check';
 import * as fs from 'fs';
 import * as path from 'path';

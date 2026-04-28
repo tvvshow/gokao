@@ -99,8 +99,7 @@ func main() {
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))
 	router.Use(middleware.PerformanceMonitoring(performanceService))
 
-	// 健康检查
-	router.GET("/health", func(c *gin.Context) {
+	healthHandler := func(c *gin.Context) {
 		status := db.Health(c.Request.Context())
 		if status["postgresql"] && status["redis"] {
 			c.JSON(http.StatusOK, gin.H{
@@ -115,11 +114,16 @@ func main() {
 				"services":  status,
 			})
 		}
-	})
+	}
+
+	// 健康检查
+	router.GET("/health", healthHandler)
 
 	// API路由组 - 统一使用/api/v1前缀
 	apiV1 := router.Group("/api/v1")
 	{
+		apiV1.GET("/health", healthHandler)
+
 		// 院校路由
 		universities := apiV1.Group("/universities")
 		{

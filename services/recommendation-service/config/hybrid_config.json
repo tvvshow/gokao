@@ -1,0 +1,38 @@
+{
+  "hybrid_engine": {
+    "traditional_weight": 0.6,
+    "ai_weight": 0.4,
+    "diversity_factor": 0.15,
+    "max_same_city_ratio": 40,
+    "max_same_level_ratio": 60,
+    "rush_ratio": 0.3,
+    "stable_ratio": 0.5,
+    "safe_ratio": 0.2,
+    "max_candidates": 500,
+    "score_threshold": 0.1,
+    "enable_parallel": true,
+    "enable_adaptive_weights": true,
+    "confidence_threshold": 0.8
+  },
+  "cache": {
+    "max_size": 2000,
+    "ttl_minutes": 60
+  },
+  "performance": {
+    "max_concurrent_requests": 100,
+    "request_timeout_ms": 5000,
+    "batch_size": 50
+  },
+  "ai_engine": {
+    "model_path": "./models/admission_model.onnx",
+    "enable_gpu": false,
+    "max_batch_size": 64,
+    "inference_timeout_ms": 10.0,
+    "num_threads": 4
+  },
+  "feature_extractor": {
+    "normalization_enabled": true,
+    "feature_cache_size": 5000,
+    "feature_cache_ttl_minutes": 120
+  }
+}

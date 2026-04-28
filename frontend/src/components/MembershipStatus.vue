@@ -83,9 +83,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { usePaymentStore } from '@/stores/payment';
 import type { MembershipStatus } from '@/types/payment';
 
+const router = useRouter();
 const paymentStore = usePaymentStore();
 
 const membershipStatus = ref<MembershipStatus>({
@@ -146,8 +148,7 @@ const cancelMembership = async () => {
 };
 
 const goToPayment = () => {
-  // 跳转到支付页面
-  console.log('跳转到支付页面');
+  router.push('/profile');
 };
 </script>
 

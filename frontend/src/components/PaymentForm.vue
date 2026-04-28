@@ -128,9 +128,15 @@ const normalizedFeatures = (
 const createOrder = async () => {
   if (!selectedPlan.value || !selectedPaymentChannel.value) return;
 
-  // TODO: 支付功能开发中
-  ElMessage.info('支付功能开发中，敬请期待');
-  return;
+  const response = await paymentStore.createOrder({
+    plan_code: selectedPlan.value,
+    payment_channel: selectedPaymentChannel.value,
+  });
+  if (response.success) {
+    ElMessage.success('订单已创建');
+  } else {
+    ElMessage.error(response.message || '创建订单失败');
+  }
 };
 </script>
 

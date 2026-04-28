@@ -12,8 +12,8 @@ import * as fc from 'fast-check';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Git conflict markers to detect (match real marker lines only)
-const CONFLICT_PATTERNS = [/^<<<<<<<\s.+$/m, /^=======$/m, /^>>>>>>>\s.+$/m];
+// Match real Git conflict markers by whole line to avoid false positives
+const CONFLICT_PATTERNS = [/^<{7}( .+)?$/, /^={7}$/, /^>{7}( .+)?$/];
 
 // Source file extensions to check
 const SOURCE_EXTENSIONS = ['.ts', '.vue', '.js', '.tsx', '.jsx'];
@@ -59,16 +59,18 @@ function hasGitConflictMarkers(filePath: string): {
   const content = fs.readFileSync(filePath, 'utf-8');
   const foundMarkers: string[] = [];
 
-  for (const pattern of CONFLICT_PATTERNS) {
-    const match = content.match(pattern);
-    if (match) {
-      foundMarkers.push(match[0]);
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    for (const pattern of CONFLICT_PATTERNS) {
+      if (pattern.test(line)) {
+        foundMarkers.push(line);
+      }
     }
   }
 
   return {
     hasConflict: foundMarkers.length > 0,
-    markers: foundMarkers,
+    markers: Array.from(new Set(foundMarkers)),
   };
 }
 

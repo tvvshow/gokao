@@ -2,7 +2,7 @@
 
 ## 1. 问题概述
 
-根据 `comprehensive_audit_final_report.md` 的审计结果，支付服务存在严重问题：
+根据 `docs/archive/audit-reports/final_comprehensive_audit_report_20250905_142256.md` 的综合审计结果，支付服务存在严重问题：
 1. 所有支付渠道（微信、支付宝、银联等）均由 `payment_adapter_stub.go` 提供存根(Stub)实现。
 2. 这些存根实现不与任何真实支付网关交互，仅返回写死的成功结果。
 3. 核心商业闭环完全缺失，无法处理任何真实支付。

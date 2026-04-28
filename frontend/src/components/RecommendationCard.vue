@@ -171,13 +171,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _emit = defineEmits<{
-  view: [universityId: string];
-  compare: [recommendation: Recommendation];
-  favorite: [recommendation: Recommendation];
-}>();
-
 // 计算匹配度星级
 const matchStars = computed(() => {
   return Math.round(props.recommendation.matchScore / 20); // 转换为1-5星
