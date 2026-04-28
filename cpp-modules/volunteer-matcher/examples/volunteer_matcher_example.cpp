@@ -331,7 +331,8 @@ int main() {
         
         // 获取性能统计
         std::cout << "\n8. 性能统计..." << std::endl;
-        auto stats = matcher.GetPerformanceStats();
+        PerformanceStats stats;
+        matcher.GetPerformanceStats(stats);
         PrintPerformanceStats(stats);
         
         // 获取引擎状态

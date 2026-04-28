@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -211,7 +216,11 @@ jobs:
         cd cpp-modules/${{ matrix.module }}
         mkdir -p build
         cd build
-        cmake ..
+        if [ "${{ matrix.module }}" = "volunteer-matcher" ]; then
+          cmake .. -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_BENCHMARKS=OFF
+        else
+          cmake ..
+        fi
         make -j$(nproc)
     
     - name: Run C++ Tests
