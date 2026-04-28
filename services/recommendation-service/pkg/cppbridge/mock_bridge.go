@@ -1,5 +1,5 @@
-//go:build !cgo || !cppengine
-// +build !cgo !cppengine
+//go:build !cgo || !linux || !amd64
+// +build !cgo !linux !amd64
 
 // 注意：此文件为在非CGO环境下的编译占位符，不应在生产环境中使用。
 // 在生产环境中，请确保使用CGO_ENABLED=1进行编译以启用真实的C++推荐引擎。

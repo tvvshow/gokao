@@ -1,11 +1,11 @@
-//go:build cgo && cppengine
-// +build cgo,cppengine
+//go:build cgo && linux && amd64
+// +build cgo,linux,amd64
 
 package cppbridge
 
 /*
 #cgo CFLAGS: -I../../../../cpp-modules/volunteer-matcher/include
-#cgo LDFLAGS: -L../../../../cpp-modules/volunteer-matcher/build -lvolunteer_matcher -lstdc++
+#cgo LDFLAGS: -L../../../../cpp-modules/volunteer-matcher/build -l:libvolunteer_matcher.a -ljsoncpp -lstdc++
 
 #include <stdlib.h>
 #include "c_interface.h"
