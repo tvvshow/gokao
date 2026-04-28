@@ -89,6 +89,13 @@ npm run type-check
 - Swagger 一致性: 变更 API 注释后必须重生成并提交 `docs/`
 - recommendation-service C++ 引擎默认启用条件: `linux/amd64 + cgo`（其他环境自动回退 mock）
 
+也可直接执行统一脚本:
+```bash
+./scripts/go-live-gate.sh
+# 若当前环境无法访问 Docker Hub，可临时跳过镜像构建闸门：
+SKIP_DOCKER=1 ./scripts/go-live-gate.sh
+```
+
 ## API 与 Swagger
 
 - 网关入口: `http://localhost:8080`
