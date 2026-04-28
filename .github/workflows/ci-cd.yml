@@ -366,7 +366,7 @@ jobs:
         output: 'trivy-results.sarif'
     
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
 
@@ -374,7 +374,7 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, build-frontend]
-    if: github.ref == 'refs/heads/develop'
+    if: ${{ github.ref == 'refs/heads/develop' && secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
     environment: staging
     
     steps:
@@ -401,7 +401,7 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: [build, build-frontend, security-scan]
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' && secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
     environment: production
     
     steps:
@@ -486,7 +486,7 @@ jobs:
     
     steps:
     - name: Notify Success
-      if: ${{ needs.deploy-production.result == 'success' }}
+      if: ${{ needs.deploy-production.result == 'success' && secrets.WEBHOOK_URL != '' }}
       run: |
         curl -X POST ${{ secrets.WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
@@ -507,7 +507,7 @@ jobs:
           }'
     
     - name: Notify Failure
-      if: ${{ needs.deploy-production.result == 'failure' }}
+      if: ${{ needs.deploy-production.result == 'failure' && secrets.WEBHOOK_URL != '' }}
       run: |
         curl -X POST ${{ secrets.WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
