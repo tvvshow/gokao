@@ -1,6 +1,6 @@
 # 高考志愿填报系统 - 全面综合分析报告 (修订版 v3.3)
 
-报告日期: 2026-04-28 (最后修订)  
+报告日期: 2026-04-29 (最后修订)  
 分析范围: 后端 6 微服务 + 前端 Vue3 + 17 pkg 模块 + C++ 算法 + CI/CD + Docker 部署  
 核对人: 用户本人核验  
 修订说明: 经用户核对，已剔除 3 处过时/错误结论，重算真实缺口
@@ -68,9 +68,9 @@
 
 | 文件 | 构建标签 | 状态 |
 |------|---------|------|
-| `volunteer_matcher_bridge.go` | `//go:build cgo && cppengine` | ✅ **生效中** |
+| `volunteer_matcher_bridge.go` | `//go:build cgo && linux && amd64` | ✅ **默认生产平台生效** |
 | `hybrid_bridge.go` | `//go:build cgo && legacycpp` | ✅ 已移除 |
-| Dockerfile | `go build -tags cppengine` | ✅ 匹配生效路径 |
+| Dockerfile | `CGO_ENABLED=1 GOOS=linux GOARCH=amd64` 构建链路 | ✅ 匹配生效路径 |
 
 ### 2.6 连接池配置状态 (验证通过)
 
@@ -94,7 +94,7 @@
 
 ### 3.2 C++ legacycpp 分支 (已清理)
 
-`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径 `cppengine`。
+`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径（linux/amd64+cgo 启用 C++，其他环境自动回退 mock）。
 
 ### 3.3 API 契约状态 (已闭合)
 
@@ -218,6 +218,27 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | Docker 构建 + ghcr.io 推送 | ✅ |
 | 自动部署 | ❌ |
 | 回滚 | ❌ |
+
+---
+
+## 8. 2026-04-29 最新推进记录
+
+### 8.1 已完成
+
+| 项目 | 状态 |
+|------|------|
+| recommendation-service C++ 引擎激活策略切换为 `linux/amd64 + cgo` | ✅ |
+| mock 回退标签同步（非目标平台自动回退） | ✅ |
+| C++ 链接参数修复（补齐 `jsoncpp`） | ✅ |
+| `go test ./...`：api-gateway / data-service / user-service / recommendation-service | ✅ |
+| 前端 `npm run lint`、`npm run type-check` | ✅ |
+| 前端格式与 ESLint 迁移告警收敛（移除 `.eslintignore`） | ✅ |
+
+### 8.2 当前阻塞（非代码缺陷）
+
+| 项目 | 现象 | 结论 |
+|------|------|------|
+| `docker compose build` | 拉取 `docker.io` 基础镜像失败（`registry-1.docker.io:443 connect refused`） | 当前环境网络阻塞，需恢复 Docker Hub 网络后复验 |
 
 ---
 

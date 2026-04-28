@@ -83,6 +83,12 @@ npm run lint
 npm run type-check
 ```
 
+上线前最小闸门（当前基线）:
+- 后端核心服务: `cd services/{api-gateway,data-service,user-service,recommendation-service} && go test ./...`
+- 前端质量: `cd frontend && npm run lint && npm run type-check`
+- Swagger 一致性: 变更 API 注释后必须重生成并提交 `docs/`
+- recommendation-service C++ 引擎默认启用条件: `linux/amd64 + cgo`（其他环境自动回退 mock）
+
 ## API 与 Swagger
 
 - 网关入口: `http://localhost:8080`
