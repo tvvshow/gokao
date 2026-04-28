@@ -123,20 +123,6 @@ const createOrder = async () => {
   // TODO: 支付功能开发中
   ElMessage.info('支付功能开发中，敬请期待');
   return;
-
-  loading.value = true;
-  try {
-    const order = await paymentStore.createOrder({
-      plan_code: selectedPlan.value,
-      payment_channel: selectedPaymentChannel.value,
-    });
-    console.log('订单创建成功:', order);
-    // 这里可以跳转到支付页面或显示支付二维码
-  } catch (error) {
-    console.error('创建订单失败:', error);
-  } finally {
-    loading.value = false;
-  }
 };
 </script>
 

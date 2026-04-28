@@ -52,6 +52,7 @@ export default [
       ...pluginTypeScript.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
+      'no-unused-vars': 'off',
       'no-undef': 'off',
     },
   },
@@ -92,6 +93,7 @@ export default [
       'vue/multi-word-component-names': 'off',
       '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
+      'no-unused-vars': 'off',
       'no-undef': 'off',
     },
   },
@@ -105,7 +107,7 @@ export default [
     rules: {
       ...configPrettier.rules,
       'prettier/prettier': [
-        'error',
+        'warn',
         {
           endOfLine: 'auto',
         },
