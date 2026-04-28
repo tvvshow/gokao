@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
-	"data-service/internal/database"
 	"encoding/json"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
 	"strings"
 	"time"
 
@@ -28,20 +28,20 @@ func NewCacheService(db *database.DB, logger *logrus.Logger) *CacheService {
 
 // CacheConfig 缓存配置
 type CacheConfig struct {
-	TTL              time.Duration
-	Prefix           string
+	TTL               time.Duration
+	Prefix            string
 	EnableCompression bool
 }
 
 // DefaultCacheConfigs 默认缓存配置
 var DefaultCacheConfigs = map[string]CacheConfig{
-	"university":     {TTL: 10 * time.Minute, Prefix: "uni:", EnableCompression: true},
-	"major":          {TTL: 10 * time.Minute, Prefix: "maj:", EnableCompression: true},
-	"admission":      {TTL: 5 * time.Minute, Prefix: "adm:", EnableCompression: true},
-	"search":         {TTL: 2 * time.Minute, Prefix: "search:", EnableCompression: false},
-	"statistics":     {TTL: 30 * time.Minute, Prefix: "stats:", EnableCompression: true},
-	"hot_searches":   {TTL: 10 * time.Minute, Prefix: "hot:", EnableCompression: false},
-	"autocomplete":   {TTL: 5 * time.Minute, Prefix: "ac:", EnableCompression: false},
+	"university":   {TTL: 10 * time.Minute, Prefix: "uni:", EnableCompression: true},
+	"major":        {TTL: 10 * time.Minute, Prefix: "maj:", EnableCompression: true},
+	"admission":    {TTL: 5 * time.Minute, Prefix: "adm:", EnableCompression: true},
+	"search":       {TTL: 2 * time.Minute, Prefix: "search:", EnableCompression: false},
+	"statistics":   {TTL: 30 * time.Minute, Prefix: "stats:", EnableCompression: true},
+	"hot_searches": {TTL: 10 * time.Minute, Prefix: "hot:", EnableCompression: false},
+	"autocomplete": {TTL: 5 * time.Minute, Prefix: "ac:", EnableCompression: false},
 }
 
 // Set 设置缓存
@@ -301,7 +301,7 @@ func (s *CacheService) GetCacheStats(ctx context.Context) (map[string]interface{
 	}
 
 	stats := make(map[string]interface{})
-	
+
 	// 解析Redis INFO输出
 	lines := strings.Split(info, "\r\n")
 	for _, line := range lines {
@@ -330,7 +330,7 @@ func (s *CacheService) WarmupCache(ctx context.Context) error {
 
 	// 预热常用的静态数据
 	go s.warmupStaticData(ctx)
-	
+
 	// 预热热门搜索数据
 	go s.warmupHotSearches(ctx)
 
@@ -392,8 +392,8 @@ func (s *CacheService) warmupHotSearches(ctx context.Context) {
 func (s *CacheService) warmupStatistics(ctx context.Context) {
 	// 预热基础统计数据
 	stats := map[string]interface{}{
-		"total_universities": 3000,
-		"total_majors":      12000,
+		"total_universities":   3000,
+		"total_majors":         12000,
 		"total_admission_data": 500000,
 	}
 	s.Set(ctx, "basic_stats", stats, "statistics")

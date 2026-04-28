@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"data-service/internal/database"
-	"data-service/internal/services"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ import (
 type PerformanceHandler struct {
 	performanceService *services.PerformanceService
 	cacheService       *services.CacheService
-	database          *database.DB
+	database           *database.DB
 	logger             *logrus.Logger
 }
 
@@ -22,7 +22,7 @@ func NewPerformanceHandler(performanceService *services.PerformanceService, cach
 	return &PerformanceHandler{
 		performanceService: performanceService,
 		cacheService:       cacheService,
-		database:          database,
+		database:           database,
 		logger:             logger,
 	}
 }
@@ -129,15 +129,15 @@ func (h *PerformanceHandler) RefreshCache(c *gin.Context) {
 
 	// 验证缓存类型
 	validTypes := map[string]bool{
-		"university": true,
-		"major":      true,
-		"admission":  true,
-		"search":     true,
-		"statistics": true,
+		"university":   true,
+		"major":        true,
+		"admission":    true,
+		"search":       true,
+		"statistics":   true,
 		"hot_searches": true,
 		"autocomplete": true,
 	}
-	
+
 	if !validTypes[cacheType] {
 		c.JSON(http.StatusBadRequest, NewErrorResponse("无效的缓存类型"))
 		return

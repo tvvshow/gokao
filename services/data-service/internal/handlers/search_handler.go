@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"data-service/internal/services"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 	"strconv"
 
@@ -148,7 +148,7 @@ func (h *SearchHandler) AutoComplete(c *gin.Context) {
 // @Router /api/v1/search/hot [get]
 func (h *SearchHandler) GetHotSearches(c *gin.Context) {
 	category := c.Query("category")
-	
+
 	limit := 10
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {

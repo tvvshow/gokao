@@ -1,10 +1,10 @@
 package services
 
 import (
-	"data-service/internal/database"
-	"data-service/internal/models"
 	"encoding/json"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -48,7 +48,7 @@ func (s *DataProcessingService) ProcessUniversityData(data []byte) error {
 		// 检查是否已存在
 		var existing models.University
 		result := tx.Where("code = ?", uni.Code).First(&existing)
-		
+
 		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
 				// 创建新记录
@@ -98,7 +98,7 @@ func (s *DataProcessingService) ProcessMajorData(data []byte) error {
 		// 检查是否已存在
 		var existing models.Major
 		result := tx.Where("code = ? AND university_id = ?", major.Code, major.UniversityID).First(&existing)
-		
+
 		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
 				// 创建新记录
@@ -147,9 +147,9 @@ func (s *DataProcessingService) ProcessAdmissionData(data []byte) error {
 	for _, admission := range admissions {
 		// 检查是否已存在
 		var existing models.AdmissionData
-		result := tx.Where("university_id = ? AND major_id = ? AND year = ? AND province = ?", 
+		result := tx.Where("university_id = ? AND major_id = ? AND year = ? AND province = ?",
 			admission.UniversityID, admission.MajorID, admission.Year, admission.Province).First(&existing)
-		
+
 		if result.Error != nil {
 			if result.Error == gorm.ErrRecordNotFound {
 				// 创建新记录

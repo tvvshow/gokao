@@ -3,13 +3,14 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/time/rate"
 	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
-	"github.com/oktetopython/gaokao/pkg/auth"
+	"golang.org/x/time/rate"
 )
 
 // CORS 跨域中间件
@@ -71,12 +72,86 @@ func RateLimit(cfg config.RateLimitConfig) gin.HandlerFunc {
 	}
 }
 
-// Auth JWT认证中间件 (已废弃 - 请使用 pkg/auth)
-// DEPRECATED: Use github.com/oktetopython/gaokao/pkg/auth.AuthMiddleware instead
+// Auth JWT认证中间件
 func Auth(cfg config.JWTConfig) gin.HandlerFunc {
-	// 使用共享的认证中间件
-	authMiddleware := auth.NewAuthMiddleware(cfg.Secret)
-	return authMiddleware.RequireAuth()
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "missing or invalid authorization header",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "empty bearer token",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			return []byte(cfg.Secret), nil
+		})
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid token",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid token claims",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		userID := claimString(claims, "user_id")
+		if userID == "" {
+			userID = claimString(claims, "sub")
+		}
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "token missing user identity",
+				"code":  "UNAUTHORIZED",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", userID)
+		if username := claimString(claims, "username"); username != "" {
+			c.Set("username", username)
+		}
+		if role := claimString(claims, "role"); role != "" {
+			c.Set("role", role)
+		}
+
+		c.Next()
+	}
+}
+
+func claimString(claims jwt.MapClaims, key string) string {
+	raw, ok := claims[key]
+	if !ok || raw == nil {
+		return ""
+	}
+	v, ok := raw.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(v)
 }
 
 // AdminOnly 管理员权限中间件

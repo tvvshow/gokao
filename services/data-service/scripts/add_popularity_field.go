@@ -1,9 +1,9 @@
 package main
 
 import (
-	"data-service/internal/config"
-	"data-service/internal/database"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
 	"log"
 
 	"github.com/sirupsen/logrus"
@@ -24,7 +24,7 @@ func main() {
 
 	// 添加 popularity_score 字段
 	sql := `ALTER TABLE majors ADD COLUMN IF NOT EXISTS popularity_score INTEGER DEFAULT 0;`
-	
+
 	result := db.PostgreSQL.Exec(sql)
 	if result.Error != nil {
 		log.Fatal("添加 popularity_score 字段失败:", result.Error)

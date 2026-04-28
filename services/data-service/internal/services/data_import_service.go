@@ -1,8 +1,8 @@
 package services
 
 import (
-	"data-service/internal/database"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
 	"io"
 	"mime/multipart"
 	"path/filepath"

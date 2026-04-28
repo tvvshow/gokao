@@ -2,10 +2,10 @@ package services
 
 import (
 	"context"
-	"data-service/internal/database"
-	"data-service/internal/models"
 	"encoding/json"
 	"fmt"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/models"
 	"strings"
 	"time"
 
@@ -33,38 +33,38 @@ type AdmissionQueryParams struct {
 	// 基本查询
 	UniversityID string `form:"university_id"`
 	MajorID      string `form:"major_id"`
-	
+
 	// 年份筛选
-	Year     int   `form:"year"`
-	MinYear  int   `form:"min_year"`
-	MaxYear  int   `form:"max_year"`
-	
+	Year    int `form:"year"`
+	MinYear int `form:"min_year"`
+	MaxYear int `form:"max_year"`
+
 	// 地区筛选
 	Province string `form:"province"`
-	
+
 	// 批次筛选
 	Batch    string `form:"batch"`    // early_admission, first_batch, second_batch, third_batch, specialized
 	Category string `form:"category"` // science, liberal_arts, comprehensive
-	
+
 	// 分数筛选
 	MinScore float64 `form:"min_score"`
 	MaxScore float64 `form:"max_score"`
-	
+
 	// 排名筛选
 	MinRank int `form:"min_rank"`
 	MaxRank int `form:"max_rank"`
-	
+
 	// 难度筛选
 	Difficulty string `form:"difficulty"` // very_easy, easy, medium, hard, very_hard
-	
+
 	// 排序选项
 	SortBy    string `form:"sort_by"`    // year, score, rank
 	SortOrder string `form:"sort_order"` // asc, desc
-	
+
 	// 分页参数
 	Page     int `form:"page,default=1"`
 	PageSize int `form:"page_size,default=20"`
-	
+
 	// 关联数据
 	IncludeUniversity bool `form:"include_university"`
 	IncludeMajor      bool `form:"include_major"`
@@ -142,7 +142,7 @@ func (s *AdmissionService) ListAdmissionData(ctx context.Context, params Admissi
 
 	// 生成缓存键
 	cacheKey := s.generateAdmissionCacheKey("admission:list", params)
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -159,10 +159,10 @@ func (s *AdmissionService) ListAdmissionData(ctx context.Context, params Admissi
 
 	// 构建查询
 	query := s.db.PostgreSQL.Model(&models.AdmissionData{})
-	
+
 	// 应用筛选条件
 	s.applyAdmissionFilters(query, params)
-	
+
 	// 计算总数
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -171,11 +171,11 @@ func (s *AdmissionService) ListAdmissionData(ctx context.Context, params Admissi
 
 	// 应用排序
 	s.applyAdmissionSort(query, params)
-	
+
 	// 应用分页
 	offset := (params.Page - 1) * params.PageSize
 	query = query.Offset(offset).Limit(params.PageSize)
-	
+
 	// 预加载关联数据
 	if params.IncludeUniversity {
 		query = query.Preload("University")
@@ -213,7 +213,7 @@ func (s *AdmissionService) ListAdmissionData(ctx context.Context, params Admissi
 func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityID, majorID, province, category string) (*AdmissionAnalysis, error) {
 	// 生成缓存键
 	cacheKey := fmt.Sprintf("admission:analysis:%s:%s:%s:%s", universityID, majorID, province, category)
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -233,7 +233,7 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 		Where("university_id = ?", universityID).
 		Where("province = ?", province).
 		Where("category = ?", category)
-	
+
 	if majorID != "" {
 		query = query.Where("major_id = ?", majorID)
 	}
@@ -250,7 +250,7 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 
 	// 构建分析结果
 	analysis := &AdmissionAnalysis{}
-	
+
 	// 获取院校和专业信息
 	if universityID != "" {
 		var university models.University
@@ -258,7 +258,7 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 			analysis.University = &university
 		}
 	}
-	
+
 	if majorID != "" {
 		var major models.Major
 		if err := s.db.PostgreSQL.Where("id = ?", majorID).First(&major).Error; err == nil {
@@ -270,10 +270,10 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 	years := make(map[int]bool)
 	var scores []float64
 	var ranks []int
-	
+
 	for _, data := range admissionData {
 		years[data.Year] = true
-		
+
 		// 分数趋势
 		if data.AvgScore > 0 {
 			analysis.ScoreTrend = append(analysis.ScoreTrend, ScorePoint{
@@ -282,7 +282,7 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 			})
 			scores = append(scores, data.AvgScore)
 		}
-		
+
 		// 排名趋势
 		if data.AvgRank > 0 {
 			analysis.RankTrend = append(analysis.RankTrend, RankPoint{
@@ -350,11 +350,11 @@ func (s *AdmissionService) PredictAdmission(ctx context.Context, req PredictionR
 
 	// 计算预测结果
 	response := &PredictionResponse{}
-	
+
 	// 统计分数信息
 	var scores []float64
 	var ranks []int
-	
+
 	for _, data := range admissionData {
 		if data.AvgScore > 0 {
 			scores = append(scores, data.AvgScore)
@@ -369,13 +369,13 @@ func (s *AdmissionService) PredictAdmission(ctx context.Context, req PredictionR
 		response.AvgScore = s.calculateAverage(scores)
 		response.MaxScore = s.findMax(scores)
 		response.ScoreGap = req.Score - response.AvgScore
-		
+
 		// 计算录取概率
 		response.Probability = s.calculateProbability(req.Score, scores)
-		
+
 		// 生成推荐
 		response.Recommendation = s.generatePredictionRecommendation(response.Probability)
-		
+
 		// 生成分析说明
 		response.Analysis = s.generateAnalysis(req, response)
 	}
@@ -386,7 +386,7 @@ func (s *AdmissionService) PredictAdmission(ctx context.Context, req PredictionR
 // GetAdmissionStatistics 获取录取数据统计
 func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int) (map[string]interface{}, error) {
 	cacheKey := fmt.Sprintf("admission:statistics:%d", year)
-	
+
 	// 尝试从缓存获取
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
 		cached, err := s.db.Redis.Get(ctx, cacheKey).Result()
@@ -399,7 +399,7 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 	}
 
 	stats := make(map[string]interface{})
-	
+
 	// 基础查询
 	baseQuery := s.db.PostgreSQL.Model(&models.AdmissionData{})
 	if year > 0 {
@@ -410,7 +410,7 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 	var total int64
 	baseQuery.Count(&total)
 	stats["total"] = total
-	
+
 	// 按省份统计
 	var provinceStats []struct {
 		Province string `json:"province"`
@@ -422,7 +422,7 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 		Limit(20).
 		Scan(&provinceStats)
 	stats["by_province"] = provinceStats
-	
+
 	// 按批次统计
 	var batchStats []struct {
 		Batch string `json:"batch"`
@@ -432,7 +432,7 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 		Group("batch").
 		Scan(&batchStats)
 	stats["by_batch"] = batchStats
-	
+
 	// 分数分布统计
 	var scoreStats struct {
 		AvgScore float64 `json:"avg_score"`
@@ -504,12 +504,12 @@ func (s *AdmissionService) applyAdmissionSort(query *gorm.DB, params AdmissionQu
 	if sortBy == "" {
 		sortBy = "year"
 	}
-	
+
 	sortOrder := strings.ToUpper(params.SortOrder)
 	if sortOrder != "ASC" {
 		sortOrder = "DESC"
 	}
-	
+
 	switch sortBy {
 	case "year":
 		query.Order("year " + sortOrder)
@@ -527,7 +527,7 @@ func (s *AdmissionService) calculateAverage(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	sum := 0.0
 	for _, v := range values {
 		sum += v
@@ -540,7 +540,7 @@ func (s *AdmissionService) calculateAverageInt(values []int) float64 {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	sum := 0
 	for _, v := range values {
 		sum += v
@@ -553,7 +553,7 @@ func (s *AdmissionService) findMin(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	min := values[0]
 	for _, v := range values[1:] {
 		if v < min {
@@ -568,7 +568,7 @@ func (s *AdmissionService) findMax(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	max := values[0]
 	for _, v := range values[1:] {
 		if v > max {
@@ -583,7 +583,7 @@ func (s *AdmissionService) findMinInt(values []int) int {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	min := values[0]
 	for _, v := range values[1:] {
 		if v < min {
@@ -598,7 +598,7 @@ func (s *AdmissionService) findMaxInt(values []int) int {
 	if len(values) == 0 {
 		return 0
 	}
-	
+
 	max := values[0]
 	for _, v := range values[1:] {
 		if v > max {
@@ -613,21 +613,21 @@ func (s *AdmissionService) calculateDifficulty(data []models.AdmissionData) stri
 	if len(data) == 0 {
 		return "unknown"
 	}
-	
+
 	// 简单的难度计算逻辑，实际应该更复杂
 	var avgAdmissionRate float64
 	count := 0
-	
+
 	for _, d := range data {
 		if d.AdmissionRate > 0 {
 			avgAdmissionRate += d.AdmissionRate
 			count++
 		}
 	}
-	
+
 	if count > 0 {
 		avgAdmissionRate /= float64(count)
-		
+
 		if avgAdmissionRate >= 0.8 {
 			return "very_easy"
 		} else if avgAdmissionRate >= 0.6 {
@@ -640,7 +640,7 @@ func (s *AdmissionService) calculateDifficulty(data []models.AdmissionData) stri
 			return "very_hard"
 		}
 	}
-	
+
 	return "medium"
 }
 
@@ -649,21 +649,21 @@ func (s *AdmissionService) calculateCompetition(data []models.AdmissionData) flo
 	if len(data) == 0 {
 		return 0
 	}
-	
+
 	var totalCompetition float64
 	count := 0
-	
+
 	for _, d := range data {
 		if d.Competition > 0 {
 			totalCompetition += d.Competition
 			count++
 		}
 	}
-	
+
 	if count > 0 {
 		return totalCompetition / float64(count)
 	}
-	
+
 	return 0
 }
 
@@ -672,7 +672,7 @@ func (s *AdmissionService) calculateProbability(score float64, historicalScores 
 	if len(historicalScores) == 0 {
 		return 0
 	}
-	
+
 	// 简单的概率计算，实际应该使用更复杂的统计模型
 	lowerCount := 0
 	for _, s := range historicalScores {
@@ -680,7 +680,7 @@ func (s *AdmissionService) calculateProbability(score float64, historicalScores 
 			lowerCount++
 		}
 	}
-	
+
 	return float64(lowerCount) / float64(len(historicalScores))
 }
 
@@ -713,13 +713,13 @@ func (s *AdmissionService) generatePredictionRecommendation(probability float64)
 // generateAnalysis 生成分析说明
 func (s *AdmissionService) generateAnalysis(req PredictionRequest, resp *PredictionResponse) string {
 	var analysis strings.Builder
-	
+
 	if resp.ScoreGap > 0 {
 		analysis.WriteString(fmt.Sprintf("您的分数比历年平均分高%.1f分，", resp.ScoreGap))
 	} else {
 		analysis.WriteString(fmt.Sprintf("您的分数比历年平均分低%.1f分，", -resp.ScoreGap))
 	}
-	
+
 	switch resp.Recommendation {
 	case "safe":
 		analysis.WriteString("录取把握较大，建议作为保底志愿。")
@@ -730,7 +730,7 @@ func (s *AdmissionService) generateAnalysis(req PredictionRequest, resp *Predict
 	case "very_risky":
 		analysis.WriteString("录取风险较大，不建议填报。")
 	}
-	
+
 	return analysis.String()
 }
 

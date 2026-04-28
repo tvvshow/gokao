@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"data-service/internal/database"
-	"data-service/internal/services"
 	"encoding/json"
+	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,22 +12,22 @@ import (
 
 // DataHandler 数据处理处理器
 type DataHandler struct {
-	db             *database.DB
+	db                *database.DB
 	processingService *services.DataProcessingService
-	importService   *services.DataImportService
-	logger         *logrus.Logger
+	importService     *services.DataImportService
+	logger            *logrus.Logger
 }
 
 // NewDataHandler 创建新的数据处理处理器
 func NewDataHandler(db *database.DB, logger *logrus.Logger) *DataHandler {
 	processingService := services.NewDataProcessingService(db, logger)
 	importService := services.NewDataImportService(db, logger)
-	
+
 	return &DataHandler{
-		db:             db,
+		db:                db,
 		processingService: processingService,
-		importService:   importService,
-		logger:         logger,
+		importService:     importService,
+		logger:            logger,
 	}
 }
 

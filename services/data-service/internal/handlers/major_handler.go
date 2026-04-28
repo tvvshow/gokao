@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"data-service/internal/services"
+	"github.com/oktetopython/gaokao/services/data-service/internal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -229,9 +229,9 @@ func (h *MajorHandler) GetMajorStatistics(c *gin.Context) {
 // @Router /api/v1/majors/degree-types [get]
 func (h *MajorHandler) GetDegreeTypes(c *gin.Context) {
 	degreeTypes := map[string]string{
-		"bachelor":  "学士",
-		"master":    "硕士",
-		"doctoral":  "博士",
+		"bachelor": "学士",
+		"master":   "硕士",
+		"doctoral": "博士",
 	}
 
 	c.JSON(http.StatusOK, NewSuccessResponse(degreeTypes))
