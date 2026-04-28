@@ -374,7 +374,7 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: [build, build-frontend]
-    if: ${{ github.ref == 'refs/heads/develop' && secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
+    if: github.ref == 'refs/heads/develop'
     environment: staging
     
     steps:
@@ -386,11 +386,13 @@ jobs:
         version: 'v1.28.0'
     
     - name: Configure kubectl
+      if: ${{ secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
       run: |
         echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
         export KUBECONFIG=kubeconfig
     
     - name: Deploy to Staging
+      if: ${{ secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
       run: |
         export KUBECONFIG=kubeconfig
         envsubst < k8s/staging/kustomization.yaml | kubectl apply -k -
@@ -401,7 +403,7 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: [build, build-frontend, security-scan]
-    if: ${{ github.ref == 'refs/heads/main' && secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
+    if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:
@@ -413,11 +415,13 @@ jobs:
         version: 'v1.28.0'
     
     - name: Configure kubectl
+      if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
       run: |
         echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
         export KUBECONFIG=kubeconfig
     
     - name: Blue-Green Deployment
+      if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
       run: |
         export KUBECONFIG=kubeconfig
         
