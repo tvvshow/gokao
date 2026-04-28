@@ -386,14 +386,22 @@ jobs:
         version: 'v1.28.0'
     
     - name: Configure kubectl
-      if: ${{ secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
+      if: ${{ hashFiles('k8s/staging/kustomization.yaml') != '' }}
       run: |
+        if [ -z "${{ secrets.KUBE_CONFIG_STAGING }}" ]; then
+          echo "KUBE_CONFIG_STAGING is empty, skipping staging deploy setup."
+          exit 0
+        fi
         echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
         export KUBECONFIG=kubeconfig
     
     - name: Deploy to Staging
-      if: ${{ secrets.KUBE_CONFIG_STAGING != '' && hashFiles('k8s/staging/kustomization.yaml') != '' }}
+      if: ${{ hashFiles('k8s/staging/kustomization.yaml') != '' }}
       run: |
+        if [ ! -f kubeconfig ]; then
+          echo "kubeconfig not present, skipping staging deployment."
+          exit 0
+        fi
         export KUBECONFIG=kubeconfig
         envsubst < k8s/staging/kustomization.yaml | kubectl apply -k -
         kubectl rollout status deployment/api-gateway -n gaokao-staging
@@ -415,14 +423,22 @@ jobs:
         version: 'v1.28.0'
     
     - name: Configure kubectl
-      if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
+      if: ${{ hashFiles('k8s/production/kustomization.yaml') != '' }}
       run: |
+        if [ -z "${{ secrets.KUBE_CONFIG_PRODUCTION }}" ]; then
+          echo "KUBE_CONFIG_PRODUCTION is empty, skipping production deploy setup."
+          exit 0
+        fi
         echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
         export KUBECONFIG=kubeconfig
     
     - name: Blue-Green Deployment
-      if: ${{ secrets.KUBE_CONFIG_PRODUCTION != '' && hashFiles('k8s/production/kustomization.yaml') != '' }}
+      if: ${{ hashFiles('k8s/production/kustomization.yaml') != '' }}
       run: |
+        if [ ! -f kubeconfig ]; then
+          echo "kubeconfig not present, skipping production deployment."
+          exit 0
+        fi
         export KUBECONFIG=kubeconfig
         
         # 创建新版本部署
@@ -490,8 +506,12 @@ jobs:
     
     steps:
     - name: Notify Success
-      if: ${{ needs.deploy-production.result == 'success' && secrets.WEBHOOK_URL != '' }}
+      if: ${{ needs.deploy-production.result == 'success' }}
       run: |
+        if [ -z "${{ secrets.WEBHOOK_URL }}" ]; then
+          echo "WEBHOOK_URL is empty, skipping success notification."
+          exit 0
+        fi
         curl -X POST ${{ secrets.WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
           -d '{
@@ -511,8 +531,12 @@ jobs:
           }'
     
     - name: Notify Failure
-      if: ${{ needs.deploy-production.result == 'failure' && secrets.WEBHOOK_URL != '' }}
+      if: ${{ needs.deploy-production.result == 'failure' }}
       run: |
+        if [ -z "${{ secrets.WEBHOOK_URL }}" ]; then
+          echo "WEBHOOK_URL is empty, skipping failure notification."
+          exit 0
+        fi
         curl -X POST ${{ secrets.WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
           -d '{
