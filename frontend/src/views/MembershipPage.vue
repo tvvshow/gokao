@@ -24,7 +24,10 @@
 
               <div class="plan-features">
                 <ul>
-                  <li v-for="feature in plan.features" :key="feature">
+                  <li
+                    v-for="feature in normalizePlanFeatures(plan.features)"
+                    :key="feature"
+                  >
                     <el-icon><check /></el-icon>
                     <span>{{ feature }}</span>
                   </li>
@@ -76,13 +79,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Check, Close } from '@element-plus/icons-vue';
+import { usePaymentStore } from '@/stores/payment';
 import type { MembershipPlanItem } from '@/types/payment';
 
-// 会员套餐
-const membershipPlans = ref([
+const paymentStore = usePaymentStore();
+const membershipPlans = ref<MembershipPlanItem[]>([
   {
     id: 'free',
     name: '免费版',
@@ -91,38 +95,6 @@ const membershipPlans = ref([
     featured: false,
     buttonText: '当前版本',
     features: ['基础院校查询', '简单数据分析', '每日10次查询', '基础推荐功能'],
-  },
-  {
-    id: 'basic',
-    name: '基础版',
-    price: 99,
-    period: '年',
-    featured: true,
-    buttonText: '立即购买',
-    features: [
-      '无限院校查询',
-      '详细数据分析',
-      'AI智能推荐',
-      '历史趋势分析',
-      '专业就业报告',
-      '优先客服支持',
-    ],
-  },
-  {
-    id: 'premium',
-    name: '专业版',
-    price: 199,
-    period: '年',
-    featured: false,
-    buttonText: '立即购买',
-    features: [
-      '包含基础版所有功能',
-      '一对一专家咨询',
-      '定制化推荐报告',
-      '实时数据更新',
-      '多轮志愿模拟',
-      '专属客服经理',
-    ],
   },
 ]);
 
@@ -147,6 +119,36 @@ const selectPlan = (plan: MembershipPlanItem) => {
   ElMessage.info('支付功能开发中，敬请期待');
   // 这里可以跳转到支付页面
 };
+
+const normalizePlanFeatures = (
+  features: MembershipPlanItem['features']
+): string[] => {
+  if (Array.isArray(features)) {
+    return features;
+  }
+  return Object.keys(features || {});
+};
+
+onMounted(async () => {
+  try {
+    const plans = await paymentStore.getMembershipPlans();
+    const dynamicPlans = plans.map((plan) => {
+      const days = plan.duration_days || 30;
+      return {
+        ...plan,
+        period: `${days}天`,
+        featured: plan.plan_code === 'premium' || plan.recommended,
+        buttonText: '立即购买',
+        features: Array.isArray(plan.features)
+          ? plan.features
+          : Object.keys(plan.features || {}),
+      } as MembershipPlanItem;
+    });
+    membershipPlans.value = [membershipPlans.value[0], ...dynamicPlans];
+  } catch {
+    // keep fallback plans
+  }
+});
 </script>
 
 <style scoped>

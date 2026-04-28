@@ -267,7 +267,7 @@ func (h *PaymentHandler) QueryRefund(c *gin.Context) {
 
 // ListPaymentsRequest 列出支付记录请求
 type ListPaymentsRequest struct {
-	UserID  int64  `form:"user_id"`
+	UserID  string `form:"user_id"`
 	Status  string `form:"status"`
 	Channel string `form:"channel"`
 	Page    int    `form:"page,default=1"`
@@ -294,8 +294,30 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 		req.Limit = 20
 	}
 
-	// 构建查询条件
-	userID := uuid.MustParse(fmt.Sprintf("%d", req.UserID))
+	// 构建查询条件：优先使用网关透传用户ID，其次兼容 query.user_id。
+	userIDRaw := c.GetString("user_id")
+	if userIDRaw == "" {
+		userIDRaw = c.GetHeader("X-User-ID")
+	}
+	if userIDRaw == "" {
+		userIDRaw = req.UserID
+	}
+	if userIDRaw == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "User ID is required",
+		})
+		return
+	}
+	userID, err := uuid.Parse(userIDRaw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_user_id",
+			"message": "Invalid user ID format",
+		})
+		return
+	}
+
 	filter := &models.PaymentFilter{
 		UserID:   &userID,
 		Status:   &req.Status,

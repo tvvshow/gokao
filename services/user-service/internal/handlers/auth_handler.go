@@ -160,7 +160,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"token":        response.AccessToken,
+			"refreshToken": response.RefreshToken,
+			"expiresAt":    response.ExpiresAt,
+			"user":         response.User,
+		},
+		// Backward-compatible fields for older clients.
+		"access_token":  response.AccessToken,
+		"refresh_token": response.RefreshToken,
+		"expires_at":    response.ExpiresAt,
+		"user":          response.User,
+	})
 }
 
 // RefreshTokenRequest 刷新令牌请求
@@ -205,7 +218,20 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"token":        response.AccessToken,
+			"refreshToken": response.RefreshToken,
+			"expiresAt":    response.ExpiresAt,
+			"user":         response.User,
+		},
+		// Backward-compatible fields for older clients.
+		"access_token":  response.AccessToken,
+		"refresh_token": response.RefreshToken,
+		"expires_at":    response.ExpiresAt,
+		"user":          response.User,
+	})
 }
 
 // LogoutRequest 登出请求

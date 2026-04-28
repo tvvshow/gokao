@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -155,8 +156,14 @@ func (mt *MigrationTool) Close() error {
 }
 
 func main() {
-	// 数据库连接信息（实际使用时应从配置文件读取）
-	dsn := "host=localhost user=postgres password=password dbname=gaokao_data port=5432 sslmode=disable"
+	// 优先读取环境变量，避免硬编码凭据。
+	dsn := os.Getenv("DATA_SERVICE_DATABASE_URL")
+	if dsn == "" {
+		dsn = os.Getenv("DATABASE_URL")
+	}
+	if dsn == "" {
+		log.Fatal("missing database dsn: set DATA_SERVICE_DATABASE_URL or DATABASE_URL")
+	}
 
 	// 创建迁移工具
 	mt, err := NewMigrationTool(dsn)

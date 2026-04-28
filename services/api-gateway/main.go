@@ -605,13 +605,13 @@ func (pm *ProxyManager) setupProxyRoutes(router *gin.Engine, basePrefix string, 
 	paymentGroup.Use(auth.RequireAuth(), pm.createProxy("payment", basePrefix+"/payments", "/api/v1/payments"))
 	paymentGroup.Any("/*path")
 
-	// 数据查询与推荐页面按前端设计支持匿名访问，有 token 时透传用户信息。
+	// 数据查询按前端设计支持匿名访问，有 token 时透传用户信息。
 	dataGroup := api.Group("/data")
 	dataGroup.Use(auth.OptionalAuth(), pm.createProxy("data", basePrefix+"/data", "/api/v1"))
 	dataGroup.Any("/*path")
 
 	recommendationGroup := api.Group("/recommendations")
-	recommendationGroup.Use(auth.OptionalAuth(), pm.createProxy("recommendation", basePrefix+"/recommendations", "/api/v1/recommendations"))
+	recommendationGroup.Use(auth.RequireAuth(), pm.createProxy("recommendation", basePrefix+"/recommendations", "/api/v1/recommendations"))
 	recommendationGroup.Any("/*path")
 }
 

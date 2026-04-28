@@ -15,11 +15,11 @@ import type {
   MajorListParams,
   AdmissionListParams,
 } from '@/types/api';
+import { isWrappedResponse, type WrappedResponse } from '@/utils/api-response';
 
 // API基础配置 - 生产环境使用相对路径，开发环境使用localhost
 // 使用 ?? 空值合并运算符，只有undefined/null时才使用默认值，空字符串不会被替换
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const API_TIMEOUT = 10000;
 
 // Token存储键名
@@ -27,13 +27,14 @@ const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
 // Token刷新响应格式
-interface RefreshTokenResponse {
-  success: boolean;
-  data: {
-    token: string;
-    refreshToken?: string;
-  };
-  message?: string;
+type RefreshTokenResponse = WrappedResponse<{
+  token: string;
+  refreshToken?: string;
+}>;
+
+interface RawRefreshTokenResponse {
+  access_token?: string;
+  refresh_token?: string;
 }
 
 // API客户端类
@@ -130,22 +131,41 @@ class ApiClient {
     }
 
     try {
-      const response = await axios.post<RefreshTokenResponse>(
+      const response = await axios.post<
+        RefreshTokenResponse | RawRefreshTokenResponse
+      >(
         `${this.baseURL}/api/v1/users/auth/refresh`,
-        { refreshToken },
+        { refresh_token: refreshToken },
         { headers: { 'Content-Type': 'application/json' } }
       );
 
-      if (response.data.success && response.data.data.token) {
-        const newToken = response.data.data.token;
+      const responseData = response.data;
+      const wrappedToken = isWrappedResponse<{
+        token: string;
+        refreshToken?: string;
+      }>(responseData)
+        ? responseData.data?.token
+        : undefined;
+      const wrappedRefreshToken = isWrappedResponse<{
+        token: string;
+        refreshToken?: string;
+      }>(responseData)
+        ? responseData.data?.refreshToken
+        : undefined;
+      const rawToken =
+        'access_token' in responseData ? responseData.access_token : undefined;
+      const rawRefreshToken =
+        'refresh_token' in responseData
+          ? responseData.refresh_token
+          : undefined;
+      const newToken = wrappedToken || rawToken;
+
+      if (newToken) {
         localStorage.setItem(TOKEN_KEY, newToken);
 
-        // 如果返回了新的refreshToken，也更新
-        if (response.data.data.refreshToken) {
-          localStorage.setItem(
-            REFRESH_TOKEN_KEY,
-            response.data.data.refreshToken
-          );
+        const newRefreshToken = wrappedRefreshToken || rawRefreshToken;
+        if (newRefreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
         }
 
         return newToken;
@@ -260,10 +280,7 @@ class ApiClient {
   }
 
   // Download method for blob responses (PDFs, etc.)
-  async download<T = Blob>(
-    url: string,
-    data?: unknown
-  ): Promise<T> {
+  async download<T = Blob>(url: string, data?: unknown): Promise<T> {
     const response = await this.axiosInstance.request({
       url,
       method: 'POST',
