@@ -551,7 +551,7 @@ std::string RandomGenerator::GenerateUUID() {
     bytes[8] = (bytes[8] & 0x3F) | 0x80; // 变体10
     
     std::ostringstream oss;
-    oss << std::hex << std::setfill('0') << std::lowercase;
+    oss << std::hex << std::setfill('0');
     
     for (size_t i = 0; i < 16; ++i) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {

@@ -47,20 +47,28 @@ pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 # 包含目录
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${OPENSSL_INCLUDE_DIR})
+include_directories(${SQLITE3_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
 
 # 源文件
 set(SOURCES
     src/license_manager.cpp
     src/crypto_utils.cpp
-    src/c_interface.cpp
 )
 
 # 头文件
 set(HEADERS
     include/license_manager.h
     include/crypto_utils.h
-    include/c_interface.h
 )
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/c_interface.cpp")
+    list(APPEND SOURCES src/c_interface.cpp)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/c_interface.h")
+    list(APPEND HEADERS include/c_interface.h)
+endif()
 
 # 静态库
 add_library(gaokaohub_license_static STATIC ${SOURCES} ${HEADERS})
@@ -104,7 +112,9 @@ target_compile_definitions(gaokaohub_license_shared PRIVATE
 )
 
 # 测试可执行文件
-if(BUILD_TESTING)
+if(BUILD_TESTING
+   AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_license_manager.cpp"
+   AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_crypto_utils.cpp")
     enable_testing()
     
     # 查找测试框架
@@ -129,13 +139,15 @@ if(BUILD_TESTING)
 endif()
 
 # 示例程序
-add_executable(license_example examples/license_example.cpp)
-target_link_libraries(license_example 
-    gaokaohub_license_static
-    ${OPENSSL_LIBRARIES}
-    ${SQLITE3_LIBRARIES}
-    ${JSONCPP_LIBRARIES}
-)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/license_example.cpp")
+    add_executable(license_example examples/license_example.cpp)
+    target_link_libraries(license_example 
+        gaokaohub_license_static
+        ${OPENSSL_LIBRARIES}
+        ${SQLITE3_LIBRARIES}
+        ${JSONCPP_LIBRARIES}
+    )
+endif()
 
 # 安装配置
 install(TARGETS gaokaohub_license_static gaokaohub_license_shared

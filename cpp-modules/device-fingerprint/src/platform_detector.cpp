@@ -27,6 +27,7 @@
     #pragma comment(lib, "psapi.lib")
 #elif defined(__linux__)
     #include <unistd.h>
+    #include <sys/ptrace.h>
     #include <sys/utsname.h>
     #include <sys/sysinfo.h>
     #include <sys/types.h>

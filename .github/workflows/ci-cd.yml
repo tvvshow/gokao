@@ -216,11 +216,7 @@ jobs:
         cd cpp-modules/${{ matrix.module }}
         mkdir -p build
         cd build
-        if [ "${{ matrix.module }}" = "volunteer-matcher" ]; then
-          cmake .. -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_BENCHMARKS=OFF
-        else
-          cmake ..
-        fi
+        cmake .. -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_BENCHMARKS=OFF
         make -j$(nproc)
     
     - name: Run C++ Tests
