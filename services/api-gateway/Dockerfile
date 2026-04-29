@@ -2,7 +2,7 @@
 
 # --- Builder stage ---
 FROM golang:1.25-alpine AS builder
-WORKDIR /app
+WORKDIR /app/services/api-gateway
 
 # Enable Go modules and download deps first (better layer caching)
 COPY services/api-gateway/go.mod services/api-gateway/go.sum ./
