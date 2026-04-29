@@ -52,8 +52,8 @@ services:
   # 数据服务
   data-service:
     build:
-      context: ./services/data-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/data-service/Dockerfile
     image: gaokao/data-service:latest
     container_name: gaokao_data_service
     ports:
@@ -196,8 +196,8 @@ services:
   # 支付服务
   payment-service:
     build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/payment-service/Dockerfile
     image: gaokao/payment-service:latest
     container_name: gaokao_payment_service
     ports:
@@ -230,8 +230,8 @@ services:
   # 监控服务
   monitoring-service:
     build:
-      context: ./services/monitoring-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/monitoring-service/Dockerfile
     image: gaokao/monitoring-service:latest
     container_name: gaokao_monitoring_service
     ports:

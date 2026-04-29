@@ -2,19 +2,20 @@
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
-WORKDIR /app
+WORKDIR /app/services/payment-service
 
 # 安装必要的系统依赖
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
 
 # 复制go mod文件
-COPY go.mod go.sum ./
+COPY services/payment-service/go.mod services/payment-service/go.sum ./
+COPY pkg/auth /app/pkg/auth
 
 # 下载依赖
 RUN go mod download
 
 # 复制源代码
-COPY . .
+COPY services/payment-service ./
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o payment-service main.go
@@ -36,7 +37,7 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /app/payment-service .
+COPY --from=builder /app/services/payment-service/payment-service .
 
 # 创建必要的目录
 RUN mkdir -p /app/logs /app/data

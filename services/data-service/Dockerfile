@@ -2,19 +2,26 @@
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
-WORKDIR /app
+WORKDIR /app/services/data-service
 
 # 安装依赖
 RUN apk add --no-cache git ca-certificates tzdata
 
 # 复制go mod文件
-COPY go.mod go.sum ./
+COPY services/data-service/go.mod services/data-service/go.sum ./
+COPY pkg/auth /app/pkg/auth
+COPY pkg/errors /app/pkg/errors
+COPY pkg/database /app/pkg/database
+COPY pkg/logger /app/pkg/logger
 
 # 下载依赖
 RUN go mod download
 
 # 复制源代码
-COPY . .
+COPY services/data-service ./
+
+# 复制共享pkg模块
+COPY pkg/ /app/pkg/
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
@@ -35,10 +42,10 @@ RUN adduser -D -s /bin/sh appuser
 WORKDIR /root/
 
 # 从builder阶段复制可执行文件
-COPY --from=builder /app/main .
+COPY --from=builder /app/services/data-service/main .
 
 # 复制配置文件（如果有）
-COPY --from=builder /app/.env* ./
+COPY --from=builder /app/services/data-service/.env* ./
 
 # 设置文件权限
 RUN chown -R appuser:appuser /root/
