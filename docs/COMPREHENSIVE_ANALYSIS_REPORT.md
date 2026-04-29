@@ -14,7 +14,7 @@
 **核心结论**:
 - 主功能路径（推荐生成、用户认证、数据查询）存在，可走通
 - **JWT 鉴权已收敛**：`/users/*`、`/payments/*`、`/recommendations/*` 已 RequireAuth；`/data/*` 保持 OptionalAuth
-- **C++ 引擎已通过 cppengine 标签生效**，legacycpp 分支已移除
+- **C++ 引擎已通过 `linux/amd64 + cgo` 默认生效**，legacycpp 分支已移除
 - **连接池已配置** (data-service, user-service, payment-service)，需统一治理参数而非从零补代码
 - 前端-后端主 API 契约已闭合（含 `health` 路径兼容）
 - 基础设施较完整：Prometheus + Alertmanager + Blackbox Exporter、健康检查、Graceful Shutdown
@@ -80,7 +80,7 @@
 | user-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | payment-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | api-gateway | N/A (反向代理) | - | - | HTTP transport 需确认 |
-| recommendation-service | ⚠️ 待确认 | - | - | |
+| recommendation-service | N/A | N/A | N/A | 当前服务主链路未使用数据库连接池 |
 
 ---
 
@@ -187,7 +187,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | Token 刷新 | ✅ | POST /auth/refresh |
 | 输入验证 (body size/content-type) | ✅ | 10MB, SQL/XSS 正则 |
 | CORS | ✅ | Gateway 统一，白名单 |
-| 硬编码密钥 | ⚠️ | `cmd/migrator/main.go:159` 有测试 DSN |
+| 硬编码密钥 | ✅ | `cmd/migrator/main.go` 已改为仅环境变量注入 DSN |
 | LLM API Key | ✅ | 环境变量注入，非代码 |
 
 ---
@@ -215,7 +215,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | golangci-lint + ESLint | ✅ |
 | Go 测试 | ✅ |
 | 前端测试 | ✅ 已在 CI 运行 |
-| Docker 构建 + ghcr.io 推送 | ✅ |
+| Docker 构建 + ghcr.io 推送 | ✅（代码与流程已具备；本地验收受网络环境影响） |
 | 自动部署 | ❌ |
 | 回滚 | ❌ |
 
@@ -233,6 +233,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | `go test ./...`：api-gateway / data-service / user-service / recommendation-service | ✅ |
 | 前端 `npm run lint`、`npm run type-check` | ✅ |
 | 前端格式与 ESLint 迁移告警收敛（移除 `.eslintignore`） | ✅ |
+| 新增统一上线闸门脚本 `scripts/go-live-gate.sh` | ✅ |
 
 ### 8.2 当前阻塞（非代码缺陷）
 
