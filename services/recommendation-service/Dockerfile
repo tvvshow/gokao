@@ -46,7 +46,12 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
 COPY --from=builder /tmp/volunteer-matcher/build/libvolunteer_matcher.so /usr/local/lib/
-RUN cd /usr/local/lib && ln -sf libvolunteer_matcher.so libvolunteer_matcher.so.1
+RUN cd /usr/local/lib \
+    && ln -sf libvolunteer_matcher.so libvolunteer_matcher.so.1 \
+    && jsoncpp_ver=$(ls /usr/lib/libjsoncpp.so.* 2>/dev/null | head -1 | sed 's|.*/||') \
+    && if [ -n "$jsoncpp_ver" ] && [ ! -e /usr/lib/libjsoncpp.so.26 ]; then \
+         ln -sf "$jsoncpp_ver" /usr/lib/libjsoncpp.so.26; \
+       fi
 COPY --from=builder /app/recommendation-service .
 
 RUN mkdir -p logs data && chown -R appuser:appgroup /app
