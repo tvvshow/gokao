@@ -30,18 +30,17 @@ services:
     networks:
       - gaokao_network
 
-  # Redis缓存
+  # Redis缓存 (默认无密码，需要密码时用 docker-compose.secure.yml 覆盖)
   redis:
     image: redis:7-alpine
     container_name: gaokao_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
-      - ./redis.conf:/etc/redis/redis.conf
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -63,7 +62,7 @@ services:
       - GIN_MODE=release
       - ENABLE_SWAGGER=1
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - DATA_IMPORT_ENABLED=${DATA_IMPORT_ENABLED:-true}
     volumes:
@@ -145,7 +144,7 @@ services:
       - PORT=8083
       - GIN_MODE=release
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/1
+      - REDIS_URL=redis://redis:6379/1
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - JWT_SECRET=${JWT_SECRET:-your-secret-key}
     volumes:
@@ -200,8 +199,10 @@ services:
       dockerfile: ./services/payment-service/Dockerfile
     image: gaokao/payment-service:latest
     container_name: gaokao_payment_service
-    ports:
-      - "8085:8085"
+    # 端口仅在 docker network 内暴露，通过 api-gateway 访问
+    # 如需宿主机直连，取消下面注释或用 docker-compose.override.yml 覆盖
+    # ports:
+    #   - "8085:8085"
     environment:
       - PORT=8085
       - GIN_MODE=release
@@ -212,7 +213,7 @@ services:
       - DB_NAME=${POSTGRES_DB:-gaokao_db}
       - DB_SSL_MODE=disable
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=
       - REDIS_DB=2
       - JWT_SECRET=${JWT_SECRET:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
