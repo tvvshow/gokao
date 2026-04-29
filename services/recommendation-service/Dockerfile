@@ -46,6 +46,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
 COPY --from=builder /tmp/volunteer-matcher/build/libvolunteer_matcher.so /usr/local/lib/
+RUN cd /usr/local/lib && ln -sf libvolunteer_matcher.so libvolunteer_matcher.so.1
 COPY --from=builder /app/recommendation-service .
 
 RUN mkdir -p logs data && chown -R appuser:appgroup /app
