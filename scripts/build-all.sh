@@ -437,7 +437,7 @@ main() {
     echo ""
     echo "启动服务:"
     echo "  cd ${BUILD_DIR}"
-    echo "  docker-compose -f docker-compose.prod.yml up -d"
+    echo "  docker compose -f docker-compose.prod.yml up -d"
     echo ""
 }
 

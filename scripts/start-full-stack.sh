@@ -22,8 +22,8 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # 检查Docker Compose
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "❌ Docker Compose 未安装，请先安装 Docker Compose"
+if ! docker compose version &> /dev/null; then
+    echo "❌ Docker Compose V2 未安装，请先安装 Docker Compose V2 (docker compose plugin)"
     exit 1
 fi
 
@@ -38,11 +38,11 @@ echo "✅ 环境检查通过"
 # 停止可能存在的服务
 echo "🛑 停止现有服务..."
 cd "$PROJECT_DIR"
-docker-compose down 2>/dev/null || true
+docker compose down 2>/dev/null || true
 
 # 启动后端服务
 echo "🚀 启动后端服务..."
-docker-compose up -d postgres redis data-service api-gateway
+docker compose up -d postgres redis data-service api-gateway
 
 # 等待服务启动
 echo "⏳ 等待后端服务启动..."
@@ -65,7 +65,7 @@ done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     echo "❌ 后端服务启动超时，请检查日志"
-    docker-compose logs
+    docker compose logs
     exit 1
 fi
 
@@ -99,7 +99,7 @@ echo "   - 数据服务: localhost:8082"
 echo "   - 前端界面: localhost:3000"
 echo ""
 echo "🛑 按 Ctrl+C 停止前端服务"
-echo "🛑 停止所有服务: docker-compose down"
+echo "🛑 停止所有服务: docker compose down"
 echo "====================================="
 
 # 启动前端开发服务器

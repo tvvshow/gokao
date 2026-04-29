@@ -284,7 +284,7 @@ show_next_steps() {
     
     echo -e "  ${ROCKET} ${GREEN}立即可做:${NC}"
     echo -e "    1. 运行构建脚本: ${YELLOW}./scripts/build-all.sh${NC}"
-    echo -e "    2. 启动开发环境: ${YELLOW}docker-compose up -d${NC}"
+    echo -e "    2. 启动开发环境: ${YELLOW}docker compose up -d${NC}"
     echo -e "    3. 执行安全加固: ${YELLOW}./scripts/security-hardening.sh${NC}"
     echo -e "    4. 运行完整测试: ${YELLOW}./scripts/build-all.sh --test${NC}"
     

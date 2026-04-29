@@ -54,7 +54,7 @@ echo %GREEN%✅ Docker 已安装%NC%
 
 :: 启动 PostgreSQL 容器
 echo %BLUE%启动 PostgreSQL 容器...%NC%
-docker-compose up -d postgres
+docker compose up -d postgres
 
 if errorlevel 1 (
     echo %RED%❌ 启动 PostgreSQL 容器失败%NC%
@@ -70,8 +70,8 @@ timeout /t 15 /nobreak >nul
 
 :: 创建数据库
 echo %BLUE%创建数据库...%NC%
-docker-compose exec -T postgres psql -U gaokao_user -d gaokao_db -c "CREATE DATABASE IF NOT EXISTS gaokao_data;"
-docker-compose exec -T postgres psql -U gaokao_user -d gaokao_db -c "CREATE DATABASE IF NOT EXISTS gaokao_users;"
+docker compose exec -T postgres psql -U gaokao_user -d gaokao_db -c "CREATE DATABASE IF NOT EXISTS gaokao_data;"
+docker compose exec -T postgres psql -U gaokao_user -d gaokao_db -c "CREATE DATABASE IF NOT EXISTS gaokao_users;"
 
 goto init_data
 

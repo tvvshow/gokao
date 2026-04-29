@@ -31,32 +31,34 @@
 ```bash
 # 必需软件
 - Docker 20.0+
-- Docker Compose 2.0+
+- Docker Compose V2 (docker compose plugin, NOT standalone docker-compose v1)
 - Git 2.30+
 
 # 可选软件 (开发用)
-- Go 1.21+
+- Go 1.25+
 - Node.js 18+
 - Redis 7+
 - PostgreSQL 15+
 ```
 
+> **重要**: 本项目使用 `docker compose` (V2 plugin) 命令，而非已废弃的 `docker-compose` (V1 standalone)。
+> 如果你的系统只有 `docker-compose`，请参考 [Docker 官方文档](https://docs.docker.com/compose/install/) 安装 Compose V2 plugin。
+
 ### 🎯 一键部署
 
 ```bash
 # 1. 克隆代码库
-git clone https://github.com/oktetopython/gaokao.git
+git clone https://github.com/tvvshow/gokao.git
 cd gaokao
 
-# 2. 复制环境配置
-cp .env.example .env
+# 2. 复制环境配置 (如有需要)
+cp config/.env.development .env
 
 # 3. 启动所有服务
-./scripts/build-all.sh --production
-docker-compose up -d
+docker compose up -d
 
 # 4. 验证部署
-./scripts/health-check.sh
+./scripts/smoke.sh
 ```
 
 ---
@@ -67,9 +69,9 @@ docker-compose up -d
 
 #### 1. Go开发环境
 ```bash
-# 安装Go 1.21+
-wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+# 安装Go 1.25+
+wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
 
 # 配置环境变量
 export PATH=$PATH:/usr/local/go/bin
@@ -94,7 +96,7 @@ brew install cmake openssl sqlite jsoncpp
 #### 3. 数据库环境
 ```bash
 # 启动开发数据库
-docker-compose -f docker-compose.dev.yml up -d postgres redis
+docker compose up -d postgres redis
 
 # 初始化数据库
 ./scripts/db-init.sh --dev
@@ -224,7 +226,7 @@ server {
 #### Go服务Dockerfile
 ```dockerfile
 # services/data-service/Dockerfile
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -577,7 +579,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.21
+        go-version: 1.25
     
     - name: Run tests
       run: |
@@ -588,7 +590,7 @@ jobs:
         done
     
     - name: Build Docker images
-      run: docker-compose build
+      run: docker compose build
     
     - name: Security scan
       run: |
@@ -838,7 +840,7 @@ db.SetConnMaxLifetime(300 * time.Second) // 连接最大生命周期
 #### 1. Docker优化
 ```dockerfile
 # 多阶段构建减小镜像大小
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 # ... 构建阶段
 
 FROM scratch
@@ -882,7 +884,7 @@ resources:
 #### 1. 服务启动失败
 ```bash
 # 检查日志
-docker-compose logs service-name
+docker compose logs service-name
 
 # 检查资源使用
 docker stats
@@ -891,7 +893,7 @@ docker stats
 netstat -tulpn | grep :8080
 
 # 重启服务
-docker-compose restart service-name
+docker compose restart service-name
 ```
 
 #### 2. 数据库连接问题
@@ -900,10 +902,10 @@ docker-compose restart service-name
 docker exec -it postgres-container psql -U username -d database
 
 # 检查数据库状态
-docker-compose ps postgres
+docker compose ps postgres
 
 # 查看数据库日志
-docker-compose logs postgres
+docker compose logs postgres
 ```
 
 #### 3. 性能问题排查
@@ -962,7 +964,7 @@ pgbench -h localhost -U username -d database -c 10 -t 100
 while true; do
     if ! curl -f -s http://localhost:8080/health > /dev/null; then
         echo "⚠️ 检测到服务异常，尝试重启..."
-        docker-compose restart api-gateway
+        docker compose restart api-gateway
         sleep 30
     fi
     sleep 60

@@ -88,21 +88,21 @@ function Install-Docker-PostgreSQL {
     
     try {
         # 使用项目的 docker-compose.yml
-        docker-compose up -d postgres
+        docker compose up -d postgres
         
         # 等待容器启动
         Write-Info "等待 PostgreSQL 启动..."
         Start-Sleep -Seconds 15
         
         # 检查容器状态
-        $containerStatus = docker-compose ps postgres
+        $containerStatus = docker compose ps postgres
         if ($containerStatus -match "Up") {
             Write-Success "PostgreSQL 容器启动成功"
             return $true
         }
         else {
             Write-Error "PostgreSQL 容器启动失败"
-            docker-compose logs postgres
+            docker compose logs postgres
             return $false
         }
     }
@@ -180,7 +180,7 @@ function Initialize-Database {
     Write-Step "3" "创建数据库和用户"
     
     if ($Method -eq "docker") {
-        $connectionString = "docker-compose exec postgres psql -U gaokao_user -d gaokao_db"
+        $connectionString = "docker compose exec postgres psql -U gaokao_user -d gaokao_db"
         $createDbScript = @"
 CREATE DATABASE gaokao_data;
 CREATE DATABASE gaokao_users;
@@ -211,7 +211,7 @@ GRANT ALL PRIVILEGES ON DATABASE gaokao_test TO gaokao_user;
         
         if ($Method -eq "docker") {
             # Docker 方式
-            docker-compose exec -T postgres psql -U gaokao_user -d gaokao_db -f - < $sqlFile
+            docker compose exec -T postgres psql -U gaokao_user -d gaokao_db -f - < $sqlFile
         }
         else {
             # 本地方式
@@ -264,7 +264,7 @@ function Test-Installation {
     try {
         if ($Method -eq "docker") {
             # 测试 Docker 容器
-            $containerStatus = docker-compose ps postgres
+            $containerStatus = docker compose ps postgres
             if ($containerStatus -match "Up") {
                 Write-Success "PostgreSQL 容器运行正常"
             }
@@ -274,7 +274,7 @@ function Test-Installation {
             }
             
             # 测试数据库连接
-            $testResult = docker-compose exec -T postgres psql -U gaokao_user -d gaokao_data -c "SELECT 1;"
+            $testResult = docker compose exec -T postgres psql -U gaokao_user -d gaokao_data -c "SELECT 1;"
             if ($testResult -match "1 row") {
                 Write-Success "数据库连接测试成功"
             }
@@ -291,7 +291,7 @@ function Test-Installation {
         # 测试数据
         Write-Info "检查示例数据..."
         if ($Method -eq "docker") {
-            $dataCount = docker-compose exec -T postgres psql -U gaokao_user -d gaokao_data -c "SELECT COUNT(*) FROM universities;"
+            $dataCount = docker compose exec -T postgres psql -U gaokao_user -d gaokao_data -c "SELECT COUNT(*) FROM universities;"
         }
         else {
             $env:PGPASSWORD = "gaokao_pass"
