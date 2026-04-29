@@ -5,6 +5,8 @@ RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /app
 
 COPY go.mod go.sum ./
+COPY internal/alerts/go.mod internal/alerts/go.sum ./internal/alerts/
+COPY internal/metrics/go.mod internal/metrics/go.sum ./internal/metrics/
 RUN go mod download
 
 COPY . .
