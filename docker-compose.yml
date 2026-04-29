@@ -94,8 +94,8 @@ services:
   # API 网关
   api-gateway:
     build:
-      context: ./services/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
     image: gaokao/api-gateway:latest
     container_name: gaokao_api_gateway
     ports:
@@ -135,8 +135,8 @@ services:
   # 用户服务
   user-service:
     build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
     image: gaokao/user-service:latest
     container_name: gaokao_user_service
     ports:

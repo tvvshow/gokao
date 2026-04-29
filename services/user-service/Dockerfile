@@ -3,7 +3,7 @@
 FROM golang:1.25-alpine AS builder
 
 # 设置工作目录
-WORKDIR /app/services/user-service
+WORKDIR /app
 
 # 安装必要的包
 RUN apk add --no-cache git ca-certificates tzdata
@@ -41,10 +41,10 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /root/
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /app/services/user-service/main .
+COPY --from=builder /app/main .
 
 # 复制配置文件（如果有的话）
-COPY --from=builder /app/services/user-service/.env.example .env.example
+COPY --from=builder /app/.env.example .env.example
 
 # 更改文件所有者
 RUN chown -R appuser:appgroup /root
