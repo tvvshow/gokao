@@ -78,29 +78,49 @@ const matchScore = computed(() => {
 .recommendation-stats {
   margin-bottom: 24px;
   padding: 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  border-radius: 0.875rem;
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .stat-item {
   text-align: center;
+  padding: 0.5rem 0.25rem;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #667eea;
+  color: #0ea5e9;
   margin-bottom: 4px;
 }
 
 .stat-label {
-  color: #7f8c8d;
+  color: #64748b;
   font-size: 14px;
+}
+
+.dark .recommendation-stats {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .stat-value {
+  color: #67e8f9;
+}
+
+.dark .stat-label {
+  color: #94a3b8;
 }
 
 @media (max-width: 768px) {
   .recommendation-stats {
     padding: 15px;
+  }
+
+  .recommendation-stats :deep(.el-col) {
+    margin-bottom: 0.625rem;
   }
 
   .stat-value {

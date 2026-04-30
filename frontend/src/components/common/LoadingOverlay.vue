@@ -72,7 +72,7 @@ withDefaults(defineProps<Props>(), {
 }
 
 .loading-icon {
-  color: #667eea;
+  color: #0ea5e9;
   animation: rotate 1.5s linear infinite;
 }
 

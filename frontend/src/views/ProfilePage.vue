@@ -1,12 +1,12 @@
 <template>
-  <div class="profile-page">
-    <div class="container">
+  <div class="profile-page min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container-modern py-8">
       <div class="page-header">
         <h1 class="page-title">个人中心</h1>
       </div>
 
-      <el-row :gutter="20">
-        <el-col :span="6">
+      <el-row :gutter="20" class="profile-layout">
+        <el-col :xs="24" :md="8" :lg="6">
           <el-card class="menu-card">
             <el-menu :default-active="activeMenu" @select="handleMenuSelect">
               <el-menu-item index="profile">
@@ -29,7 +29,7 @@
           </el-card>
         </el-col>
 
-        <el-col :span="18">
+        <el-col :xs="24" :md="16" :lg="18">
           <el-card class="content-card">
             <div v-if="loading" class="loading-state">
               <el-skeleton :rows="6" animated />
@@ -309,28 +309,27 @@ onMounted(async () => {
 
 <style scoped>
 .profile-page {
-  padding: 20px 0;
   min-height: calc(100vh - 160px);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
 }
 
 .page-header {
   margin-bottom: 30px;
+  text-align: center;
 }
 
 .page-title {
-  font-size: 28px;
-  color: #2c3e50;
+  font-size: 2rem;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .menu-card,
 .content-card {
   min-height: 500px;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .loading-state {
@@ -338,12 +337,13 @@ onMounted(async () => {
 }
 
 .section-content {
-  padding: 20px;
+  padding: 0.5rem 0.25rem;
 }
 
 .section-content h3 {
   margin-bottom: 20px;
-  color: #2c3e50;
+  color: #0f172a;
+  font-size: 1.0625rem;
 }
 
 .section-header {
@@ -362,6 +362,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
+  border: 1px solid #e2e8f0;
   background: #f8fafc;
   border-radius: 10px;
 }
@@ -373,9 +374,9 @@ onMounted(async () => {
 
 .info-card {
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: #fff;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .info-card-header {
@@ -394,27 +395,85 @@ onMounted(async () => {
 
 .info-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
 }
 
-@media (max-width: 768px) {
-  .el-row {
-    flex-direction: column;
-  }
+.menu-card :deep(.el-menu) {
+  border-inline-end: none;
+  background: transparent;
+}
 
-  .el-col {
-    width: 100%;
-    max-width: 100%;
-  }
+.menu-card :deep(.el-menu-item) {
+  border-radius: 0.75rem;
+  margin-bottom: 0.375rem;
+}
 
+.menu-card :deep(.el-menu-item.is-active) {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.content-card :deep(.el-card__body) {
+  padding: 1.25rem;
+}
+
+.dark .page-title {
+  color: #f1f5f9;
+}
+
+.dark .menu-card,
+.dark .content-card {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .section-content h3 {
+  color: #f1f5f9;
+}
+
+.dark .summary-row {
+  border-color: #334155;
+  background: rgba(30, 41, 59, 0.68);
+}
+
+.dark .info-card {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .info-card-body {
+  color: #94a3b8;
+}
+
+.dark .menu-card :deep(.el-menu-item.is-active) {
+  background: rgba(14, 165, 233, 0.2);
+  color: #7dd3fc;
+}
+
+@media (max-width: 991px) {
   .menu-card {
-    margin-bottom: 20px;
     min-height: auto;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.75rem;
+  }
+
+  .section-content {
+    padding: 0.125rem;
   }
 
   .info-card-header {
     flex-direction: column;
+  }
+
+  .content-card :deep(.el-card__body) {
+    padding: 1rem;
   }
 }
 </style>

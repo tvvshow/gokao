@@ -2,12 +2,12 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="container-modern py-8">
       <!-- 顶部导航栏 -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <button class="btn btn-secondary" @click="goBack">
           <ArrowLeftIcon class="w-4 h-4 mr-2" />
           返回列表
         </button>
-        <div class="flex space-x-2">
+        <div class="flex flex-wrap gap-2 md:justify-end">
           <button
             class="btn btn-outline"
             :class="{ 'btn-active': isFavorite }"
@@ -451,45 +451,48 @@ watch(() => route.params.id, fetchDetail);
 </script>
 
 <style scoped>
-/* 页面头部 - 使用绿色渐变 */
 .header-card {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
+  background:
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.24), transparent 45%),
+    linear-gradient(135deg, #0f766e 0%, #0e7490 52%, #164e63 100%);
+  color: #f8fafc;
   padding: 2rem;
   border-radius: 1rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow:
+    0 12px 32px -14px rgba(13, 148, 136, 0.58),
+    0 18px 40px -26px rgba(15, 23, 42, 0.72);
 }
 
 .header-card .page-title {
-  color: white;
+  color: #fff;
   margin: 0;
 }
 
 .header-card .text-gray-200 {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(240, 253, 250, 0.9);
 }
 
 .header-card .text-gray-300 {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(209, 250, 229, 0.86);
 }
 
-/* 徽章样式 */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
+  border: 1px solid rgba(134, 239, 172, 0.45);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .badge-popular {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fef08a;
+  background: rgba(254, 243, 199, 0.2);
+  color: #fef3c7;
 }
 
-/* 信息网格 */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -501,7 +504,11 @@ watch(() => route.params.id, fetchDetail);
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+  border-bottom: 1px dashed #d1d9e6;
+}
+
+.dark .info-row {
+  border-bottom-color: #374151;
 }
 
 .info-row:last-child {
@@ -509,42 +516,51 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .label {
-  color: #6b7280;
+  color: #64748b;
   font-size: 0.875rem;
 }
 
 .dark .label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .value {
-  color: #1f2937;
-  font-weight: 500;
+  color: #0f172a;
+  font-weight: 600;
 }
 
 .dark .value {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
-/* 就业数据卡片 */
 .employment-card {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfeff 100%);
 }
 
 .dark .employment-card {
-  background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 
 .employment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .employment-item {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.875rem;
+  padding: 1rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.875rem;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.7);
+}
+
+.dark .employment-item {
+  background: rgba(31, 41, 55, 0.92);
+  border-color: #334155;
 }
 
 .employment-icon {
@@ -554,16 +570,16 @@ watch(() => route.params.id, fetchDetail);
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
-  color: white;
+  color: #fff;
   flex-shrink: 0;
 }
 
 .employment-rate {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
 }
 
 .employment-salary {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
 }
 
 .employment-content {
@@ -573,59 +589,57 @@ watch(() => route.params.id, fetchDetail);
 .employment-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .dark .employment-value {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .employment-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #64748b;
   margin-top: 0.25rem;
 }
 
 .dark .employment-label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .employment-bar {
   height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
+  background: #dbe3ef;
+  border-radius: 9999px;
   margin-top: 0.5rem;
   overflow: hidden;
 }
 
 .dark .employment-bar {
-  background: #374151;
+  background: #334155;
 }
 
 .employment-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
-  border-radius: 3px;
+  background: linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%);
+  border-radius: 9999px;
   transition: width 0.5s ease-out;
 }
 
 .employment-desc {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #94a3b8;
   margin-top: 0.25rem;
 }
 
-/* 专业介绍 */
 .prose {
-  color: #374151;
-  line-height: 1.75;
+  color: #334155;
+  line-height: 1.8;
 }
 
 .dark .prose {
-  color: #d1d5db;
+  color: #cbd5e1;
 }
 
-/* 相关专业 */
 .related-majors {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -634,52 +648,55 @@ watch(() => route.params.id, fetchDetail);
 
 .related-major-card {
   padding: 1rem;
-  border-radius: 0.5rem;
-  background: #f9fafb;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
   transition: all 0.2s;
   text-decoration: none;
   color: inherit;
 }
 
 .dark .related-major-card {
-  background: #374151;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  border-color: #334155;
 }
 
 .related-major-card:hover {
-  background: #dcfce7;
+  border-color: #67e8f9;
+  background: #ecfeff;
   transform: translateY(-2px);
 }
 
 .dark .related-major-card:hover {
-  background: #166534;
+  border-color: #22d3ee;
+  background: #0f172a;
 }
 
 .related-major-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #0f172a;
   margin-bottom: 0.25rem;
 }
 
 .dark .related-major-name {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .related-major-meta {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dark .related-major-meta {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* 统计卡片 */
 .stats-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .dark .stats-card {
-  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 
 .quick-stats {
@@ -692,14 +709,16 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 0.875rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.7);
 }
 
 .dark .quick-stat {
-  background: #4b5563;
+  background: rgba(31, 41, 55, 0.92);
+  border-color: #334155;
 }
 
 .stat-icon {
@@ -708,20 +727,20 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
-  color: white;
+  border-radius: 0.625rem;
+  color: #fff;
 }
 
 .stat-degree {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
 }
 
 .stat-duration {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
 }
 
 .stat-employment {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 .stat-content {
@@ -731,23 +750,22 @@ watch(() => route.params.id, fetchDetail);
 .stat-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .dark .stat-value {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dark .stat-label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* 开设院校列表 */
 .universities-list {
   display: flex;
   flex-direction: column;
@@ -759,21 +777,25 @@ watch(() => route.params.id, fetchDetail);
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
-  border-radius: 0.5rem;
-  background: #f9fafb;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
   transition: all 0.2s;
 }
 
 .dark .university-item {
-  background: #374151;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  border-color: #334155;
 }
 
 .university-item:hover {
-  background: #ede9fe;
+  border-color: #7dd3fc;
+  background: #f0f9ff;
 }
 
 .dark .university-item:hover {
-  background: #4c1d95;
+  border-color: #22d3ee;
+  background: #0f172a;
 }
 
 .university-item-content {
@@ -782,38 +804,37 @@ watch(() => route.params.id, fetchDetail);
 
 .university-item-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .dark .university-item-name {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .university-item-meta {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dark .university-item-meta {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .university-item-link {
   padding: 0.5rem;
-  color: #6d28d9;
+  color: #0e7490;
   transition: all 0.2s;
 }
 
 .university-item-link:hover {
-  color: #5b21b6;
+  color: #0369a1;
   transform: translateX(2px);
 }
 
-/* 操作按钮 */
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .action-btn {
@@ -821,11 +842,11 @@ watch(() => route.params.id, fetchDetail);
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background: white;
-  color: #374151;
+  padding: 0.8125rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #334155;
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.2s;
@@ -833,58 +854,57 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .dark .action-btn {
-  background: #4b5563;
-  border-color: #6b7280;
-  color: #f3f4f6;
+  background: #1f2937;
+  border-color: #374151;
+  color: #e2e8f0;
 }
 
 .action-btn:hover {
-  background: #f9fafb;
-  border-color: #10b981;
-  color: #10b981;
+  background: #f0f9ff;
+  border-color: #38bdf8;
+  color: #0369a1;
 }
 
 .dark .action-btn:hover {
-  background: #6b7280;
-  border-color: #34d399;
-  color: #34d399;
+  background: #0f172a;
+  border-color: #22d3ee;
+  color: #67e8f9;
 }
 
-/* 提示卡片 */
 .tip-card {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  background: linear-gradient(135deg, #ecfeff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
 }
 
 .dark .tip-card {
-  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1f2937 100%);
+  border-color: #164e63;
 }
 
 .tip-card .section-title {
-  color: #92400e;
+  color: #0e7490;
 }
 
 .dark .tip-card .section-title {
-  color: #fef08a;
+  color: #67e8f9;
 }
 
 .tip-content {
-  color: #78350f;
+  color: #0f172a;
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .dark .tip-content {
-  color: #fef3c7;
+  color: #cbd5e1;
 }
 
-/* 按钮样式 */
 .btn-active {
   background: #fee2e2 !important;
   color: #dc2626 !important;
   border-color: #dc2626 !important;
 }
 
-/* 动画 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -900,7 +920,6 @@ watch(() => route.params.id, fetchDetail);
   animation: fadeIn 0.3s ease-out;
 }
 
-/* 加载和错误状态 */
 .loading-container,
 .error-container,
 .empty-container {
@@ -913,16 +932,12 @@ watch(() => route.params.id, fetchDetail);
   margin-bottom: 1rem;
 }
 
-/* 响应式 */
 @media (max-width: 768px) {
   .header-card {
-    padding: 1.5rem;
+    padding: 1.375rem;
   }
 
-  .employment-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .employment-grid,
   .info-grid {
     grid-template-columns: 1fr;
   }

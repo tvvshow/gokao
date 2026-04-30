@@ -1,5 +1,5 @@
 <template>
-  <header class="nav-modern">
+  <header class="nav-modern header-shell">
     <div class="container-modern">
       <div class="flex-between py-4">
         <!-- Logo 区域 -->
@@ -20,7 +20,10 @@
         </div>
 
         <!-- 导航菜单 -->
-        <nav class="hidden md:flex items-center space-x-1" aria-label="主导航">
+        <nav
+          class="hidden md:flex items-center space-x-1 nav-track"
+          aria-label="主导航"
+        >
           <router-link
             v-for="item in navItems"
             :key="item.path"
@@ -37,13 +40,8 @@
         <!-- 用户区域 -->
         <div class="flex items-center space-x-4">
           <!-- 通知按钮 -->
-          <button
-            class="btn-icon"
-            title="通知"
-            aria-label="查看通知，有3条未读消息"
-          >
+          <button class="btn-icon" title="通知" aria-label="查看通知">
             <BellIcon class="w-5 h-5" aria-hidden="true" />
-            <span class="notification-badge" aria-hidden="true">3</span>
           </button>
 
           <!-- 用户菜单 -->
@@ -126,10 +124,7 @@
 
       <!-- 移动端导航菜单 -->
       <transition name="mobile-menu">
-        <div
-          v-if="mobileMenuOpen"
-          class="md:hidden py-4 border-t border-gray-200 dark:border-gray-700"
-        >
+        <div v-if="mobileMenuOpen" class="md:hidden py-4 mobile-menu-panel">
           <nav class="space-y-2" aria-label="移动端导航">
             <router-link
               v-for="item in navItems"
@@ -215,32 +210,36 @@ const handleUserCommand = (command: string) => {
 /* 现代化导航链接 */
 .nav-link-modern {
   @apply flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium;
-  @apply text-gray-700 dark:text-gray-300;
-  @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+  @apply text-slate-600 dark:text-slate-300;
+  @apply hover:bg-sky-50 dark:hover:bg-slate-800;
   @apply transition-all duration-200 ease-in-out;
   @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
 }
 
 .nav-link-modern.active {
-  @apply bg-primary-100 dark:bg-primary-900;
-  @apply text-primary-700 dark:text-primary-300;
-  @apply shadow-soft;
+  @apply bg-white dark:bg-slate-900;
+  @apply text-sky-700 dark:text-sky-300;
+  box-shadow:
+    0 1px 0 rgb(148 163 184 / 0.2),
+    0 8px 20px -14px rgb(14 165 233 / 0.6);
 }
 
 .nav-link-modern:hover {
-  @apply transform scale-105;
+  transform: translateY(-1px);
 }
 
 /* 图标按钮 */
 .btn-icon {
-  @apply relative p-2 rounded-lg text-gray-600 dark:text-gray-400;
-  @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+  @apply relative p-2.5 rounded-xl text-slate-600 dark:text-slate-300;
+  @apply hover:bg-sky-50 dark:hover:bg-slate-800;
   @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   @apply transition-all duration-200 ease-in-out;
+  border: 1px solid rgb(148 163 184 / 0.25);
+  background: rgb(255 255 255 / 0.74);
 }
 
 .btn-icon:hover {
-  @apply text-gray-900 dark:text-gray-100;
+  @apply text-slate-900 dark:text-slate-100;
 }
 
 /* 通知徽章 */
@@ -253,6 +252,10 @@ const handleUserCommand = (command: string) => {
 /* 用户头像容器 */
 .user-avatar-container {
   @apply relative cursor-pointer;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid rgb(148 163 184 / 0.34);
+  background: rgb(255 255 255 / 0.8);
 }
 
 .status-indicator {
@@ -266,8 +269,8 @@ const handleUserCommand = (command: string) => {
 }
 
 .user-info-header {
-  @apply flex items-center p-4 border-b border-gray-200 dark:border-gray-700;
-  @apply bg-gray-50 dark:bg-gray-800;
+  @apply flex items-center p-4 border-b border-slate-200 dark:border-slate-700;
+  @apply bg-slate-50 dark:bg-slate-800;
 }
 
 .dropdown-item {
@@ -279,9 +282,41 @@ const handleUserCommand = (command: string) => {
 /* 移动端导航链接 */
 .mobile-nav-link {
   @apply flex items-center space-x-3 px-4 py-3 rounded-lg;
-  @apply text-gray-700 dark:text-gray-300;
-  @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+  @apply text-slate-700 dark:text-slate-200;
+  @apply hover:bg-sky-50 dark:hover:bg-slate-800;
   @apply transition-all duration-200 ease-in-out;
+}
+
+.header-shell {
+  background: rgb(255 255 255 / 0.84);
+  border-bottom: 1px solid rgb(148 163 184 / 0.24);
+  backdrop-filter: blur(10px);
+}
+
+.dark .header-shell {
+  background: rgb(2 6 23 / 0.76);
+  border-bottom-color: rgb(71 85 105 / 0.45);
+}
+
+.nav-track {
+  padding: 0.25rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(148 163 184 / 0.24);
+  background:
+    linear-gradient(
+      120deg,
+      rgb(248 250 252 / 0.78),
+      rgb(241 245 249 / 0.78)
+    );
+}
+
+.dark .nav-track {
+  border-color: rgb(71 85 105 / 0.55);
+  background: linear-gradient(120deg, rgb(15 23 42 / 0.9), rgb(30 41 59 / 0.9));
+}
+
+.mobile-menu-panel {
+  border-top: 1px solid rgb(148 163 184 / 0.24);
 }
 
 /* 移动端菜单过渡动画 */
@@ -302,9 +337,14 @@ const handleUserCommand = (command: string) => {
 
 /* Logo 容器 */
 .logo-container {
-  @apply p-2 rounded-lg bg-primary-50 dark:bg-primary-900/20;
-  @apply group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30;
-  @apply transition-colors duration-200;
+  @apply p-2 rounded-xl transition-colors duration-200;
+  background: linear-gradient(145deg, #e0f2fe, #ccfbf1);
+  border: 1px solid rgb(125 211 252 / 0.5);
+}
+
+.dark .logo-container {
+  background: linear-gradient(145deg, rgb(14 116 144 / 0.45), rgb(15 118 110 / 0.45));
+  border-color: rgb(56 189 248 / 0.35);
 }
 
 /* 响应式设计 */

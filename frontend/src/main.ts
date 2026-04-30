@@ -6,7 +6,6 @@ import 'element-plus/theme-chalk/dark/css-vars.css';
 import App from './App.vue';
 import router from './router';
 import './style.css';
-import './styles/design-system.css';
 import { useUserStore } from './stores/user';
 import { setupErrorHandler } from './utils/errorHandler';
 

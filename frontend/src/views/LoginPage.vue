@@ -202,10 +202,10 @@ const passwordStrength = computed(() => {
 // 密码强度颜色
 const passwordStrengthColor = computed(() => {
   const score = passwordStrength.value.score;
-  if (score <= 1) return '#f56c6c';
-  if (score === 2) return '#e6a23c';
-  if (score === 3) return '#409eff';
-  return '#67c23a';
+  if (score <= 1) return '#ef4444';
+  if (score === 2) return '#f59e0b';
+  if (score === 3) return '#0ea5e9';
+  return '#22c55e';
 });
 
 // 验证规则
@@ -325,39 +325,50 @@ const guestLogin = () => {
 <style scoped>
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background:
+    radial-gradient(circle at 8% 12%, rgb(56 189 248 / 0.32) 0, transparent 38%),
+    radial-gradient(
+      circle at 92% 86%,
+      rgb(20 184 166 / 0.28) 0,
+      transparent 42%
+    ),
+    linear-gradient(135deg, #0f172a 0%, #0f766e 50%, #0ea5e9 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
 }
 
 .login-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
 }
 
 .login-card {
-  background: white;
-  border-radius: 16px;
+  background: rgb(255 255 255 / 0.95);
+  border: 1px solid rgb(226 232 240 / 0.78);
+  border-radius: 18px;
   padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  box-shadow:
+    0 22px 48px rgb(2 6 23 / 0.26),
+    0 6px 16px rgb(15 23 42 / 0.14);
+  backdrop-filter: blur(14px);
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
 .login-header h1 {
-  font-size: 24px;
-  color: #2c3e50;
-  margin-bottom: 8px;
+  font-size: 26px;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin-bottom: 9px;
 }
 
 .login-header p {
-  color: #7f8c8d;
+  color: #475569;
   font-size: 14px;
   margin: 0;
 }
@@ -371,6 +382,7 @@ const guestLogin = () => {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 8px;
 }
 
 .login-footer {
@@ -381,14 +393,39 @@ const guestLogin = () => {
   margin: 20px 0;
 }
 
+.login-card :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.login-card :deep(.el-checkbox__label) {
+  color: #334155;
+}
+
+.login-card :deep(.el-tabs__item) {
+  font-weight: 600;
+}
+
+.login-card :deep(.el-button--primary) {
+  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #0f766e 100%);
+}
+
+.login-card :deep(.el-button--primary:hover) {
+  filter: brightness(1.06);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .login-page {
+    padding: 14px;
+  }
+
   .login-card {
-    padding: 30px 20px;
+    padding: 28px 18px;
   }
 
   .login-header h1 {
-    font-size: 20px;
+    font-size: 22px;
   }
 }
 

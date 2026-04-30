@@ -1,9 +1,9 @@
-# 高考志愿填报系统 - 全面综合分析报告 (修订版 v3.3)
+# 高考志愿填报系统 - 全面综合分析报告 (最终上线审计版 v3.5)
 
-报告日期: 2026-04-28 (最后修订)  
+报告日期: 2026-04-30 (最后修订)  
 分析范围: 后端 6 微服务 + 前端 Vue3 + 17 pkg 模块 + C++ 算法 + CI/CD + Docker 部署  
 核对人: 用户本人核验  
-修订说明: 经用户核对，已剔除 3 处过时/错误结论，重算真实缺口
+修订说明: v3.5 补充注册链路前后端契约漂移分析（密码验证规则、字段对齐、错误信息传递）
 
 ---
 
@@ -12,11 +12,11 @@
 **系统形态**: `Vue3 前端 + API Gateway(Go/Gin) + 6 Go 微服务 + 17 pkg 共享模块 + C++ 算法 (CMake)`
 
 **核心结论**:
-- 主功能路径（推荐生成、用户认证、数据查询）存在，可走通
+- 主功能路径（推荐生成、用户认证、数据查询）代码存在，**但注册链路存在前后端契约漂移导致 400 错误**
+- **P0 阻塞项**: 前端密码验证规则（大写+小写+数字）与后端（大写+小写+数字+特殊字符）不一致；400 错误信息被前端吞掉
 - **JWT 鉴权已收敛**：`/users/*`、`/payments/*`、`/recommendations/*` 已 RequireAuth；`/data/*` 保持 OptionalAuth
-- **C++ 引擎已通过 cppengine 标签生效**，legacycpp 分支已移除
+- **C++ 引擎已通过 `linux/amd64 + cgo` 默认生效**，legacycpp 分支已移除
 - **连接池已配置** (data-service, user-service, payment-service)，需统一治理参数而非从零补代码
-- 前端-后端主 API 契约已闭合（含 `health` 路径兼容）
 - 基础设施较完整：Prometheus + Alertmanager + Blackbox Exporter、健康检查、Graceful Shutdown
 - 代码质量中等：gateway main.go 仍为超大单文件（1000+ 行），需继续拆分
 
@@ -68,9 +68,9 @@
 
 | 文件 | 构建标签 | 状态 |
 |------|---------|------|
-| `volunteer_matcher_bridge.go` | `//go:build cgo && cppengine` | ✅ **生效中** |
+| `volunteer_matcher_bridge.go` | `//go:build cgo && linux && amd64` | ✅ **默认生产平台生效** |
 | `hybrid_bridge.go` | `//go:build cgo && legacycpp` | ✅ 已移除 |
-| Dockerfile | `go build -tags cppengine` | ✅ 匹配生效路径 |
+| Dockerfile | `CGO_ENABLED=1 GOOS=linux GOARCH=amd64` 构建链路 | ✅ 匹配生效路径 |
 
 ### 2.6 连接池配置状态 (验证通过)
 
@@ -80,7 +80,7 @@
 | user-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | payment-service | ✅ 已配置 | ✅ 已配置 | ✅ 已配置 | 从配置读取 |
 | api-gateway | N/A (反向代理) | - | - | HTTP transport 需确认 |
-| recommendation-service | ⚠️ 待确认 | - | - | |
+| recommendation-service | N/A | N/A | N/A | 当前服务主链路未使用数据库连接池 |
 
 ---
 
@@ -94,19 +94,49 @@
 
 ### 3.2 C++ legacycpp 分支 (已清理)
 
-`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径 `cppengine`。
+`recommendation-service/pkg/cppbridge/hybrid_bridge.go`、`memory_safe.go` 已删除，保留单一路径（linux/amd64+cgo 启用 C++，其他环境自动回退 mock）。
 
-### 3.3 API 契约状态 (已闭合)
+### 3.3 API 契约状态
 
 | 前端调用 | 期望路径 | 后端状态 |
 |----------|----------|----------|
 | `api.health()` | `/api/v1/data/health` | ✅ 已补齐（data-service 同时保留 `/health`） |
+| `userApi.register()` | `/api/v1/users/auth/register` | ❌ 密码验证规则不一致，导致 400 |
 
 说明:
 - `userApi.getMembershipInfo()` 已对齐 `/api/v1/users/membership`
 - `recommendationApi.getRecommendTypes()/getRiskToleranceOptions()` 已改为 `/api/v1/data/algorithm/*` 并可用
 - `saveScheme/getSchemes/exportReport` 当前为前端本地实现（localStorage/Blob），非后端阻塞项
 - `popular/favorite/favorites/compare/admission-trend` 当前为前端派生/本地组合能力，非必需后端路由
+
+#### 注册链路前后端契约漂移（2026-04-30 发现）
+
+**请求链路**: `LoginPage.vue → userStore.register() → userApi.register() → POST /api/v1/users/auth/register → nginx → api-gateway (rewriteServicePath) → user-service /api/v1/auth/register → authHandler.Register`
+
+| 问题 | 前端行为 | 后端行为 | 影响 |
+|------|----------|----------|------|
+| 密码验证规则不一致 | `validators.ts:92-122` 仅检查大写+小写+数字 | `auth_handler.go:435-500` 额外要求特殊字符 + 禁止重复模式 | **用户输入 `Abc12345` 前端通过，后端返回 400** |
+| `confirmPassword` 字段漂移 | `LoginPage.vue:111` 发送 `confirmPassword` | `RegisterRequest` 结构体无此字段 | 无功能影响（Gin 忽略多余字段），但契约不对齐 |
+| `phone` 字段必填/可选不一致 | `types/user.ts:22` 定义 `phone?: string`（可选），`LoginPage.vue:239` 验证规则设为必填 | `RegisterRequest.Phone` binding 为 `max=20`（可选） | 前端强制收集手机号，后端不强制 |
+| 400 错误信息被吞掉 | `api-client.ts:244-261` 对 400 无特殊处理，显示通用"请求失败 (400)" | 返回 `{"error":"password_complexity_failed","details":"password must contain ..."}` | 用户看不到有意义的错误原因 |
+
+**请求/响应格式对照**:
+
+```
+前端发送 (RegisterForm):
+{ username, email, password, phone?, confirmPassword }
+
+后端期望 (RegisterRequest):
+{ username, password, email, nickname?, phone?, province?, city?, gender?, birthday? }
+
+后端成功响应 (201):
+{ message: "User registered successfully", user_id: "..." }
+
+前端解析 (normalizeMessageResponse):
+检查 isWrappedResponse → 否 → 返回 { success: true, message: raw.message }
+```
+
+**修复优先级**: High — 注册是用户首次接触的核心路径，400 错误直接阻断用户转化。
 
 ### 3.4 死代码与冗余
 
@@ -123,6 +153,8 @@
 | payment-service membership 路由 | ✅ 已完成 |
 | gateway dead files: `proxy.go` / `security.go` | ✅ 已清理 |
 | `weight_config_service.go` (`//go:build ignore`) | ✅ 已移除 |
+| 注册链路代码路径完整性 | ✅ 前端→网关→user-service 路由畅通 |
+| 注册链路前后端契约对齐 | ❌ 未闭合（见 3.3 注册专项） |
 
 ### 3.6 数据库问题
 
@@ -190,6 +222,19 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | 硬编码密钥 | ✅ 已清理 | migrator 改为 `DATA_SERVICE_DATABASE_URL` / `DATABASE_URL` 环境变量 |
 | LLM API Key | ✅ | 环境变量注入，非代码 |
 
+### 5.1 最终上线前新增审计发现（2026-04-30）
+
+| 严重级别 | 项目 | 现状 | 证据 |
+|------|------|------|------|
+| **High** | 注册链路密码验证规则前后端不一致 | 前端不检查特殊字符，后端强制要求 → 注册 400 | `validators.ts:92-122` vs `auth_handler.go:435-500` |
+| **High** | 注册 400 错误信息被前端吞掉 | 后端返回具体错误详情，前端仅显示通用"请求失败 (400)" | `api-client.ts:244-261` |
+| High | JWT 默认回退值风险 | `JWT_SECRET` 为空时仍可使用内置默认值启动 | `services/api-gateway/main.go:521-524` |
+| High | Compose 默认弱口令风险 | `docker-compose.yml` 含数据库与密钥默认值，存在误用面 | `docker-compose.yml:147,151,215` |
+| High | 公网 LLM 默认出口风险 | 推荐服务默认 `LLM_BASE_URL=https://api.openai.com/v1`，需按生产策略确认数据出境边界 | `docker-compose.yml:183` |
+| Medium | Gateway InputValidationMiddleware 可能误杀合法密码 | 密码含 SQL 关键字或 HTML 标签时被拦截返回 400 | `pkg/middleware/security.go:394-413` |
+| Medium | 前端 lint 警告残留 | 无 error，但存在 3 条 warning | `frontend/src/__tests__/properties/api-auth-token.test.ts:10`、`frontend/src/__tests__/properties/route-lazy-loading.test.ts:17`、`frontend/src/components/common/VirtualList.vue:31` |
+| Medium | 归档文档含 token push 示例 | 历史文档含 token URL push 示例，建议继续脱敏或移除 | `docs/archive/misc/PUSH_GUIDE.md:44` |
+
 ---
 
 ## 6. 测试覆盖
@@ -215,7 +260,7 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | golangci-lint + ESLint | ✅ |
 | Go 测试 | ✅ |
 | 前端测试 | ✅ 已在 CI 运行 |
-| Docker 构建 + ghcr.io 推送 | ✅ |
+| Docker 构建 + ghcr.io 推送 | ✅（流程具备；本地环境验证受网络条件影响） |
 | 自动部署 | ❌ |
 | 回滚 | ❌ |
 
@@ -223,37 +268,47 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 
 ## 8. 后续推进方向 (按顺序)
 
-### 第 0 步: 基线对齐
+### 第 0 步: 注册链路修复 (High, 阻塞用户转化)
+- 前端 `validators.ts` 密码验证增加特殊字符检查，与后端 `auth_handler.go:validatePassword` 对齐
+- 前端 `api-client.ts` 对 400 响应解析后端 `details` 字段并展示给用户
+- 前端 `LoginPage.vue` 注册提交前去掉 `confirmPassword` 字段（或后端接受并校验一致性）
+- 统一 `phone` 字段必填/可选约定（前端类型定义 vs 表单验证 vs 后端 binding）
+- 考虑 Gateway InputValidationMiddleware 对 `/auth/*` 路径的密码字段跳过 SQL/XSS 检测，或将检测限制在 URL 参数和表单参数（当前 body 未检测，实际风险低）
+
+### 第 1 步: 基线对齐
 - 将当前分支与 origin/main 对齐，确认哪些修复已在上游合并，避免重复工作。
 
-### 第 1 步: 鉴权策略收敛 (High)
+### 第 2 步: 鉴权策略收敛 (High)
 - ✅ 已完成：`/recommendations` 收敛为 `RequireAuth()`
 - 持续项：`/data` 匿名访问策略文档化
 
-### 第 2 步: 死代码清理 (Medium)
+### 第 3 步: 死代码清理 (Medium)
 - ✅ 已完成：删除 `hybrid_bridge.go` (legacycpp)
 - ✅ 已完成：删除 `memory_safe.go` (legacycpp)
 - 持续项：清理 legacycpp 相关文档与构建说明，避免误用
 
-### 第 3 步: API 契约维持 (Medium)
+### 第 4 步: API 契约维持 (Medium)
 - 新增接口默认遵循 `/api/v1/{service}/...` 网关规范
 - 前端本地能力（收藏/对比/本地方案）如改为后端持久化，需单独立项
+- 注册响应格式：后端返回 `{ message, user_id }`，前端通过 `normalizeMessageResponse` 兼容处理，可工作但建议统一为 `{ success, data, message }` 包装格式
 
-### 第 4 步: 数据库修复 (Medium)
+### 第 5 步: 数据库修复 (Medium)
 - DeviceLicense AutoMigrate
 - UniversityStatistics/MajorStatistics AutoMigrate
 - 统一 admissions/admission_data 表名
 - ✅ 已完成：`cmd/migrator/main.go` 移除硬编码 DSN
 
-### 第 5 步: 性能与工程 (Medium)
+### 第 6 步: 性能与工程 (Medium)
 - gateway main.go 拆分
 - 连接池参数统一治理 + 压测校准
 - 压力测试 (目标: 10k 并发, P99 < 500ms)
 
-### 第 6 步: 生产加固 (Medium)
+### 第 7 步: 生产加固 (Medium)
 - OpenTelemetry 链路追踪
 - CORS 收敛 (下游去冗余)
 - 自动化部署 + 回滚策略
+- 收敛默认弱口令/默认密钥回退（仅允许强制环境变量注入）
+- 明确 LLM 出网与数据脱敏策略
 
 ---
 
@@ -262,51 +317,57 @@ Prometheus 2.53 + Alertmanager 0.27 + Blackbox Exporter 0.25 已配置。`monito
 | 维度 | 评分 | 说明 |
 |------|------|------|
 | 架构设计 | B+ | 微服务分层合理，go.work 完整 |
-| 功能完整度 | B | 主路径可用，前后端主契约已闭合 |
-| 安全性 | B+ | JWT 挂载范围已收敛，推荐接口已强制鉴权 |
-| 性能 | B | C++ 引擎已通过 cppengine 生效 |
+| 功能完整度 | B- | 主路径代码存在，但注册链路存在前后端契约漂移导致 400 |
+| 安全性 | B | JWT 挂载范围已收敛；密码验证前后端不一致为新增风险 |
+| 性能 | B | C++ 引擎已通过 linux/amd64+cgo 生效 |
 | 可运营性 | B | 监控栈完整，缺链路追踪和自动部署 |
-| 代码质量 | C+ | gateway 大文件、前端本地存储策略待进一步收敛 |
-| 测试 | C- | 37 个测试文件但覆盖率不足 |
-| **上线就绪度** | **B+** | **主阻塞项已清理，进入优化与一致性治理阶段** |
+| 代码质量 | C+ | gateway 大文件、前后端契约漂移、前端错误处理不完善 |
+| 测试 | C- | 37 个测试文件但覆盖率不足，无注册 E2E 测试 |
+| **上线就绪度** | **B** | **注册链路 400 为 P0 阻塞项，需修复后方可上线** |
 
-**真实阻塞项**: 无 P0 阻塞项；当前为一致性与工程质量优化  
-**预估剩余工时**: 12-20h（不含可选优化项）
-
----
-
-*报告版本: v3.3 (核验修订版)*  
-*生成时间: 2026-04-28*  
-*修订: 完成鉴权收敛、legacycpp 清理、migrator 脱敏与前端共享工具收敛*
+**P0 阻塞项**: 注册链路密码验证规则前后端不一致 + 400 错误信息被吞掉（阻断用户首次注册）  
+**预估剩余工时**: 14-22h（含注册修复 2-4h）
 
 ---
 
-## 10. 本轮对比补充（已完 / 未完）
+*报告版本: v3.5 (注册链路专项审计)*  
+*生成时间: 2026-04-30*  
+*修订: 补充注册链路前后端契约漂移分析，新增 P0 阻塞项（密码验证规则不一致 + 错误信息吞没），调整上线就绪度 B+ → B*
 
-### 10.1 已完成（相对 v3.3 对账）
+---
 
-| 项目 | 结果 | 证据 |
+## 10. 本轮最终审计结论
+
+### 10.1 已验证通过
+
+| 项目 | 结果 |
+|------|------|
+| Go 核心服务测试（api-gateway/data-service/user-service/recommendation-service） | ✅ 通过 |
+| Gateway 鉴权挂载（users/payments/recommendations） | ✅ RequireAuth 生效 |
+| Swagger 生成一致性（api-gateway） | ✅ 可生成且当前一致 |
+| 注册链路代码路径完整性 | ✅ 前端→网关→user-service 路由畅通，handler/service/model 层均有实现 |
+| user-service 数据库自动迁移 | ✅ AutoMigrate 覆盖 12 个模型，seedDefaultData 初始化角色权限 |
+
+### 10.2 注册链路专项审计（2026-04-30 新增）
+
+| 检查项 | 结果 | 详情 |
 |------|------|------|
-| API Gateway 推荐路由鉴权 | ✅ `OptionalAuth` → `RequireAuth` | `services/api-gateway/main.go` |
-| recommendation-service legacycpp 清理 | ✅ 删除 `hybrid_bridge.go`、`memory_safe.go` | `services/recommendation-service/pkg/cppbridge/` |
-| data-service migrator 脱敏 | ✅ 移除硬编码 DSN，改环境变量 | `services/data-service/cmd/migrator/main.go` |
-| user-service 登录/刷新响应统一 | ✅ 返回 `{success, data}`，兼容旧字段 | `services/user-service/internal/handlers/auth_handler.go` |
-| 前端 API 响应/存储工具收敛 | ✅ 新增共享工具并接入主 API 模块 | `frontend/src/utils/api-response.ts`、`frontend/src/utils/storage.ts` |
-| payment 会员套餐来源 | ✅ 后端优先拉取，前端仅兜底 | `frontend/src/stores/payment.ts`、`frontend/src/views/MembershipPage.vue` |
-| payment 订单列表用户标识解析 | ✅ 优先 `X-User-ID` / `user_id` 且安全 UUID 解析 | `services/payment-service/internal/handlers/payment_handler.go` |
-| api-gateway Trivy 告警依赖修复 | ✅ `golang.org/x/crypto` 升级到 `v0.45.0` | `services/api-gateway/go.mod` |
+| 前端注册表单 → API 调用 | ✅ | `LoginPage.vue:289-316` → `userApi.register()` → `POST /api/v1/users/auth/register` |
+| Gateway 路由转发 | ✅ | `createUserProxy` 识别 `/users/auth/` 前缀，rewrite 为 `/api/v1/auth/register` |
+| user-service handler 绑定 | ✅ | `auth_handler.go:56-64` ShouldBindJSON 正确绑定 username/password/email/phone |
+| user-service 密码验证 | ⚠️ | 要求特殊字符，前端未检查 → 400 |
+| user-service CreateUser | ✅ | 检查重复→bcrypt 加密→创建记录→分配默认角色→审计日志 |
+| 前端错误处理 | ❌ | 400 响应的 `details` 字段未解析展示 |
+| 前后端字段对齐 | ⚠️ | confirmPassword 多余字段、phone 必填/可选不一致 |
 
-### 10.2 未完成（当前剩余）
+### 10.3 当前剩余风险（按优先级）
 
-| 项目 | 状态 | 说明 |
+| 项目 | 优先级 | 说明 |
 |------|------|------|
-| CI `Verify Swagger docs up-to-date` | ⚠️ 未闭环 | 需在最新 `origin/main` 基线重生 `services/api-gateway/docs/*` 并提交 |
-| 其他服务 `x/crypto` 版本治理 | ⚠️ 未统一 | `payment-service` / `data-service` / `recommendation-service` 仍有 `v0.41.0` 传递依赖 |
-| `/data/*` 匿名访问边界文档化 | ⚠️ 未完成 | 鉴权策略已实现，但边界说明仍需补全 |
-| 前端 localStorage 主存储彻底迁移 | ⚠️ 部分完成 | 已改“后端优先 + 本地兜底”，尚未完全去本地主存储 |
-
-### 10.3 下一步执行顺序（建议）
-
-1. 基于 `origin/main` 重新生成并提交 `api-gateway` Swagger 文档，先恢复 CI 绿色基线。  
-2. 统一评估并升级各服务 `golang.org/x/crypto` 版本，避免后续 Trivy 告警反复出现。  
-3. 将 payment/recommendation 的本地持久化进一步改为后端主存储。  
+| **注册密码验证规则前后端不一致** | **P0** | 阻断用户注册，必须在上线前修复 |
+| **注册 400 错误信息被吞** | **P0** | 用户无法理解失败原因，影响转化率 |
+| JWT/数据库默认回退值收敛 | P1 | 避免配置缺失时以弱默认值启动 |
+| LLM 出网与脱敏策略固化 | P1 | 明确生产数据边界与审计策略 |
+| 前后端契约统一（响应格式包装） | P2 | 当前 `normalizeMessageResponse` 兼容处理可工作，但非理想状态 |
+| 前端 lint warnings 清零 | P2 | 不阻塞上线，但建议保持质量门零警告 |
+| 归档文档敏感示例清理 | P2 | 继续减少历史文档误导风险 |

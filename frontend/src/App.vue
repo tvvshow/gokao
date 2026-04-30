@@ -4,7 +4,7 @@
     <AppHeader />
 
     <!-- 主内容区域 -->
-    <main class="flex-1 container-modern py-8">
+    <main class="flex-1">
       <ErrorBoundary
         fallback-title="页面加载出错"
         fallback-message="抱歉，页面加载时发生了错误，请刷新重试"

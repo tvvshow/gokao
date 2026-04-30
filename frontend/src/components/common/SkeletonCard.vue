@@ -73,7 +73,7 @@ const getLineWidth = (index: number): string => {
 
 .skeleton-avatar {
   border-radius: 8px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, #f0f0f0 25%, #e2e8f0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   flex-shrink: 0;
 }
@@ -85,8 +85,8 @@ const getLineWidth = (index: number): string => {
 
 .skeleton-line {
   height: 16px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e2e8f0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   margin-bottom: 12px;
 }
@@ -120,8 +120,8 @@ const getLineWidth = (index: number): string => {
 .skeleton-button {
   flex: 1;
   height: 32px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e2e8f0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
 }
 

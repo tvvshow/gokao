@@ -146,7 +146,7 @@ const exportComparison = () => {
 .university-logo {
   width: 30px;
   height: 30px;
-  border-radius: 4px;
+  border-radius: 0.5rem;
   object-fit: cover;
 }
 
@@ -157,7 +157,7 @@ const exportComparison = () => {
 
 .university-location {
   font-size: 12px;
-  color: #999;
+  color: #94a3b8;
 }
 
 .empty-state {
@@ -168,6 +168,39 @@ const exportComparison = () => {
 .radar-chart h3 {
   text-align: center;
   margin-bottom: 20px;
-  color: #2c3e50;
+  color: #0f172a;
+}
+
+:deep(.el-dialog) {
+  border-radius: 1rem;
+  border: 1px solid #dbe3ef;
+  overflow: hidden;
+}
+
+:deep(.el-dialog__header) {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
+}
+
+.dark :deep(.el-dialog) {
+  border-color: #334155;
+}
+
+.dark :deep(.el-dialog__header) {
+  border-bottom-color: #334155;
+  background: #1f2937;
+}
+
+.dark :deep(.el-table th.el-table__cell) {
+  background: #1f2937;
+}
+
+.dark .university-name,
+.dark .radar-chart h3 {
+  color: #f1f5f9;
 }
 </style>

@@ -142,14 +142,18 @@ const createOrder = async () => {
 
 <style scoped>
 .payment-form {
-  max-width: 800px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .plan-selection {
   display: flex;
-  gap: 20px;
+  gap: 1rem;
   margin-bottom: 30px;
   flex-wrap: wrap;
 }
@@ -157,36 +161,39 @@ const createOrder = async () => {
 .plan-card {
   flex: 1;
   min-width: 250px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.875rem;
+  padding: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  background: #fff;
 }
 
 .plan-card:hover {
-  border-color: #409eff;
+  border-color: #38bdf8;
+  transform: translateY(-2px);
 }
 
 .plan-card.selected {
-  border-color: #409eff;
-  background-color: #f0f8ff;
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+  box-shadow: 0 10px 24px -20px rgba(2, 132, 199, 0.6);
 }
 
 .plan-card h3 {
   margin-top: 0;
-  color: #333;
+  color: #0f172a;
 }
 
 .price {
   font-size: 24px;
   font-weight: bold;
-  color: #409eff;
+  color: #0ea5e9;
   margin: 10px 0;
 }
 
 .duration {
-  color: #666;
+  color: #475569;
   margin-bottom: 15px;
 }
 
@@ -206,7 +213,7 @@ const createOrder = async () => {
 
 .limits {
   font-size: 14px;
-  color: #666;
+  color: #475569;
   margin-top: 10px;
 }
 
@@ -222,41 +229,88 @@ const createOrder = async () => {
 
 .payment-btn {
   padding: 10px 20px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #dbe3ef;
   background-color: #fff;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .payment-btn:hover {
-  border-color: #409eff;
+  border-color: #0ea5e9;
 }
 
 .payment-btn.selected {
-  border-color: #409eff;
-  background-color: #ecf5ff;
-  color: #409eff;
+  border-color: #0ea5e9;
+  background-color: #e0f2fe;
+  color: #0369a1;
 }
 
 .pay-button {
   width: 100%;
-  padding: 15px;
-  background-color: #409eff;
+  padding: 0.875rem 1rem;
+  background-color: #0ea5e9;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.75rem;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
 .pay-button:hover:not(:disabled) {
-  background-color: #66b1ff;
+  background-color: #38bdf8;
 }
 
 .pay-button:disabled {
-  background-color: #a0cfff;
+  background-color: #7dd3fc;
   cursor: not-allowed;
+}
+
+.dark .payment-form {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .plan-card {
+  border-color: #334155;
+  background: #1f2937;
+}
+
+.dark .plan-card h3 {
+  color: #f1f5f9;
+}
+
+.dark .duration,
+.dark .limits,
+.dark .payment-method h3 {
+  color: #94a3b8;
+}
+
+.dark .plan-card.selected {
+  border-color: #22d3ee;
+  background: rgba(14, 116, 144, 0.22);
+}
+
+.dark .payment-btn {
+  border-color: #334155;
+  background: #1f2937;
+  color: #e2e8f0;
+}
+
+.dark .payment-btn.selected {
+  border-color: #22d3ee;
+  background: rgba(14, 116, 144, 0.24);
+  color: #67e8f9;
+}
+
+@media (max-width: 768px) {
+  .payment-form {
+    padding: 1rem;
+  }
+
+  .plan-card {
+    min-width: 100%;
+  }
 }
 </style>

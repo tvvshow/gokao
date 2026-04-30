@@ -1,6 +1,6 @@
 <template>
-  <div class="recommendation-page">
-    <div class="container">
+  <div class="recommendation-page min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container-modern py-8">
       <div class="page-header">
         <h1 class="page-title">{{ pageTitle }}</h1>
         <p class="page-subtitle">
@@ -216,29 +216,23 @@ onMounted(() => {
 
 <style scoped>
 .recommendation-page {
-  padding: 20px 0;
   min-height: calc(100vh - 160px);
-}
-
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px;
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 36px;
 }
 
 .page-title {
   font-size: 32px;
-  color: #2c3e50;
+  color: #0f172a;
   margin-bottom: 12px;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
-  color: #7f8c8d;
+  color: #475569;
   font-size: 16px;
 }
 
@@ -258,11 +252,19 @@ onMounted(() => {
   min-height: 600px;
 }
 
+.dark .page-title {
+  color: #f1f5f9;
+}
+
+.dark .page-subtitle {
+  color: #94a3b8;
+}
+
 /* Responsive design */
 @media (max-width: 1200px) {
   .recommendation-content {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 24px;
   }
 
   .input-section {
@@ -271,12 +273,12 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .container {
-    padding: 0 10px;
+  .page-title {
+    font-size: 26px;
   }
 
-  .page-title {
-    font-size: 24px;
+  .page-subtitle {
+    font-size: 15px;
   }
 }
 </style>

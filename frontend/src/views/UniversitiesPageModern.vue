@@ -1,19 +1,19 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen page-shell">
     <div class="container-modern py-8">
       <!-- 页面头部 -->
-      <div class="text-center mb-12">
+      <div class="text-center page-head">
         <h1 class="page-title">院校查询</h1>
-        <p class="text-xl text-gray-600 dark:text-gray-300 mt-4">
+        <p class="text-xl text-slate-600 dark:text-slate-300 mt-4">
           探索全国2700+优质高等院校，找到最适合你的大学
         </p>
       </div>
 
       <!-- 搜索和筛选区域 -->
-      <div class="card p-6 mb-8">
+      <div class="card p-6 mb-8 filter-panel">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校名称</label
             >
             <div class="relative">
@@ -31,7 +31,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >所在省份</label
             >
             <select v-model="searchForm.province" class="input">
@@ -47,7 +47,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校类型</label
             >
             <select v-model="searchForm.type" class="input">
@@ -62,7 +62,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校层次</label
             >
             <select v-model="searchForm.level" class="input">
@@ -75,7 +75,7 @@
           </div>
         </div>
 
-        <div class="flex justify-center mt-6 space-x-4">
+        <div class="flex justify-center mt-6 space-x-4 filter-actions">
           <button
             @click="() => handleSearch()"
             class="btn btn-primary"
@@ -112,16 +112,16 @@
 
       <div v-else class="space-y-6">
         <!-- 结果统计 -->
-        <div class="flex items-center justify-between">
-          <p class="text-gray-600 dark:text-gray-300">
+        <div class="flex items-center justify-between results-bar">
+          <p class="text-slate-600 dark:text-slate-300">
             找到
-            <span class="font-semibold text-primary-600">{{
+            <span class="font-semibold text-sky-600">{{
               universities.length
             }}</span>
             所院校
           </p>
           <div class="flex items-center space-x-2">
-            <span class="text-sm text-gray-500 dark:text-gray-400"
+            <span class="text-sm text-slate-500 dark:text-slate-400"
               >排序方式:</span
             >
             <select v-model="sortBy" @change="handleSort" class="input text-sm">
@@ -210,7 +210,7 @@
         </VirtualList>
 
         <!-- 少量数据时使用普通列表 -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6 results-grid">
           <div
             v-for="university in paginatedUniversities"
             :key="university.id"
@@ -227,7 +227,7 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-2">
                   <h3
-                    class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate"
+                    class="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate"
                   >
                     {{ university.name }}
                   </h3>
@@ -250,7 +250,7 @@
                   </div>
                 </div>
 
-                <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                   <div class="flex items-center">
                     <MapPinIcon class="w-4 h-4 mr-2" />
                     {{ university.province }} · {{ university.city }}
@@ -297,10 +297,7 @@
                         >
                           {{ major }}
                         </span>
-                        <span
-                          v-if="university.strongMajors.length > 2"
-                          class="text-xs text-gray-500"
-                        >
+                        <span v-if="university.strongMajors.length > 2" class="text-xs text-slate-500">
                           等{{ university.strongMajors.length - 2 }}个
                         </span>
                       </div>
@@ -309,10 +306,10 @@
                 </div>
 
                 <div class="mt-4 flex items-center justify-between">
-                  <div class="text-sm text-gray-500 dark:text-gray-400">
+                  <div class="text-sm text-slate-500 dark:text-slate-400">
                     {{ university.description || '暂无简介' }}
                   </div>
-                  <ArrowRightIcon class="w-4 h-4 text-gray-400" />
+                  <ArrowRightIcon class="w-4 h-4 text-slate-400" />
                 </div>
               </div>
             </div>
@@ -554,12 +551,60 @@ onMounted(() => {
 
 <style scoped>
 /* 自定义样式 */
+.page-shell {
+  background:
+    radial-gradient(900px circle at 8% 0%, rgb(34 211 238 / 0.08), transparent 48%),
+    radial-gradient(760px circle at 95% 95%, rgb(56 189 248 / 0.08), transparent 45%),
+    #f8fafc;
+}
+
+.dark .page-shell {
+  background:
+    radial-gradient(800px circle at 8% 2%, rgb(6 182 212 / 0.12), transparent 48%),
+    radial-gradient(720px circle at 95% 95%, rgb(14 116 144 / 0.12), transparent 45%),
+    #020617;
+}
+
+.page-head {
+  margin-bottom: 2.2rem;
+}
+
+.filter-panel {
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.24);
+  box-shadow: 0 16px 30px -28px rgb(14 165 233 / 0.5);
+}
+
+.filter-actions {
+  flex-wrap: wrap;
+}
+
+.results-bar {
+  margin-top: 4px;
+}
+
+.results-grid .card {
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.2);
+}
+
 .university-virtual-list {
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .university-card-item {
   margin-bottom: 16px;
   margin-right: 8px;
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.2);
+}
+
+@media (max-width: 768px) {
+  .results-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }
 </style>

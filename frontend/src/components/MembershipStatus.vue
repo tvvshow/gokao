@@ -154,22 +154,26 @@ const goToPayment = () => {
 
 <style scoped>
 .membership-status {
-  max-width: 600px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .vip-status h2,
 .non-vip-status h2 {
   text-align: center;
-  color: #333;
+  color: #0f172a;
 }
 
 .status-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
   padding: 20px;
-  background-color: #f9f9f9;
+  background-color: #fff;
 }
 
 .status-header {
@@ -179,10 +183,10 @@ const goToPayment = () => {
 }
 
 .vip-badge {
-  background-color: #ffd700;
-  color: #333;
+  background-color: #fbbf24;
+  color: #0f172a;
   padding: 5px 10px;
-  border-radius: 4px;
+  border-radius: 9999px;
   font-weight: bold;
   margin-right: 10px;
 }
@@ -190,7 +194,7 @@ const goToPayment = () => {
 .plan-name {
   font-size: 18px;
   font-weight: bold;
-  color: #333;
+  color: #0f172a;
 }
 
 .status-details {
@@ -204,7 +208,7 @@ const goToPayment = () => {
 }
 
 .label {
-  color: #666;
+  color: #475569;
 }
 
 .value {
@@ -221,7 +225,7 @@ const goToPayment = () => {
 
 .stat-label {
   font-size: 14px;
-  color: #666;
+  color: #475569;
   margin-bottom: 5px;
 }
 
@@ -232,14 +236,14 @@ const goToPayment = () => {
 
 .stat-bar {
   height: 8px;
-  background-color: #e0e0e0;
-  border-radius: 4px;
+  background-color: #e2e8f0;
+  border-radius: 9999px;
   overflow: hidden;
 }
 
 .stat-progress {
   height: 100%;
-  background-color: #409eff;
+  background-color: #0ea5e9;
   transition: width 0.3s ease;
 }
 
@@ -253,27 +257,27 @@ const goToPayment = () => {
   flex: 1;
   padding: 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   cursor: pointer;
   font-weight: bold;
 }
 
 .renew-btn {
-  background-color: #409eff;
+  background-color: #0ea5e9;
   color: white;
 }
 
 .renew-btn:hover {
-  background-color: #66b1ff;
+  background-color: #38bdf8;
 }
 
 .cancel-btn {
-  background-color: #f56c6c;
+  background-color: #ef4444;
   color: white;
 }
 
 .cancel-btn:hover {
-  background-color: #f78989;
+  background-color: #f87171;
 }
 
 .non-vip-status {
@@ -282,22 +286,72 @@ const goToPayment = () => {
 }
 
 .non-vip-status p {
-  color: #666;
+  color: #475569;
   margin: 20px 0;
 }
 
 .become-vip-btn {
   padding: 12px 30px;
-  background-color: #409eff;
+  background-color: #0ea5e9;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   font-size: 16px;
   cursor: pointer;
   font-weight: bold;
 }
 
 .become-vip-btn:hover {
-  background-color: #66b1ff;
+  background-color: #38bdf8;
+}
+
+.dark .membership-status {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .vip-status h2,
+.dark .non-vip-status h2,
+.dark .plan-name,
+.dark .value,
+.dark .stat-value {
+  color: #f1f5f9;
+}
+
+.dark .status-card {
+  border-color: #334155;
+  background: #1f2937;
+}
+
+.dark .label,
+.dark .stat-label,
+.dark .non-vip-status p {
+  color: #94a3b8;
+}
+
+.dark .stat-bar {
+  background: #334155;
+}
+
+@media (max-width: 768px) {
+  .membership-status {
+    padding: 1rem;
+  }
+
+  .status-header,
+  .detail-item,
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    gap: 0.75rem;
+  }
+
+  .renew-btn,
+  .cancel-btn {
+    width: 100%;
+  }
 }
 </style>

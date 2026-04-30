@@ -8,45 +8,52 @@
 
       <!-- 搜索筛选 -->
       <div class="search-section">
-        <el-card class="content-card">
-          <el-form :model="searchForm" :inline="true">
-            <el-form-item label="专业名称">
-              <el-input
-                v-model="searchForm.name"
-                placeholder="请输入专业名称"
-                clearable
-                style="width: 200px"
-              />
-            </el-form-item>
-            <el-form-item label="学科门类">
-              <el-select
-                v-model="searchForm.category"
-                placeholder="选择学科门类"
-                clearable
-              >
-                <el-option
-                  v-for="category in categories"
-                  :key="category"
-                  :label="category"
-                  :value="category"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="学位类型">
-              <el-select
-                v-model="searchForm.degree"
-                placeholder="选择学位类型"
-                clearable
-              >
-                <el-option label="学士" value="学士" />
-                <el-option label="硕士" value="硕士" />
-                <el-option label="博士" value="博士" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleSearch">搜索</el-button>
-              <el-button @click="handleReset">重置</el-button>
-            </el-form-item>
+        <el-card class="content-card filter-panel">
+          <el-form :model="searchForm" label-position="top" class="filter-form">
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12" :lg="8">
+                <el-form-item label="专业名称">
+                  <el-input
+                    v-model="searchForm.name"
+                    placeholder="请输入专业名称"
+                    clearable
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :lg="8">
+                <el-form-item label="学科门类">
+                  <el-select
+                    v-model="searchForm.category"
+                    placeholder="选择学科门类"
+                    clearable
+                  >
+                    <el-option
+                      v-for="category in categories"
+                      :key="category"
+                      :label="category"
+                      :value="category"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12" :lg="8">
+                <el-form-item label="学位类型">
+                  <el-select
+                    v-model="searchForm.degree"
+                    placeholder="选择学位类型"
+                    clearable
+                  >
+                    <el-option label="学士" value="学士" />
+                    <el-option label="硕士" value="硕士" />
+                    <el-option label="博士" value="博士" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <div class="filter-actions">
+              <el-button type="primary" @click="handleSearch">搜索专业</el-button>
+              <el-button @click="handleReset">重置条件</el-button>
+            </div>
           </el-form>
         </el-card>
       </div>
@@ -54,25 +61,25 @@
       <!-- 专业统计 -->
       <div class="stats-section">
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="12" :md="6">
             <div class="stat-card">
               <div class="stat-value">{{ totalMajors }}</div>
               <div class="stat-label">专业总数</div>
             </div>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :md="6">
             <div class="stat-card">
               <div class="stat-value">{{ hotMajors }}</div>
               <div class="stat-label">热门专业</div>
             </div>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :md="6">
             <div class="stat-card">
               <div class="stat-value">{{ avgEmploymentRate }}%</div>
               <div class="stat-label">平均就业率</div>
             </div>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :md="6">
             <div class="stat-card">
               <div class="stat-value">{{ avgSalary }}k</div>
               <div class="stat-label">平均薪资</div>
@@ -82,7 +89,13 @@
       </div>
 
       <!-- 专业列表 -->
-      <div class="majors-grid">
+      <div class="majors-grid content-card results-panel">
+        <div class="results-head" v-if="!loading">
+          <span>
+            已检索到 <strong>{{ total }}</strong> 个专业
+          </span>
+        </div>
+
         <!-- Skeleton loading state -->
         <SkeletonList
           v-if="loading"
@@ -107,10 +120,7 @@
           </el-col>
         </el-row>
 
-        <el-empty
-          v-if="!loading && majors.length === 0"
-          description="未找到匹配的专业"
-        />
+        <el-empty v-if="!loading && majors.length === 0" description="未找到匹配的专业" />
       </div>
 
       <!-- 分页 -->
@@ -291,29 +301,30 @@ onMounted(() => {
 
 <style scoped>
 .majors-page {
-  padding: 20px 0;
+  padding: 24px 0;
   min-height: calc(100vh - 160px);
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 34px;
 }
 
 .page-title {
   font-size: 32px;
-  color: #2c3e50;
+  color: #0f172a;
+  letter-spacing: -0.02em;
   margin-bottom: 12px;
 }
 
 .page-subtitle {
-  color: #7f8c8d;
+  color: #64748b;
   font-size: 16px;
 }
 
@@ -321,32 +332,71 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.filter-panel {
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.24);
+  box-shadow: 0 16px 30px -28px rgb(14 165 233 / 0.5);
+}
+
+.filter-form :deep(.el-form-item__label) {
+  margin-bottom: 6px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.filter-actions :deep(.el-button) {
+  min-height: 40px;
+  border-radius: 10px;
+}
+
 .stats-section {
-  margin-bottom: 30px;
+  margin-bottom: 26px;
 }
 
 .stat-card {
   text-align: center;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px 12px;
+  background: rgb(255 255 255 / 0.94);
+  border: 1px solid rgb(148 163 184 / 0.22);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px -24px rgb(15 23 42 / 0.5);
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #667eea;
+  color: #0ea5e9;
   margin-bottom: 8px;
 }
 
 .stat-label {
-  color: #7f8c8d;
+  color: #64748b;
   font-size: 14px;
 }
 
 .majors-grid {
   margin-bottom: 30px;
+}
+
+.results-panel {
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.22);
+}
+
+.results-head {
+  margin: 2px 0 14px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.results-head strong {
+  color: #0284c7;
 }
 
 .majors-grid .el-col {
@@ -356,5 +406,23 @@ onMounted(() => {
 .pagination-wrapper {
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 14px;
+  }
+
+  .page-title {
+    font-size: 28px;
+  }
+
+  .filter-actions {
+    justify-content: stretch;
+  }
+
+  .filter-actions :deep(.el-button) {
+    flex: 1;
+  }
 }
 </style>

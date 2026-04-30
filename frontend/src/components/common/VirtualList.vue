@@ -28,11 +28,9 @@
 <script setup lang="ts" generic="T">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
-/* eslint-disable no-unused-vars */
 defineSlots<{
   default(props: { item: T; index: number }): unknown;
 }>();
-/* eslint-enable no-unused-vars */
 
 const props = withDefaults(
   defineProps<{
@@ -159,12 +157,12 @@ onUnmounted(() => {
 
 .virtual-list-container::-webkit-scrollbar-track {
   background: var(--gray-100, #f3f4f6);
-  border-radius: 4px;
+  border-radius: 0.5rem;
 }
 
 .virtual-list-container::-webkit-scrollbar-thumb {
   background: var(--gray-300, #d1d5db);
-  border-radius: 4px;
+  border-radius: 0.5rem;
 }
 
 .virtual-list-container::-webkit-scrollbar-thumb:hover {

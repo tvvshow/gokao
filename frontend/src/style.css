@@ -3,7 +3,7 @@
 @import 'tailwindcss/utilities';
 
 /* 导入现代化字体 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* 全局基础样式 */
@@ -11,7 +11,7 @@
   :root {
     /* 现代化CSS变量系统 */
     --color-primary: 14 165 233;
-    --color-secondary: 217 70 239;
+    --color-secondary: 15 118 110;
     --color-accent: 249 115 22;
     --color-success: 34 197 94;
     --color-warning: 245 158 11;
@@ -21,7 +21,7 @@
     --gradient-primary: linear-gradient(
       135deg,
       rgb(14 165 233) 0%,
-      rgb(217 70 239) 100%
+      rgb(15 118 110) 100%
     );
     --gradient-secondary: linear-gradient(
       135deg,
@@ -61,7 +61,7 @@
 
   .dark {
     --color-primary: 56 189 248;
-    --color-secondary: 240 171 252;
+    --color-secondary: 45 212 191;
     --color-accent: 251 146 60;
   }
 
@@ -74,8 +74,8 @@
   }
 
   body {
-    @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100;
-    @apply dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900;
+    @apply bg-gradient-to-br from-slate-50 via-cyan-50 to-sky-100;
+    @apply dark:from-slate-950 dark:via-slate-900 dark:to-slate-800;
     @apply text-gray-900 dark:text-gray-100 font-sans antialiased;
     @apply transition-all duration-500 ease-in-out;
     @apply min-h-screen;
@@ -215,8 +215,8 @@
 
   /* 现代化导航 */
   .nav-modern {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-md;
-    @apply border-b border-gray-200/50 dark:border-gray-700/50;
+    @apply bg-white/90 dark:bg-slate-900/85 backdrop-blur-md;
+    @apply border-b border-slate-200/70 dark:border-slate-700/50;
     @apply sticky top-0 z-50;
   }
 
@@ -332,6 +332,141 @@
   }
 }
 
+/* Element Plus unified form theme */
+:root {
+  --el-color-primary: #0ea5e9;
+  --el-color-primary-light-3: #38bdf8;
+  --el-color-primary-light-5: #7dd3fc;
+  --el-color-primary-light-7: #bae6fd;
+  --el-color-primary-light-8: #e0f2fe;
+  --el-color-primary-light-9: #f0f9ff;
+  --el-color-primary-dark-2: #0284c7;
+
+  --el-border-radius-base: 12px;
+  --el-border-radius-small: 10px;
+
+  --el-fill-color-blank: rgba(255, 255, 255, 0.94);
+  --el-fill-color-light: #f8fafc;
+  --el-fill-color: #f1f5f9;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+
+  --el-text-color-primary: #0f172a;
+  --el-text-color-regular: #334155;
+  --el-text-color-secondary: #64748b;
+  --el-text-color-placeholder: #94a3b8;
+
+  --el-border-color: #cbd5e1;
+  --el-border-color-light: #e2e8f0;
+  --el-border-color-lighter: #e2e8f0;
+  --el-border-color-extra-light: #eef2f7;
+
+  --el-input-bg-color: rgba(255, 255, 255, 0.94);
+  --el-input-border-color: #cbd5e1;
+  --el-input-hover-border-color: #38bdf8;
+  --el-input-focus-border-color: #0ea5e9;
+  --el-input-text-color: #0f172a;
+  --el-input-placeholder-color: #94a3b8;
+}
+
+.dark {
+  --el-color-primary: #38bdf8;
+  --el-color-primary-dark-2: #0ea5e9;
+  --el-fill-color-blank: rgba(15, 23, 42, 0.92);
+  --el-fill-color-light: #1e293b;
+  --el-fill-color: #0f172a;
+  --el-bg-color: #0f172a;
+  --el-bg-color-overlay: #111827;
+  --el-text-color-primary: #e2e8f0;
+  --el-text-color-regular: #cbd5e1;
+  --el-text-color-secondary: #94a3b8;
+  --el-text-color-placeholder: #64748b;
+  --el-border-color: #334155;
+  --el-border-color-light: #334155;
+  --el-border-color-lighter: #334155;
+  --el-border-color-extra-light: #1f2937;
+  --el-input-bg-color: rgba(15, 23, 42, 0.92);
+  --el-input-border-color: #334155;
+  --el-input-hover-border-color: #38bdf8;
+  --el-input-focus-border-color: #38bdf8;
+  --el-input-text-color: #e2e8f0;
+  --el-input-placeholder-color: #64748b;
+}
+
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-form-item__label {
+  color: var(--el-text-color-regular);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.el-input,
+.el-select,
+.el-textarea {
+  width: 100%;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: 12px;
+  min-height: 44px;
+  box-shadow: 0 0 0 1px var(--el-input-border-color) inset;
+  transition:
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--el-input-hover-border-color) inset;
+}
+
+.el-input.is-focus .el-input__wrapper,
+.el-select.is-focus .el-select__wrapper,
+.el-textarea__inner:focus {
+  box-shadow:
+    0 0 0 1px var(--el-input-focus-border-color) inset,
+    0 0 0 3px rgb(14 165 233 / 0.16);
+}
+
+.dark .el-input.is-focus .el-input__wrapper,
+.dark .el-select.is-focus .el-select__wrapper,
+.dark .el-textarea__inner:focus {
+  box-shadow:
+    0 0 0 1px var(--el-input-focus-border-color) inset,
+    0 0 0 3px rgb(56 189 248 / 0.2);
+}
+
+.el-input-group__append,
+.el-input-group__prepend {
+  border-radius: 12px;
+}
+
+.el-textarea__inner {
+  min-height: 108px;
+  line-height: 1.55;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.el-radio-group,
+.el-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.el-radio,
+.el-checkbox {
+  margin-right: 0;
+}
+
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .main-container {
@@ -381,6 +516,19 @@
 
   .stat-label {
     font-size: 13px;
+  }
+
+  .el-form-item {
+    margin-bottom: 16px;
+  }
+
+  .el-form-item__label {
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .el-form--label-top .el-form-item__label {
+    padding: 0;
   }
 }
 
@@ -458,20 +606,4 @@ input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
   margin: 0 !important;
-}
-
-/* Element Plus 输入框特殊处理 */
-.el-input__inner[type='number'] {
-  -moz-appearance: textfield !important;
-}
-
-.el-input__inner[type='number']::-webkit-outer-spin-button,
-.el-input__inner[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-
-/* 确保数字输入框有足够高度 */
-.el-input__inner {
-  min-height: 40px !important;
 }

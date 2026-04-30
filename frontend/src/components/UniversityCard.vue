@@ -175,13 +175,15 @@ const viewAdmissionData = () => {
   height: 100%;
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
+  border: 1px solid rgb(148 163 184 / 0.22);
+  box-shadow: 0 16px 30px -28px rgb(15 23 42 / 0.55);
 }
 
 .university-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 22px 40px -32px rgb(14 165 233 / 0.72);
 }
 
 .card-header {
@@ -198,12 +200,12 @@ const viewAdmissionData = () => {
 }
 
 .university-logo {
-  width: 50px;
-  height: 50px;
-  border-radius: 8px;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
   object-fit: cover;
-  margin-right: 12px;
-  border: 1px solid #ebeef5;
+  margin-right: 14px;
+  border: 1px solid #e2e8f0;
 }
 
 .university-info {
@@ -212,10 +214,11 @@ const viewAdmissionData = () => {
 }
 
 .university-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #2c3e50;
-  margin: 0 0 8px 0;
+  color: #0f172a;
+  margin: 0 0 9px 0;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -229,7 +232,11 @@ const viewAdmissionData = () => {
 
 .card-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+}
+
+.card-actions :deep(.el-button) {
+  border-color: rgb(148 163 184 / 0.4);
 }
 
 .card-content {
@@ -240,9 +247,9 @@ const viewAdmissionData = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: #7f8c8d;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #64748b;
 }
 
 .location,
@@ -253,12 +260,13 @@ const viewAdmissionData = () => {
 }
 
 .score-info {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 14px;
   display: flex;
   justify-content: space-between;
+  border: 1px solid rgb(148 163 184 / 0.2);
 }
 
 .score-item {
@@ -269,44 +277,45 @@ const viewAdmissionData = () => {
 
 .score-item .label {
   font-size: 12px;
-  color: #7f8c8d;
+  color: #64748b;
   margin-bottom: 4px;
 }
 
 .score-item .value {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
 }
 
 .score-item .value.science {
-  color: #e74c3c;
+  color: #ef4444;
 }
 
 .score-item .value.liberal {
-  color: #3498db;
+  color: #0ea5e9;
 }
 
 .features {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .more-features {
   font-size: 12px;
-  color: #7f8c8d;
-  background: #f8f9fa;
-  padding: 2px 6px;
-  border-radius: 4px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .stats {
   display: flex;
   justify-content: space-around;
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 13px;
+  border: 1px solid rgb(148 163 184 / 0.2);
 }
 
 .stat-item {
@@ -316,38 +325,33 @@ const viewAdmissionData = () => {
 .stat-value {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
   padding: 0;
+  gap: 8px;
 }
 
 .card-footer .el-button {
   flex: 1;
-  margin: 0 4px;
-}
-
-.card-footer .el-button:first-child {
-  margin-left: 0;
-}
-
-.card-footer .el-button:last-child {
-  margin-right: 0;
+  margin: 0;
+  min-height: 38px;
+  border-radius: 10px;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
   .university-name {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .location-rank {

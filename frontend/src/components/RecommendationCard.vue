@@ -80,7 +80,7 @@
             v-model="matchStars"
             disabled
             show-score
-            text-color="#ff9900"
+            text-color="#f59e0b"
             :max="5"
           />
         </div>
@@ -188,10 +188,10 @@ const getTypeLabel = (type: string) => {
 
 // 获取进度条颜色
 const getProgressColor = (percentage: number) => {
-  if (percentage >= 80) return '#67c23a';
-  if (percentage >= 60) return '#e6a23c';
-  if (percentage >= 40) return '#f56c6c';
-  return '#909399';
+  if (percentage >= 80) return '#22c55e';
+  if (percentage >= 60) return '#f59e0b';
+  if (percentage >= 40) return '#ef4444';
+  return '#94a3b8';
 };
 
 // 获取标签类型
@@ -244,9 +244,11 @@ const getMaxScore = () => {
 
 <style scoped>
 .recommendation-card {
-  margin-bottom: 16px;
-  border-radius: 12px;
+  margin-bottom: 18px;
+  border-radius: 14px;
   overflow: hidden;
+  border: 1px solid rgb(148 163 184 / 0.24);
+  box-shadow: 0 18px 36px -30px rgb(15 23 42 / 0.55);
 }
 
 .card-header {
@@ -261,23 +263,23 @@ const getMaxScore = () => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 20px;
+  border-radius: 999px;
   font-weight: 600;
 }
 
 .rank-badge.aggressive {
   background: #fff2e8;
-  color: #e6a23c;
+  color: #f59e0b;
 }
 
 .rank-badge.moderate {
   background: #f0f9ff;
-  color: #409eff;
+  color: #0ea5e9;
 }
 
 .rank-badge.conservative {
   background: #f0f9f0;
-  color: #67c23a;
+  color: #22c55e;
 }
 
 .rank-number {
@@ -296,26 +298,27 @@ const getMaxScore = () => {
 }
 
 .probability-text {
-  font-size: 12px;
-  color: #666;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: #475569;
 }
 
 .university-info {
-  padding: 0;
+  padding: 2px 0;
 }
 
 .university-basic {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 13px;
+  margin-bottom: 14px;
 }
 
 .university-logo {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
   object-fit: cover;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e2e8f0;
 }
 
 .university-details {
@@ -323,10 +326,11 @@ const getMaxScore = () => {
 }
 
 .university-name {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #0f172a;
   margin: 0 0 8px 0;
+  letter-spacing: -0.01em;
 }
 
 .university-meta {
@@ -340,8 +344,8 @@ const getMaxScore = () => {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #7f8c8d;
-  font-size: 14px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .recommendation-details {
@@ -357,14 +361,15 @@ const getMaxScore = () => {
 
 .match-score .label {
   font-weight: 500;
-  color: #2c3e50;
+  color: #0f172a;
 }
 
 .score-info {
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
+  background: #f8fafc;
+  padding: 13px;
+  border-radius: 10px;
   margin-bottom: 16px;
+  border: 1px solid rgb(148 163 184 / 0.2);
 }
 
 .score-item {
@@ -375,12 +380,12 @@ const getMaxScore = () => {
 
 .score-range {
   font-weight: 600;
-  color: #e74c3c;
+  color: #ef4444;
 }
 
 .separator {
   margin: 0 4px;
-  color: #999;
+  color: #94a3b8;
 }
 
 .recommend-reason,
@@ -391,14 +396,14 @@ const getMaxScore = () => {
 .recommend-reason h4,
 .suggested-majors h4 {
   font-size: 14px;
-  color: #2c3e50;
+  color: #0f172a;
   margin: 0 0 8px 0;
 }
 
 .recommend-reason p {
-  color: #7f8c8d;
+  color: #64748b;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -411,28 +416,23 @@ const getMaxScore = () => {
 
 .more-majors {
   font-size: 12px;
-  color: #999;
-  background: #f5f7fa;
+  color: #94a3b8;
+  background: #f1f5f9;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 .card-actions {
   display: flex;
   justify-content: space-between;
   padding: 0;
+  gap: 8px;
 }
 
 .card-actions .el-button {
   flex: 1;
-  margin: 0 4px;
-}
-
-.card-actions .el-button:first-child {
-  margin-left: 0;
-}
-
-.card-actions .el-button:last-child {
-  margin-right: 0;
+  margin: 0;
+  border-radius: 10px;
+  min-height: 38px;
 }
 </style>

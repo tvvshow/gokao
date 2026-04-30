@@ -291,100 +291,71 @@ defineExpose({
   display: flex;
   align-items: center;
   font-weight: 600;
-  color: #2c3e50;
+  color: #0f172a;
 }
 
 .card-header .el-icon {
   margin-right: 8px;
-  color: #667eea;
+  color: #0ea5e9;
 }
 
 .form-section {
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
 
 .section-title {
   font-size: 16px;
-  color: #2c3e50;
-  margin-bottom: 20px;
+  color: #0f172a;
+  margin-bottom: 18px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid rgb(14 165 233 / 0.28);
 }
 
-/* 确保输入框在所有设备上有足够高度 */
-.el-input__wrapper {
-  min-height: 40px !important;
+.content-card :deep(.el-form-item__label) {
+  white-space: normal;
 }
 
-.el-input {
-  --el-input-height: 40px;
-}
-
-.el-input__inner {
-  min-height: 40px !important;
-  line-height: 1.5 !important;
-}
-
-/* 隐藏数字输入框的上下箭头 */
-.el-input[type='number'] .el-input__inner {
-  -moz-appearance: textfield;
-}
-
-.el-input[type='number'] .el-input__inner::-webkit-outer-spin-button,
-.el-input[type='number'] .el-input__inner::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* 全局隐藏所有数字输入框箭头 */
-input[type='number'] {
-  -moz-appearance: textfield;
-}
-
-input[type='number']::-webkit-outer-spin-button,
-input[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.content-card :deep(.el-select),
+.content-card :deep(.el-input),
+.content-card :deep(.el-textarea) {
+  width: 100%;
 }
 
 .form-actions {
-  text-align: center;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
   padding-top: 20px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid rgb(148 163 184 / 0.32);
 }
 
 .form-actions .el-button {
-  margin: 0 8px;
   padding: 12px 24px;
-  min-height: 40px;
+  min-height: 44px;
 }
 
 /* 移动端优化 */
 @media (max-width: 768px) {
   .form-section {
-    padding: 15px;
+    margin-bottom: 22px;
   }
 
-  .el-form-item {
+  .content-card :deep(.el-form-item) {
     margin-bottom: 18px;
-  }
-
-  .el-input,
-  .el-select {
-    width: 100% !important;
   }
 
   .form-actions .el-button {
     display: block;
     width: 100%;
-    margin: 8px 0;
+    margin: 0;
   }
 
   /* 院校类型复选框移动端优化 */
-  .el-checkbox-group .el-row {
+  .content-card :deep(.el-checkbox-group .el-row) {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
+    gap: 10px !important;
   }
 }
 </style>

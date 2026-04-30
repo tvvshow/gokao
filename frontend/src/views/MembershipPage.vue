@@ -1,6 +1,6 @@
 <template>
-  <div class="membership-page">
-    <div class="container">
+  <div class="membership-page min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container-modern py-8">
       <div class="page-header">
         <h1 class="page-title">会员服务</h1>
         <p class="page-subtitle">解锁更多功能，享受专业服务</p>
@@ -8,8 +8,14 @@
 
       <!-- 会员套餐 -->
       <div class="plans-section">
-        <el-row :gutter="30">
-          <el-col :span="8" v-for="plan in membershipPlans" :key="plan.id">
+        <el-row :gutter="24">
+          <el-col
+            v-for="plan in membershipPlans"
+            :key="plan.id"
+            :xs="24"
+            :md="12"
+            :lg="8"
+          >
             <el-card class="plan-card" :class="{ featured: plan.featured }">
               <template #header>
                 <div class="plan-header">
@@ -56,20 +62,20 @@
           <el-table-column prop="feature" label="功能" width="200" />
           <el-table-column prop="free" label="免费版" align="center">
             <template #default="{ row }">
-              <el-icon v-if="row.free" color="#67c23a"><check /></el-icon>
-              <el-icon v-else color="#f56c6c"><close /></el-icon>
+              <el-icon v-if="row.free" color="#22c55e"><check /></el-icon>
+              <el-icon v-else color="#ef4444"><close /></el-icon>
             </template>
           </el-table-column>
           <el-table-column prop="basic" label="基础版" align="center">
             <template #default="{ row }">
-              <el-icon v-if="row.basic" color="#67c23a"><check /></el-icon>
-              <el-icon v-else color="#f56c6c"><close /></el-icon>
+              <el-icon v-if="row.basic" color="#22c55e"><check /></el-icon>
+              <el-icon v-else color="#ef4444"><close /></el-icon>
             </template>
           </el-table-column>
           <el-table-column prop="premium" label="专业版" align="center">
             <template #default="{ row }">
-              <el-icon v-if="row.premium" color="#67c23a"><check /></el-icon>
-              <el-icon v-else color="#f56c6c"><close /></el-icon>
+              <el-icon v-if="row.premium" color="#22c55e"><check /></el-icon>
+              <el-icon v-else color="#ef4444"><close /></el-icon>
             </template>
           </el-table-column>
         </el-table>
@@ -153,48 +159,49 @@ onMounted(async () => {
 
 <style scoped>
 .membership-page {
-  padding: 20px 0;
   min-height: calc(100vh - 160px);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
 }
 
 .page-title {
-  font-size: 28px;
-  color: #2c3e50;
-  margin-bottom: 12px;
+  font-size: 2rem;
+  color: #0f172a;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
-  color: #7f8c8d;
-  font-size: 16px;
+  color: #475569;
+  font-size: 1rem;
 }
 
 .plans-section {
-  margin-bottom: 60px;
+  margin-bottom: 48px;
 }
 
 .plan-card {
   height: 100%;
   transition: all 0.3s ease;
-  margin-bottom: 20px;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .plan-card.featured {
-  border: 2px solid #667eea;
+  border: 2px solid #0ea5e9;
+  box-shadow:
+    0 14px 30px -22px rgba(2, 132, 199, 0.58),
+    0 16px 30px -24px rgba(15, 23, 42, 0.6);
 }
 
 .plan-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -22px rgba(15, 23, 42, 0.7);
 }
 
 .plan-header {
@@ -203,7 +210,7 @@ onMounted(async () => {
 
 .plan-name {
   font-size: 20px;
-  color: #2c3e50;
+  color: #0f172a;
   margin-bottom: 16px;
 }
 
@@ -216,19 +223,19 @@ onMounted(async () => {
 
 .currency {
   font-size: 16px;
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .amount {
   font-size: 32px;
   font-weight: 700;
-  color: #667eea;
+  color: #0ea5e9;
   margin: 0 4px;
 }
 
 .period {
   font-size: 14px;
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .plan-features ul {
@@ -241,30 +248,40 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  color: #2c3e50;
+  color: #0f172a;
   font-size: 14px;
 }
 
 .plan-features li .el-icon {
-  color: #67c23a;
+  color: #22c55e;
   margin-right: 8px;
   flex-shrink: 0;
 }
 
 .featured-btn {
-  background: linear-gradient(45deg, #667eea, #764ba2);
+  background: linear-gradient(45deg, #0ea5e9, #0f766e);
   border: none;
 }
 
 .comparison-section {
-  margin-top: 60px;
+  margin-top: 42px;
 }
 
 .comparison-section h2 {
   text-align: center;
-  margin-bottom: 30px;
-  color: #2c3e50;
-  font-size: 24px;
+  margin-bottom: 22px;
+  color: #0f172a;
+  font-size: 1.5rem;
+}
+
+.comparison-section :deep(.el-table) {
+  border-radius: 0.875rem;
+  overflow: hidden;
+  border: 1px solid #dbe3ef;
+}
+
+.comparison-section :deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
 }
 
 /* Responsive design */
@@ -304,12 +321,8 @@ onMounted(async () => {
 }
 
 @media (max-width: 767px) {
-  .container {
-    padding: 0 16px;
-  }
-
   .page-header {
-    margin-bottom: 30px;
+    margin-bottom: 28px;
   }
 
   .plans-section {
@@ -324,5 +337,37 @@ onMounted(async () => {
   .comparison-section :deep(.el-table) {
     min-width: 500px;
   }
+}
+
+.dark .page-title {
+  color: #f1f5f9;
+}
+
+.dark .page-subtitle {
+  color: #94a3b8;
+}
+
+.dark .plan-card {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .plan-name,
+.dark .plan-features li,
+.dark .comparison-section h2 {
+  color: #f1f5f9;
+}
+
+.dark .currency,
+.dark .period {
+  color: #94a3b8;
+}
+
+.dark .comparison-section :deep(.el-table) {
+  border-color: #334155;
+}
+
+.dark .comparison-section :deep(.el-table th.el-table__cell) {
+  background: #1f2937;
 }
 </style>

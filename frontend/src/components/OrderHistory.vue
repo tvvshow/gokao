@@ -200,21 +200,25 @@ const changePage = (page: number) => {
 
 <style scoped>
 .order-history {
-  max-width: 800px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.55);
 }
 
 .order-history h2 {
   text-align: center;
-  color: #333;
+  color: #0f172a;
 }
 
 .loading,
 .no-orders {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: #475569;
 }
 
 .order-filters {
@@ -226,9 +230,9 @@ const changePage = (page: number) => {
 
 .order-filters select,
 .order-filters input {
-  padding: 8px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.625rem;
 }
 
 .orders-list {
@@ -236,11 +240,11 @@ const changePage = (page: number) => {
 }
 
 .order-item {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
   padding: 20px;
   margin-bottom: 20px;
-  background-color: #fff;
+  background: #fff;
 }
 
 .order-header {
@@ -249,49 +253,49 @@ const changePage = (page: number) => {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .order-no {
   font-weight: bold;
-  color: #333;
+  color: #0f172a;
 }
 
 .order-status {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
   font-size: 12px;
   font-weight: bold;
 }
 
 .order-status.pending {
-  background-color: #f0f8ff;
-  color: #409eff;
+  background-color: #f0f9ff;
+  color: #0ea5e9;
 }
 
 .order-status.paid {
-  background-color: #f0fff0;
-  color: #67c23a;
+  background-color: #f0fdf4;
+  color: #22c55e;
 }
 
 .order-status.canceled {
-  background-color: #fff0f0;
-  color: #f56c6c;
+  background-color: #fef2f2;
+  color: #ef4444;
 }
 
 .order-status.expired {
   background-color: #f5f5f5;
-  color: #909399;
+  color: #94a3b8;
 }
 
 .order-status.refunded {
   background-color: #f5f5f5;
-  color: #909399;
+  color: #94a3b8;
 }
 
 .order-status.refunding {
-  background-color: #fdf6ec;
-  color: #e6a23c;
+  background-color: #fffbeb;
+  color: #f59e0b;
 }
 
 .order-details {
@@ -305,7 +309,7 @@ const changePage = (page: number) => {
 }
 
 .label {
-  color: #666;
+  color: #475569;
 }
 
 .value {
@@ -319,29 +323,29 @@ const changePage = (page: number) => {
 
 .cancel-btn,
 .invoice-btn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   cursor: pointer;
   font-size: 14px;
 }
 
 .cancel-btn {
-  background-color: #f56c6c;
+  background-color: #ef4444;
   color: white;
 }
 
 .cancel-btn:hover {
-  background-color: #f78989;
+  background-color: #f87171;
 }
 
 .invoice-btn {
-  background-color: #409eff;
+  background-color: #0ea5e9;
   color: white;
 }
 
 .invoice-btn:hover {
-  background-color: #66b1ff;
+  background-color: #38bdf8;
 }
 
 .pagination {
@@ -353,20 +357,72 @@ const changePage = (page: number) => {
 
 .pagination button {
   padding: 8px 12px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #dbe3ef;
   background-color: #fff;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   cursor: pointer;
 }
 
 .pagination button:disabled {
-  background-color: #f5f7fa;
+  background-color: #f1f5f9;
   color: #c0c4cc;
   cursor: not-allowed;
 }
 
 .pagination button:not(:disabled):hover {
-  background-color: #ecf5ff;
-  color: #409eff;
+  background-color: #e0f2fe;
+  color: #0ea5e9;
+}
+
+.dark .order-history {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .order-history h2,
+.dark .order-no,
+.dark .value {
+  color: #f1f5f9;
+}
+
+.dark .loading,
+.dark .no-orders,
+.dark .label {
+  color: #94a3b8;
+}
+
+.dark .order-filters select,
+.dark .order-filters input,
+.dark .pagination button {
+  border-color: #334155;
+  background: #1f2937;
+  color: #e2e8f0;
+}
+
+.dark .order-item {
+  border-color: #334155;
+  background: #1f2937;
+}
+
+.dark .order-header {
+  border-bottom-color: #334155;
+}
+
+@media (max-width: 768px) {
+  .order-history {
+    padding: 1rem;
+  }
+
+  .order-header,
+  .detail-row,
+  .order-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .order-actions button {
+    width: 100%;
+  }
 }
 </style>

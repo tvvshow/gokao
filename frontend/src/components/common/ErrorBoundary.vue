@@ -94,6 +94,9 @@ defineExpose({
 .error-fallback {
   padding: 40px 20px;
   text-align: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .error-details {
@@ -103,9 +106,9 @@ defineExpose({
 }
 
 .error-stack {
-  background: #f5f7fa;
+  background: #f1f5f9;
   padding: 16px;
-  border-radius: 4px;
+  border-radius: 0.625rem;
   font-size: 12px;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -117,5 +120,10 @@ defineExpose({
 :deep(.dark) .error-stack {
   background: #374151;
   color: #d1d5db;
+}
+
+:deep(.dark) .error-fallback {
+  border-color: #334155;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 </style>

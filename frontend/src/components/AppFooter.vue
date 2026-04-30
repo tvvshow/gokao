@@ -83,9 +83,21 @@ import {
 
 <style scoped>
 .app-footer {
-  background: #2c3e50;
-  color: #ecf0f1;
+  background:
+    radial-gradient(
+      900px circle at 5% 2%,
+      rgb(14 165 233 / 0.22),
+      transparent 45%
+    ),
+    radial-gradient(
+      820px circle at 92% 95%,
+      rgb(20 184 166 / 0.18),
+      transparent 45%
+    ),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  color: #cbd5e1;
   margin-top: 60px;
+  border-top: 1px solid rgb(56 189 248 / 0.26);
 }
 
 .footer-content {
@@ -98,10 +110,11 @@ import {
 }
 
 .footer-section h3 {
-  color: #3498db;
+  color: #67e8f9;
   margin-bottom: 16px;
   font-size: 18px;
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .footer-section ul {
@@ -114,25 +127,28 @@ import {
 }
 
 .footer-section a {
-  color: #bdc3c7;
+  color: #cbd5e1;
   text-decoration: none;
-  transition: color 0.3s;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .footer-section a:hover {
-  color: #3498db;
+  color: #f8fafc;
+  transform: translateX(2px);
 }
 
 .contact-info p {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  color: #bdc3c7;
+  color: #cbd5e1;
 }
 
 .contact-info .el-icon {
   margin-right: 8px;
-  color: #3498db;
+  color: #67e8f9;
 }
 
 .social-links {
@@ -142,27 +158,27 @@ import {
 }
 
 .social-links .el-button {
-  background: #34495e;
-  border-color: #34495e;
-  color: #3498db;
+  background: rgb(30 41 59 / 0.88);
+  border-color: rgb(71 85 105 / 0.8);
+  color: #67e8f9;
 }
 
 .social-links .el-button:hover {
-  background: #3498db;
-  border-color: #3498db;
-  color: white;
+  background: #67e8f9;
+  border-color: #67e8f9;
+  color: #0b1120;
 }
 
 .footer-bottom {
-  border-top: 1px solid #34495e;
+  border-top: 1px solid rgb(56 189 248 / 0.2);
   padding: 20px 0;
   text-align: center;
-  background: #263238;
+  background: rgb(2 6 23 / 0.44);
 }
 
 .copyright p {
   margin: 0;
-  color: #95a5a6;
+  color: #94a3b8;
   font-size: 14px;
   line-height: 1.5;
 }

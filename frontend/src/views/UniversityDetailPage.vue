@@ -2,12 +2,12 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="container-modern py-8">
       <!-- 顶部导航栏 -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <button class="btn btn-secondary" @click="goBack">
           <ArrowLeftIcon class="w-4 h-4 mr-2" />
           返回列表
         </button>
-        <div class="flex space-x-2">
+        <div class="flex flex-wrap gap-2 md:justify-end">
           <button
             class="btn btn-outline"
             :class="{ 'btn-active': isFavorite }"
@@ -520,38 +520,43 @@ watch(() => route.params.id, fetchDetail);
 </script>
 
 <style scoped>
-/* 页面头部 */
 .header-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background:
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.28), transparent 45%),
+    linear-gradient(135deg, #0369a1 0%, #0f766e 55%, #164e63 100%);
+  color: #f8fafc;
   padding: 2rem;
   border-radius: 1rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow:
+    0 12px 32px -14px rgba(2, 132, 199, 0.55),
+    0 18px 40px -26px rgba(15, 23, 42, 0.72);
 }
 
 .header-card .page-title {
-  color: white;
+  color: #fff;
   margin: 0;
 }
 
 .header-card .text-gray-600 {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(240, 249, 255, 0.9);
 }
 
 .header-card .text-gray-500 {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(224, 242, 254, 0.78);
 }
 
 .university-logo {
   width: 80px;
   height: 80px;
-  background: white;
+  background: rgba(248, 250, 252, 0.95);
   border-radius: 1rem;
+  border: 1px solid rgba(186, 230, 253, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 18px -12px rgba(15, 23, 42, 0.9);
 }
 
 .university-logo img {
@@ -560,36 +565,39 @@ watch(() => route.params.id, fetchDetail);
   object-fit: contain;
 }
 
-/* 徽章样式 */
 .badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
   font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .badge-985 {
-  background: #ef4444;
-  color: white;
+  background: rgba(254, 226, 226, 0.22);
+  border-color: rgba(252, 165, 165, 0.4);
+  color: #fee2e2;
 }
 
 .badge-211 {
-  background: #f59e0b;
-  color: white;
+  background: rgba(254, 243, 199, 0.22);
+  border-color: rgba(252, 211, 77, 0.45);
+  color: #fef3c7;
 }
 
 .badge-double {
-  background: #3b82f6;
-  color: white;
+  background: rgba(224, 242, 254, 0.25);
+  border-color: rgba(125, 211, 252, 0.48);
+  color: #e0f2fe;
 }
 
-/* 分数卡片 */
 .score-card {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background: linear-gradient(180deg, #f8fcff 0%, #f0f9ff 100%);
 }
 
 .dark .score-card {
-  background: linear-gradient(135deg, #1e3a5f 0%, #1a365d 100%);
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 
 .score-grid {
@@ -600,33 +608,35 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .score-item {
-  background: white;
+  background: rgba(255, 255, 255, 0.92);
   padding: 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 0.875rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.6);
 }
 
 .dark .score-item {
-  background: #374151;
+  background: rgba(31, 41, 55, 0.92);
+  border-color: #374151;
 }
 
 .score-item.science {
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #0284c7;
 }
 
 .score-item.liberal {
-  border-left: 4px solid #ec4899;
+  border-left: 4px solid #14b8a6;
 }
 
 .score-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #6b7280;
+  color: #64748b;
   margin-bottom: 0.5rem;
 }
 
 .dark .score-label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .score-values {
@@ -640,23 +650,32 @@ watch(() => route.params.id, fetchDetail);
 
 .score-label-small {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .score-number {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f172a;
+}
+
+.dark .score-number {
+  color: #f1f5f9;
 }
 
 .score-avg {
-  color: #3b82f6;
+  color: #0284c7;
 }
 
-/* 录取数据表格 */
 .admission-table-container {
   overflow-x: auto;
   margin-top: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .admission-table-container {
+  border-color: #334155;
 }
 
 .admission-table {
@@ -669,29 +688,33 @@ watch(() => route.params.id, fetchDetail);
 .admission-table td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dark .admission-table th,
+.dark .admission-table td {
+  border-bottom-color: #334155;
 }
 
 .admission-table th {
-  background: #f9fafb;
+  background: #f8fafc;
   font-weight: 600;
-  color: #374151;
+  color: #334155;
 }
 
 .dark .admission-table th {
-  background: #374151;
-  color: #f3f4f6;
+  background: #1f2937;
+  color: #e2e8f0;
 }
 
 .admission-table tbody tr:hover {
-  background: #f9fafb;
+  background: #f0f9ff;
 }
 
 .dark .admission-table tbody tr:hover {
-  background: #374151;
+  background: rgba(30, 41, 59, 0.8);
 }
 
-/* 信息网格 */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -702,8 +725,8 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px dashed #e5e7eb;
+  padding: 0.625rem 0;
+  border-bottom: 1px dashed #d1d9e6;
 }
 
 .dark .info-row {
@@ -715,24 +738,23 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .label {
-  color: #6b7280;
+  color: #64748b;
   font-size: 0.875rem;
 }
 
 .dark .label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .value {
-  color: #1f2937;
-  font-weight: 500;
+  color: #0f172a;
+  font-weight: 600;
 }
 
 .dark .value {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
-/* 联系方式 */
 .contact-grid {
   display: flex;
   flex-direction: column;
@@ -744,20 +766,19 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #4b5563;
+  color: #475569;
   font-size: 0.875rem;
 }
 
 .contact-link:hover {
-  color: #3b82f6;
+  color: #0284c7;
 }
 
 .dark .contact-link,
 .dark .contact-item {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* 标签容器 */
 .tags-container {
   display: flex;
   flex-wrap: wrap;
@@ -770,35 +791,39 @@ watch(() => route.params.id, fetchDetail);
   gap: 0.25rem;
   padding: 0.375rem 0.75rem;
   border-radius: 9999px;
+  border: 1px solid transparent;
   font-size: 0.875rem;
   transition: all 0.2s;
 }
 
 .tag-major {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #ecfeff;
+  border-color: #bae6fd;
+  color: #0e7490;
 }
 
 .dark .tag-major {
-  background: #4c1d95;
-  color: #c4b5fd;
+  background: rgba(14, 116, 144, 0.22);
+  border-color: rgba(125, 211, 252, 0.4);
+  color: #67e8f9;
 }
 
 .tag-major:hover {
-  background: #ddd6fe;
+  background: #cffafe;
 }
 
 .tag-feature {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
 }
 
 .dark .tag-feature {
-  background: #1e3a8a;
-  color: #93c5fd;
+  background: rgba(3, 105, 161, 0.22);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
 }
 
-/* 专业卡片网格 */
 .major-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -806,53 +831,56 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .major-card {
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  background: #f9fafb;
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
   transition: all 0.2s;
   text-decoration: none;
   color: inherit;
 }
 
 .dark .major-card {
-  background: #374151;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  border-color: #334155;
 }
 
 .major-card:hover {
-  background: #ede9fe;
+  border-color: #7dd3fc;
+  background: #f0f9ff;
   transform: translateY(-2px);
 }
 
 .dark .major-card:hover {
-  background: #4c1d95;
+  border-color: #22d3ee;
+  background: #0f172a;
 }
 
 .major-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #0f172a;
   margin-bottom: 0.25rem;
 }
 
 .dark .major-name {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .major-meta {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dark .major-meta {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* 统计卡片 */
 .stats-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .dark .stats-card {
-  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 
 .quick-stats {
@@ -865,14 +893,16 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 0.875rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.7);
 }
 
 .dark .quick-stat {
-  background: #4b5563;
+  background: rgba(31, 41, 55, 0.92);
+  border-color: #334155;
 }
 
 .stat-icon {
@@ -881,20 +911,20 @@ watch(() => route.params.id, fetchDetail);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   color: white;
 }
 
 .stat-rank {
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
 }
 
 .stat-employment {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
 }
 
 .stat-majors {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
 }
 
 .stat-content {
@@ -904,27 +934,26 @@ watch(() => route.params.id, fetchDetail);
 .stat-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .dark .stat-value {
-  color: #f3f4f6;
+  color: #f1f5f9;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .dark .stat-label {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* 操作按钮卡片 */
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .action-btn {
@@ -932,11 +961,11 @@ watch(() => route.params.id, fetchDetail);
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background: white;
-  color: #374151;
+  padding: 0.8125rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #334155;
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.2s;
@@ -944,31 +973,29 @@ watch(() => route.params.id, fetchDetail);
 }
 
 .dark .action-btn {
-  background: #4b5563;
-  border-color: #6b7280;
-  color: #f3f4f6;
+  background: #1f2937;
+  border-color: #374151;
+  color: #e2e8f0;
 }
 
 .action-btn:hover {
-  background: #f9fafb;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #f0f9ff;
+  border-color: #38bdf8;
+  color: #0369a1;
 }
 
 .dark .action-btn:hover {
-  background: #6b7280;
-  border-color: #60a5fa;
-  color: #60a5fa;
+  background: #0f172a;
+  border-color: #22d3ee;
+  color: #67e8f9;
 }
 
-/* 按钮样式 */
 .btn-active {
   background: #fee2e2 !important;
   color: #dc2626 !important;
   border-color: #dc2626 !important;
 }
 
-/* 动画 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -984,7 +1011,6 @@ watch(() => route.params.id, fetchDetail);
   animation: fadeIn 0.3s ease-out;
 }
 
-/* 加载和错误状态 */
 .loading-container,
 .error-container,
 .empty-container {
@@ -997,20 +1023,16 @@ watch(() => route.params.id, fetchDetail);
   margin-bottom: 1rem;
 }
 
-/* 响应式 */
 @media (max-width: 768px) {
   .header-card {
-    padding: 1.5rem;
+    padding: 1.375rem;
   }
 
   .university-logo {
     display: none;
   }
 
-  .score-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .score-grid,
   .info-grid {
     grid-template-columns: 1fr;
   }

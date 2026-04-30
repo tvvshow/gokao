@@ -82,12 +82,14 @@ const viewEmploymentData = () => {
   height: 100%;
   cursor: pointer;
   transition: all 0.3s ease;
-  border-radius: 8px;
+  border-radius: 14px;
+  border: 1px solid rgb(148 163 184 / 0.22);
+  box-shadow: 0 16px 30px -28px rgb(15 23 42 / 0.55);
 }
 
 .major-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 22px 40px -32px rgb(14 165 233 / 0.72);
 }
 
 .card-header {
@@ -98,10 +100,11 @@ const viewEmploymentData = () => {
 }
 
 .major-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #0f172a;
   margin: 0;
+  letter-spacing: -0.01em;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -113,32 +116,33 @@ const viewEmploymentData = () => {
 }
 
 .basic-info {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 14px;
+  margin-bottom: 9px;
+  font-size: 13px;
 }
 
 .info-item .label {
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .info-item .value {
-  color: #2c3e50;
+  color: #0f172a;
   font-weight: 500;
 }
 
 .stats-info {
   display: flex;
   justify-content: space-around;
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 14px;
+  border: 1px solid rgb(148 163 184 / 0.2);
 }
 
 .stat-item {
@@ -146,28 +150,28 @@ const viewEmploymentData = () => {
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   margin-bottom: 4px;
 }
 
 .stat-value.employment {
-  color: #67c23a;
+  color: #22c55e;
 }
 
 .stat-value.salary {
-  color: #e6a23c;
+  color: #f59e0b;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .description {
-  font-size: 14px;
-  color: #7f8c8d;
-  line-height: 1.5;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
 }
 
 .description p {
@@ -182,18 +186,19 @@ const viewEmploymentData = () => {
   display: flex;
   justify-content: space-between;
   padding: 0;
+  gap: 8px;
 }
 
 .card-actions .el-button {
   flex: 1;
-  margin: 0 4px;
+  margin: 0;
+  min-height: 38px;
+  border-radius: 10px;
 }
 
-.card-actions .el-button:first-child {
-  margin-left: 0;
-}
-
-.card-actions .el-button:last-child {
-  margin-right: 0;
+@media (max-width: 768px) {
+  .major-name {
+    font-size: 15px;
+  }
 }
 </style>

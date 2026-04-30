@@ -227,12 +227,12 @@ const handleFavorite = (recommendation: Recommendation) =>
   display: flex;
   align-items: center;
   font-weight: 600;
-  color: #2c3e50;
+  color: #0f172a;
+  gap: 10px;
 }
 
 .card-header .el-icon {
-  margin-right: 8px;
-  color: #667eea;
+  color: #0ea5e9;
 }
 
 .result-actions {
@@ -241,8 +241,17 @@ const handleFavorite = (recommendation: Recommendation) =>
   gap: 8px;
 }
 
+.result-actions :deep(.el-button) {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
 .category-tabs {
   margin-bottom: 24px;
+  border-radius: 14px;
+  padding: 6px 8px;
+  background: linear-gradient(120deg, rgb(248 250 252 / 0.94), rgb(240 249 255 / 0.94));
+  border: 1px solid rgb(148 163 184 / 0.24);
 }
 
 .tab-badge {
@@ -252,25 +261,26 @@ const handleFavorite = (recommendation: Recommendation) =>
 .recommendations-list {
   max-height: 600px;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .empty-state,
 .loading-state {
   text-align: center;
   padding: 60px 20px;
-  color: #7f8c8d;
+  color: #64748b;
 }
 
 .empty-state .el-icon,
 .loading-state .el-icon {
-  color: #667eea;
+  color: #0ea5e9;
   margin-bottom: 20px;
 }
 
 .empty-state h3,
 .loading-state h3 {
   margin-bottom: 12px;
-  color: #2c3e50;
+  color: #0f172a;
 }
 
 .loading-state .el-progress {
@@ -282,6 +292,11 @@ const handleFavorite = (recommendation: Recommendation) =>
 
 .rotating {
   animation: rotate 2s linear infinite;
+}
+
+.dark .category-tabs {
+  background: linear-gradient(120deg, rgb(15 23 42 / 0.86), rgb(30 41 59 / 0.86));
+  border-color: rgb(71 85 105 / 0.52);
 }
 
 @keyframes rotate {
