@@ -299,13 +299,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     image: gaokao/frontend:latest
     container_name: gaokao_frontend
     ports:
       - "80:80"    # HTTP端口
       - "443:443"  # HTTPS端口
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
       - NODE_ENV=production
       - VITE_HOST=${FRONTEND_DOMAIN:-localhost}
     volumes:
