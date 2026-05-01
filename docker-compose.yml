@@ -144,7 +144,7 @@ services:
     environment:
       - PORT=8083
       - GIN_MODE=release
-      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable&prefer_simple_protocol=true
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable
       - REDIS_URL=redis:6379
       - REDIS_DB=1
       - LOG_LEVEL=${LOG_LEVEL:-info}

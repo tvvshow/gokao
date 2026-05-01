@@ -24,8 +24,7 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 
 	// 连接数据库
 	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN:                  cfg.DatabaseURL,
-		PreferSimpleProtocol: true,
+		DSN: cfg.DatabaseURL,
 	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
