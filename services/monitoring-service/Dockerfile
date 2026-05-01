@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o monitoring-service .
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata curl
+RUN apk add --no-cache ca-certificates tzdata
 ENV TZ=Asia/Shanghai
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
@@ -29,6 +29,6 @@ USER appuser
 EXPOSE 8086
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8086/metrics || exit 1
+    CMD wget -q -O - http://127.0.0.1:8086/metrics || exit 1
 
 CMD ["./monitoring-service"]

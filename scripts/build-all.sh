@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
 LOG_FILE="${BUILD_DIR}/build.log"
+DOCKER_BUILD="${DOCKER_BUILD:-docker buildx build --load}"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -241,7 +242,7 @@ build_docker_images() {
             log "构建Docker镜像: $service"
             cd "$service_dir"
             
-            docker build -t "gaokaohub/${service}:latest" . >> "$LOG_FILE" 2>&1
+            $DOCKER_BUILD -t "gaokaohub/${service}:latest" . >> "$LOG_FILE" 2>&1
             
             log_success "Docker镜像 $service 构建完成"
         else

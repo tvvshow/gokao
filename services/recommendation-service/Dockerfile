@@ -37,7 +37,7 @@ FROM alpine:3.20
 RUN apk add --no-cache \
     libstdc++ libgcc \
     openssl jsoncpp \
-    ca-certificates tzdata curl
+    ca-certificates tzdata
 
 ENV TZ=Asia/Shanghai
 
@@ -60,6 +60,6 @@ USER appuser
 EXPOSE 8084
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8084/health || exit 1
+    CMD wget -q -O - http://127.0.0.1:8084/health || exit 1
 
 CMD ["./recommendation-service"]

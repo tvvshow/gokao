@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,7 @@ func main() {
 
 	// 初始化配置
 	cfg := config.Load()
+	logrus.Infof("🔐 Env configured: JWT_SECRET=%t AES_ENCRYPTION_KEY=%t", os.Getenv("JWT_SECRET") != "", os.Getenv("AES_ENCRYPTION_KEY") != "")
 
 	// 加载安全配置
 	securityCfg, err := config.LoadSecurityConfig()

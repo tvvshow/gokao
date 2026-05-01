@@ -30,5 +30,24 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('element-plus')) {
+              return 'vendor-element-plus';
+            }
+            if (id.includes('echarts') || id.includes('zrender') || id.includes('vue-echarts')) {
+              return 'vendor-echarts';
+            }
+            if (id.includes('vue') || id.includes('vue-router') || id.includes('pinia')) {
+              return 'vendor-vue';
+            }
+            return 'vendor-misc';
+          }
+          return undefined;
+        },
+      },
+    },
   },
 });

@@ -4,6 +4,7 @@
 APP_NAME=user-service
 DOCKER_IMAGE=gaokao/user-service
 DOCKER_TAG=latest
+DOCKER_BUILD?=docker buildx build --load
 GO_VERSION=1.21
 PORT=8080
 
@@ -129,7 +130,7 @@ test-integration:
 # 构建Docker镜像
 docker-build:
 	@echo "$(YELLOW)构建Docker镜像...$(NC)"
-	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	$(DOCKER_BUILD) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 	@echo "$(GREEN)Docker镜像构建完成: $(DOCKER_IMAGE):$(DOCKER_TAG)$(NC)"
 
 # 运行Docker容器

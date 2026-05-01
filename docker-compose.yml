@@ -144,7 +144,7 @@ services:
     environment:
       - PORT=8083
       - GIN_MODE=release
-      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-gaokao_db}?sslmode=disable&prefer_simple_protocol=true
       - REDIS_URL=redis:6379
       - REDIS_DB=1
       - LOG_LEVEL=${LOG_LEVEL:-info}
@@ -194,6 +194,11 @@ services:
     restart: unless-stopped
     networks:
       - gaokao_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # 支付服务
   payment-service:
@@ -248,6 +253,11 @@ services:
     restart: unless-stopped
     networks:
       - gaokao_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8086/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:v2.53.0

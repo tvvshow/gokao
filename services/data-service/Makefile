@@ -4,6 +4,7 @@
 APP_NAME=data-service
 DOCKER_IMAGE=gaokao/data-service
 VERSION=1.0.0
+DOCKER_BUILD?=docker buildx build --load
 GO_VERSION=1.21
 
 # 颜色定义
@@ -83,7 +84,7 @@ swagger: ## 生成Swagger文档
 
 docker-build: ## 构建Docker镜像
 	@echo "$(GREEN)构建Docker镜像...$(NC)"
-	docker build -t $(DOCKER_IMAGE):$(VERSION) .
+	$(DOCKER_BUILD) -t $(DOCKER_IMAGE):$(VERSION) .
 	docker tag $(DOCKER_IMAGE):$(VERSION) $(DOCKER_IMAGE):latest
 	@echo "$(GREEN)Docker镜像构建完成!$(NC)"
 

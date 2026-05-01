@@ -69,6 +69,7 @@ SKIP_TESTS=false
 DRY_RUN=false
 NO_BACKUP=false
 SCALE=""
+DOCKER_BUILD="${DOCKER_BUILD:-docker buildx build --load}"
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -251,7 +252,7 @@ build_images() {
     
     for service in "${services[@]}"; do
         log_info "构建 $service 镜像..."
-        docker build -t "$REGISTRY/$service:$VERSION" "./services/$service"
+        $DOCKER_BUILD -t "$REGISTRY/$service:$VERSION" "./services/$service"
         
         if [[ "$ENVIRONMENT" != "local" ]]; then
             docker push "$REGISTRY/$service:$VERSION"
@@ -261,7 +262,7 @@ build_images() {
     # 构建前端镜像
     log_info "构建前端镜像..."
     cd frontend && npm run build && cd ..
-    docker build -t "$REGISTRY/frontend:$VERSION" "./frontend"
+    $DOCKER_BUILD -t "$REGISTRY/frontend:$VERSION" "./frontend"
     
     if [[ "$ENVIRONMENT" != "local" ]]; then
         docker push "$REGISTRY/frontend:$VERSION"

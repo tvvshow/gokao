@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 
 # 项目根目录
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DOCKER_BUILD="${DOCKER_BUILD:-docker buildx build --load}"
 
 echo -e "${BLUE}🔧 高考志愿填报系统 - Critical问题修复脚本${NC}"
 echo -e "${BLUE}================================================${NC}"
@@ -414,7 +415,7 @@ lint: ## 代码检查
 
 docker-build: ## 构建Docker镜像
 	@echo "$(GREEN)构建Docker镜像 $(SERVICE_NAME)...$(NC)"
-	docker build -t $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT) .
+	$(DOCKER_BUILD) -t $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT) .
 	docker tag $(DOCKER_REGISTRY)/$(SERVICE_NAME):$(GIT_COMMIT) $(DOCKER_REGISTRY)/$(SERVICE_NAME):latest
 
 docker-push: docker-build ## 推送Docker镜像

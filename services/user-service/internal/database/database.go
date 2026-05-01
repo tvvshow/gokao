@@ -23,7 +23,10 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// 连接数据库
-	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  cfg.DatabaseURL,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
@@ -101,13 +104,13 @@ func seedDefaultData(db *gorm.DB) error {
 		{Name: "user:write", Description: "修改用户信息"},
 		{Name: "user:delete", Description: "删除用户"},
 		{Name: "user:verify", Description: "验证用户身份"},
-		
+
 		// 角色权限管理
 		{Name: "role:read", Description: "查看角色信息"},
 		{Name: "role:write", Description: "修改角色信息"},
 		{Name: "role:delete", Description: "删除角色"},
 		{Name: "permission:manage", Description: "管理权限"},
-		
+
 		// 会员管理权限
 		{Name: "membership:read", Description: "查看会员信息"},
 		{Name: "membership:write", Description: "修改会员信息"},
@@ -116,22 +119,22 @@ func seedDefaultData(db *gorm.DB) error {
 		{Name: "order:read", Description: "查看订单信息"},
 		{Name: "order:process", Description: "处理订单"},
 		{Name: "order:refund", Description: "订单退款"},
-		
+
 		// 设备管理权限
 		{Name: "device:read", Description: "查看设备信息"},
 		{Name: "device:manage", Description: "管理设备绑定"},
 		{Name: "device:trust", Description: "设置信任设备"},
 		{Name: "device:revoke", Description: "撤销设备授权"},
-		
+
 		// 会话管理权限
 		{Name: "session:read", Description: "查看会话信息"},
 		{Name: "session:manage", Description: "管理用户会话"},
 		{Name: "session:revoke", Description: "撤销会话"},
-		
+
 		// 审计日志权限
 		{Name: "audit:read", Description: "查看审计日志"},
 		{Name: "audit:export", Description: "导出审计日志"},
-		
+
 		// 系统管理权限
 		{Name: "system:monitor", Description: "系统监控"},
 		{Name: "system:stats", Description: "查看系统统计"},
@@ -193,13 +196,13 @@ func seedDefaultData(db *gorm.DB) error {
 	// 为不同角色分配权限
 	rolePermissionMap := map[string][]string{
 		"user": {
-			"user:read", 
-			"device:read", 
+			"user:read",
+			"device:read",
 			"session:read",
 		},
 		"basic": {
 			"user:read", "user:write",
-			"device:read", "device:manage", 
+			"device:read", "device:manage",
 			"session:read", "session:manage",
 			"membership:read", "membership:order",
 			"order:read",

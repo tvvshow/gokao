@@ -21,6 +21,7 @@ PROJECT_NAME := gaokao-system
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DOCKER_BUILD ?= docker buildx build --load
 
 # 目录配置
 BIN_DIR := bin
@@ -155,10 +156,10 @@ docker:
 	@echo "🐳 构建Docker镜像..."
 	@for service in $(SERVICES); do \
 		echo "  构建 $$service 镜像..."; \
-		docker build -t $(PROJECT_NAME)/$$service:$(VERSION) \
+		$(DOCKER_BUILD) -t $(PROJECT_NAME)/$$service:$(VERSION) \
 			services/$$service; \
 	done
-	@docker build -t $(PROJECT_NAME)/frontend:$(VERSION) frontend
+	@$(DOCKER_BUILD) -t $(PROJECT_NAME)/frontend:$(VERSION) frontend
 	@echo "✅ Docker镜像构建完成"
 
 # 版本信息
