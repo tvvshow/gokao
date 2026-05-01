@@ -1,6 +1,6 @@
 <template>
-  <div class="majors-page">
-    <div class="container">
+  <div class="majors-page min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container-modern py-8">
       <div class="page-header">
         <h1 class="page-title">专业分析</h1>
         <p class="page-subtitle">探索热门专业，了解就业前景，做出明智选择</p>
@@ -301,14 +301,7 @@ onMounted(() => {
 
 <style scoped>
 .majors-page {
-  padding: 24px 0;
   min-height: calc(100vh - 160px);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
 }
 
 .page-header {
@@ -335,15 +328,34 @@ onMounted(() => {
 .filter-panel {
   border-radius: 14px;
   border: 1px solid rgb(148 163 184 / 0.24);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(248 250 252 / 0.95));
   box-shadow: 0 16px 30px -28px rgb(14 165 233 / 0.5);
 }
 
 .filter-form :deep(.el-form-item__label) {
   margin-bottom: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.filter-form :deep(.el-input__wrapper),
+.filter-form :deep(.el-select__wrapper) {
+  min-height: 46px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.filter-form :deep(.el-input__inner),
+.filter-form :deep(.el-select__selected-item),
+.filter-form :deep(.el-select__placeholder) {
+  font-size: 15px;
 }
 
 .filter-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
   padding-top: 2px;
@@ -408,11 +420,48 @@ onMounted(() => {
   justify-content: center;
 }
 
-@media (max-width: 768px) {
-  .container {
-    padding: 0 14px;
-  }
+.dark .page-title {
+  color: #f1f5f9;
+}
 
+.dark .page-subtitle {
+  color: #94a3b8;
+}
+
+.dark .filter-panel,
+.dark .results-panel {
+  border-color: rgb(71 85 105 / 0.45);
+  box-shadow: none;
+}
+
+.dark .filter-panel {
+  background: linear-gradient(180deg, rgb(31 41 55 / 0.9), rgb(17 24 39 / 0.9));
+}
+
+.dark .filter-form :deep(.el-form-item__label) {
+  color: #cbd5e1;
+}
+
+.dark .filter-form :deep(.el-input__wrapper),
+.dark .filter-form :deep(.el-select__wrapper) {
+  border-color: #334155;
+}
+
+.dark .stat-card {
+  background: rgb(31 41 55 / 0.9);
+  border-color: rgb(71 85 105 / 0.5);
+}
+
+.dark .stat-label,
+.dark .results-head {
+  color: #94a3b8;
+}
+
+.dark .results-head strong {
+  color: #67e8f9;
+}
+
+@media (max-width: 768px) {
   .page-title {
     font-size: 28px;
   }
@@ -423,6 +472,17 @@ onMounted(() => {
 
   .filter-actions :deep(.el-button) {
     flex: 1;
+  }
+
+  .filter-form :deep(.el-input__wrapper),
+  .filter-form :deep(.el-select__wrapper) {
+    min-height: 48px;
+  }
+
+  .filter-form :deep(.el-input__inner),
+  .filter-form :deep(.el-select__selected-item),
+  .filter-form :deep(.el-select__placeholder) {
+    font-size: 16px;
   }
 }
 </style>

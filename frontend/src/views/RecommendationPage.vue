@@ -216,6 +216,10 @@ onMounted(() => {
 
 <style scoped>
 .recommendation-page {
+  background:
+    radial-gradient(860px circle at 8% 0%, rgb(34 211 238 / 0.08), transparent 48%),
+    radial-gradient(740px circle at 95% 95%, rgb(56 189 248 / 0.08), transparent 45%),
+    #f8fafc;
   min-height: calc(100vh - 160px);
 }
 
@@ -250,6 +254,13 @@ onMounted(() => {
 
 .result-section {
   min-height: 600px;
+}
+
+.dark .recommendation-page {
+  background:
+    radial-gradient(780px circle at 8% 2%, rgb(6 182 212 / 0.12), transparent 48%),
+    radial-gradient(680px circle at 95% 95%, rgb(14 116 144 / 0.12), transparent 45%),
+    #020617;
 }
 
 .dark .page-title {

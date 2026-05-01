@@ -75,7 +75,7 @@
           </div>
         </div>
 
-        <div class="flex justify-center mt-6 space-x-4 filter-actions">
+        <div class="flex justify-center mt-6 gap-4 filter-actions">
           <button
             @click="() => handleSearch()"
             class="btn btn-primary"
@@ -120,7 +120,7 @@
             }}</span>
             所院校
           </p>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center gap-2">
             <span class="text-sm text-slate-500 dark:text-slate-400"
               >排序方式:</span
             >
@@ -147,7 +147,7 @@
               class="card card-hover p-6 cursor-pointer university-card-item"
               @click="viewUniversityDetail(university)"
             >
-              <div class="flex items-start space-x-4">
+              <div class="flex items-start gap-4">
                 <div
                   class="w-16 h-16 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center flex-shrink-0"
                 >
@@ -161,7 +161,7 @@
                     >
                       {{ university.name }}
                     </h3>
-                    <div class="flex space-x-1">
+                    <div class="flex gap-1">
                       <span
                         v-if="university.is985"
                         class="badge badge-error text-xs"
@@ -217,7 +217,7 @@
             class="card card-hover p-6 cursor-pointer"
             @click="viewUniversityDetail(university)"
           >
-            <div class="flex items-start space-x-4">
+            <div class="flex items-start gap-4">
               <div
                 class="w-16 h-16 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center flex-shrink-0"
               >
@@ -231,7 +231,7 @@
                   >
                     {{ university.name }}
                   </h3>
-                  <div class="flex space-x-1">
+                  <div class="flex gap-1">
                     <span
                       v-if="university.is985"
                       class="badge badge-error text-xs"
@@ -318,7 +318,7 @@
 
         <!-- 分页 -->
         <div v-if="totalPages > 1" class="flex justify-center mt-8">
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center gap-2">
             <button
               @click="handlePageChange(currentPage - 1)"
               :disabled="currentPage === 1"
@@ -600,6 +600,15 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .filter-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .filter-actions .btn {
+    flex: 1;
+  }
+
   .results-bar {
     display: flex;
     flex-direction: column;

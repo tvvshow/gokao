@@ -19,12 +19,13 @@
       <div class="form-section">
         <h3 class="section-title">基础信息</h3>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="高考分数" prop="score" required>
               <el-input
                 v-model.number="studentForm.score"
                 type="number"
                 placeholder="请输入高考分数"
+                class="score-input"
                 :min="0"
                 :max="750"
               >
@@ -32,7 +33,7 @@
               </el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="所在省份" prop="province" required>
               <el-select
                 v-model="studentForm.province"
@@ -51,7 +52,7 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="文理科类" prop="scienceType" required>
               <el-radio-group v-model="studentForm.scienceType">
                 <el-radio label="理科">理科</el-radio>
@@ -60,7 +61,7 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :md="12">
             <el-form-item label="高考年份" prop="year">
               <el-select
                 v-model="studentForm.year"
@@ -313,12 +314,46 @@ defineExpose({
 
 .content-card :deep(.el-form-item__label) {
   white-space: normal;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
 }
 
 .content-card :deep(.el-select),
 .content-card :deep(.el-input),
 .content-card :deep(.el-textarea) {
   width: 100%;
+}
+
+.content-card :deep(.el-input__wrapper),
+.content-card :deep(.el-select__wrapper) {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #dbe3ef;
+  box-shadow: none;
+}
+
+.content-card :deep(.el-input__inner),
+.content-card :deep(.el-select__selected-item),
+.content-card :deep(.el-select__placeholder) {
+  font-size: 15px;
+}
+
+.content-card :deep(.el-input-group__append) {
+  min-width: 46px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #e0f2fe;
+  border-left: 1px solid #bae6fd;
+}
+
+.content-card :deep(.el-textarea__inner) {
+  min-height: 112px;
+  border-radius: 12px;
+  border: 1px solid #dbe3ef;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .form-actions {
@@ -335,6 +370,27 @@ defineExpose({
   min-height: 44px;
 }
 
+.dark .card-header,
+.dark .section-title {
+  color: #f1f5f9;
+}
+
+.dark .content-card :deep(.el-form-item__label) {
+  color: #cbd5e1;
+}
+
+.dark .content-card :deep(.el-input__wrapper),
+.dark .content-card :deep(.el-select__wrapper),
+.dark .content-card :deep(.el-textarea__inner) {
+  border-color: #334155;
+}
+
+.dark .content-card :deep(.el-input-group__append) {
+  color: #e2e8f0;
+  background: #164e63;
+  border-left-color: #0e7490;
+}
+
 /* 移动端优化 */
 @media (max-width: 768px) {
   .form-section {
@@ -343,6 +399,17 @@ defineExpose({
 
   .content-card :deep(.el-form-item) {
     margin-bottom: 18px;
+  }
+
+  .content-card :deep(.el-input__wrapper),
+  .content-card :deep(.el-select__wrapper) {
+    min-height: 48px;
+  }
+
+  .content-card :deep(.el-input__inner),
+  .content-card :deep(.el-select__selected-item),
+  .content-card :deep(.el-select__placeholder) {
+    font-size: 16px;
   }
 
   .form-actions .el-button {
