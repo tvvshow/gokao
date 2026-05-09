@@ -128,8 +128,15 @@ func TestLoadRedis_Defaults(t *testing.T) {
 	os.Unsetenv("REDIS_URL")
 	os.Unsetenv("REDIS_PASSWORD")
 	os.Unsetenv("REDIS_DB")
-	cfg := LoadRedis("")
+	cfg := LoadRedis("", 0)
 	if cfg.RedisURL != "localhost:6379" {
 		t.Errorf("default Redis URL = %q", cfg.RedisURL)
+	}
+	if cfg.RedisDB != 0 {
+		t.Errorf("default RedisDB = %d", cfg.RedisDB)
+	}
+	cfg2 := LoadRedis("", 3)
+	if cfg2.RedisDB != 3 {
+		t.Errorf("custom default RedisDB = %d, want 3", cfg2.RedisDB)
 	}
 }

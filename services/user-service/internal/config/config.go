@@ -39,7 +39,7 @@ func Load() *Config {
 	return &Config{
 		ServerConfig:   sharedcfg.LoadServer("8083", "ENABLE_SWAGGER"),
 		DatabaseConfig: sharedcfg.LoadDatabase("postgres://postgres:password@localhost:5432/gaokao_users?sslmode=disable"),
-		RedisConfig:    sharedcfg.LoadRedis(""),
+		RedisConfig:    sharedcfg.LoadRedis("", 0),
 		AuditConfig:    sharedcfg.LoadAudit(),
 
 		JWTSecret:         sharedcfg.GetEnv("JWT_SECRET", ""),
