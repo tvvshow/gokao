@@ -126,41 +126,21 @@ type PortfolioBalance struct {
 }
 
 // MatchVolunteers 志愿匹配
+//
+// 职责说明：data-service 内的算法是 Go 端的"轻量备用实现"，主推荐链路在
+// recommendation-service（CGO 调 C++ volunteer-matcher）。本服务保留 Go 实现是为了
+// data-service 自身的探索性 API 与离线分析；任何"调 C++ 引擎"的诉求都应由 api-gateway
+// 直接路由到 recommendation-service，而非在此进程内再起一份 CGO 桥（违反单职责）。
 func (s *AlgorithmService) MatchVolunteers(ctx context.Context, req VolunteerMatchRequest) (*VolunteerMatchResponse, error) {
 	startTime := time.Now()
 
-	// 生成请求ID
 	requestID := uuid.New().String()
 
-	// 验证请求参数
 	if err := s.validateRequest(req); err != nil {
 		return nil, fmt.Errorf("请求参数验证失败: %w", err)
 	}
 
-	// 如果启用了C++算法引擎，使用算法引擎处理
-	if s.db.Config.AlgorithmEngineEnabled {
-		response, err := s.matchWithCppEngine(ctx, req, requestID)
-		if err != nil {
-			s.logger.Warnf("C++算法引擎处理失败，回退到Go实现: %v", err)
-			// 回退到Go实现
-			return s.matchWithGoImplementation(ctx, req, requestID, startTime)
-		}
-		return response, nil
-	}
-
-	// 使用Go实现
 	return s.matchWithGoImplementation(ctx, req, requestID, startTime)
-}
-
-// matchWithCppEngine 使用C++算法引擎处理
-func (s *AlgorithmService) matchWithCppEngine(ctx context.Context, req VolunteerMatchRequest, requestID string) (*VolunteerMatchResponse, error) {
-	// TODO: 集成C++算法引擎
-	// 这里应该调用C++模块中的volunteer_matcher
-
-	s.logger.Info("调用C++算法引擎进行志愿匹配")
-
-	// 暂时返回错误，强制使用Go实现
-	return nil, fmt.Errorf("C++算法引擎暂未实现")
 }
 
 // matchWithGoImplementation 使用Go实现处理

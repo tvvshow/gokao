@@ -35,9 +35,6 @@ type Config struct {
 	DefaultPageSize int           `json:"default_page_size"`
 	QueryTimeout    time.Duration `json:"query_timeout"`
 
-	AlgorithmEngineEnabled bool   `json:"algorithm_engine_enabled"`
-	AlgorithmEngineAddr    string `json:"algorithm_engine_addr"`
-
 	EnableAudit   bool   `json:"enable_audit"`
 	AuditLogLevel string `json:"audit_log_level"`
 }
@@ -64,8 +61,6 @@ func Load() *Config {
 		MaxPageSize:            getEnvAsInt("MAX_PAGE_SIZE", 100),
 		DefaultPageSize:        getEnvAsInt("DEFAULT_PAGE_SIZE", 20),
 		QueryTimeout:           getEnvAsDuration("QUERY_TIMEOUT", "30s"),
-		AlgorithmEngineEnabled: getEnvAsBool("ALGORITHM_ENGINE_ENABLED", true),
-		AlgorithmEngineAddr:    getEnv("ALGORITHM_ENGINE_ADDR", "localhost:50051"),
 		EnableAudit:            getEnvAsBool("ENABLE_AUDIT", true),
 		AuditLogLevel:          getEnv("AUDIT_LOG_LEVEL", "info"),
 	}
