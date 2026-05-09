@@ -7,6 +7,8 @@ import (
 	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
 	"github.com/oktetopython/gaokao/services/data-service/internal/middleware"
 	"github.com/oktetopython/gaokao/services/data-service/internal/services"
+
+	pkghealth "github.com/oktetopython/gaokao/pkg/health"
 	"net/http"
 	"os"
 	"os/signal"
@@ -99,25 +101,16 @@ func main() {
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))
 	router.Use(middleware.PerformanceMonitoring(performanceService))
 
-	healthHandler := func(c *gin.Context) {
-		status := db.Health(c.Request.Context())
-		if status["postgresql"] && status["redis"] {
-			c.JSON(http.StatusOK, gin.H{
-				"status":    "healthy",
-				"timestamp": time.Now().Unix(),
-				"services":  status,
-			})
-		} else {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":    "unhealthy",
-				"timestamp": time.Now().Unix(),
-				"services":  status,
-			})
-		}
-	}
+	healthChecker := pkghealth.NewHealthChecker()
+	healthChecker.Register(&pkghealth.DatabaseHealthCheck{DB: db.PostgreSQL})
+	healthChecker.Register(&pkghealth.RedisHealthCheck{Client: db.Redis})
+	healthHTTP := healthChecker.HTTPHandler()
+	healthHandler := func(c *gin.Context) { healthHTTP(c.Writer, c.Request) }
 
 	// 健康检查
 	router.GET("/health", healthHandler)
+	router.GET("/healthz", healthHandler)
+	router.GET("/readyz", healthHandler)
 
 	// API路由组 - 统一使用/api/v1前缀
 	apiV1 := router.Group("/api/v1")

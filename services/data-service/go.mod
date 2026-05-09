@@ -8,6 +8,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/oktetopython/gaokao/pkg/config v0.0.0
 	github.com/oktetopython/gaokao/pkg/database v0.0.0
+	github.com/oktetopython/gaokao/pkg/health v0.0.0
 	github.com/oktetopython/gaokao/pkg/response v0.0.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/redis/go-redis/v9 v9.13.0
@@ -47,11 +48,13 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
@@ -84,5 +87,7 @@ replace github.com/oktetopython/gaokao/pkg/response => ../../pkg/response
 replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
 
 replace github.com/oktetopython/gaokao/pkg/database => ../../pkg/database
+
+replace github.com/oktetopython/gaokao/pkg/health => ../../pkg/health
 
 replace github.com/oktetopython/gaokao/pkg/logger => ../../pkg/logger

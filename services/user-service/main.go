@@ -16,6 +16,8 @@ import (
 	"github.com/oktetopython/gaokao/services/user-service/internal/handlers"
 	"github.com/oktetopython/gaokao/services/user-service/internal/middleware"
 	"github.com/oktetopython/gaokao/services/user-service/internal/services"
+
+	pkghealth "github.com/oktetopython/gaokao/pkg/health"
 )
 
 // @title GaokaoHub User Service API
@@ -128,10 +130,15 @@ func main() {
 		logrus.Info("📚 Swagger UI available at: /swagger/index.html")
 	}
 
-	// 健康检查
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok", "service": "user-service"})
-	})
+	// 健康检查（共享 pkg/health：DB + Redis 实测）
+	healthChecker := pkghealth.NewHealthChecker()
+	healthChecker.Register(&pkghealth.DatabaseHealthCheck{DB: db})
+	healthChecker.Register(&pkghealth.RedisHealthCheck{Client: redisClient})
+	healthHTTP := healthChecker.HTTPHandler()
+	healthGin := func(c *gin.Context) { healthHTTP(c.Writer, c.Request) }
+	r.GET("/health", healthGin)
+	r.GET("/healthz", healthGin)
+	r.GET("/readyz", healthGin)
 
 	// API路由组
 	v1 := r.Group("/api/v1")

@@ -83,11 +83,15 @@ func (hc *HealthChecker) CheckAll(ctx context.Context) map[string]CheckResult {
 	return results
 }
 
-// GetResults 获取最近的健康检查结果
+// GetResults 获取最近的健康检查结果（返回副本，避免外部并发改写内部状态）
 func (hc *HealthChecker) GetResults() map[string]CheckResult {
 	hc.resultsMux.RLock()
 	defer hc.resultsMux.RUnlock()
-	return hc.results
+	out := make(map[string]CheckResult, len(hc.results))
+	for k, v := range hc.results {
+		out[k] = v
+	}
+	return out
 }
 
 // OverallStatus 获取整体健康状态
@@ -221,34 +225,38 @@ func (r *RedisHealthCheck) Check(ctx context.Context) CheckResult {
 
 // APIConnectivityHealthCheck API连通性检查
 type APIConnectivityHealthCheck struct {
-	Name        string
-	URL         string
-	Timeout     time.Duration
-	ExpectCode  int
+	CheckName  string
+	URL        string
+	Timeout    time.Duration
+	ExpectCode int
+}
+
+func (a *APIConnectivityHealthCheck) Name() string {
+	return a.CheckName
 }
 
 func (a *APIConnectivityHealthCheck) Check(ctx context.Context) CheckResult {
 	start := time.Now()
-	
+
 	client := &http.Client{
 		Timeout: a.Timeout,
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", a.URL, nil)
 	if err != nil {
 		return CheckResult{
-			Name:     a.Name,
+			Name:     a.CheckName,
 			Status:   StatusUnhealthy,
 			Message:  "Failed to create request",
 			Duration: time.Since(start),
 			Error:    err.Error(),
 		}
 	}
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return CheckResult{
-			Name:     a.Name,
+			Name:     a.CheckName,
 			Status:   StatusUnhealthy,
 			Message:  "API request failed",
 			Duration: time.Since(start),
@@ -256,21 +264,21 @@ func (a *APIConnectivityHealthCheck) Check(ctx context.Context) CheckResult {
 		}
 	}
 	defer resp.Body.Close()
-	
+
 	duration := time.Since(start)
-	
+
 	if resp.StatusCode != a.ExpectCode {
 		return CheckResult{
-			Name:     a.Name,
+			Name:     a.CheckName,
 			Status:   StatusDegraded,
 			Message:  fmt.Sprintf("Unexpected status code: %d", resp.StatusCode),
 			Duration: duration,
 			Error:    fmt.Sprintf("Expected %d, got %d", a.ExpectCode, resp.StatusCode),
 		}
 	}
-	
+
 	return CheckResult{
-		Name:     a.Name,
+		Name:     a.CheckName,
 		Status:   StatusHealthy,
 		Message:  "API connectivity is healthy",
 		Duration: duration,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,7 +19,10 @@ import (
 	"github.com/oktetopython/gaokao/services/payment-service/internal/service"
 	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
 
+	pkghealth "github.com/oktetopython/gaokao/pkg/health"
+
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
 )
 
@@ -71,7 +75,6 @@ func main() {
 	membershipService := services.NewMembershipService(db, redisClient)
 
 	// 初始化处理器
-	healthHandler := handlers.NewHealthHandler()
 	paymentHandler := handlers.NewPaymentHandler(paymentService, logger)
 	membershipHandler := handlers.NewMembershipHandler(membershipService)
 
@@ -90,9 +93,16 @@ func main() {
 	router.Use(middleware.RequestID())
 	router.Use(middleware.RateLimit(cfg.RateLimit))
 
-	// 健康检查
-	router.GET("/health", healthHandler.Health)
-	router.GET("/ready", healthHandler.Ready)
+	// 健康检查（共享 pkg/health：DB(*sql.DB) + Redis(v8) 实测）
+	healthChecker := pkghealth.NewHealthChecker()
+	healthChecker.Register(&sqlDBHealthCheck{db: db})
+	healthChecker.Register(&redisV8HealthCheck{client: redisClient})
+	healthHTTP := healthChecker.HTTPHandler()
+	healthGin := func(c *gin.Context) { healthHTTP(c.Writer, c.Request) }
+	router.GET("/health", healthGin)
+	router.GET("/ready", healthGin)
+	router.GET("/healthz", healthGin)
+	router.GET("/readyz", healthGin)
 
 	// API路由组
 	v1 := router.Group("/api/v1")
@@ -164,4 +174,57 @@ func main() {
 	}
 
 	log.Println("Payment service exited")
+}
+
+// sqlDBHealthCheck 适配 *sql.DB 到 pkghealth.HealthCheck 接口（payment-service 用裸 sql.DB，非 gorm）。
+type sqlDBHealthCheck struct {
+	db *sql.DB
+}
+
+func (s *sqlDBHealthCheck) Name() string { return "database" }
+
+func (s *sqlDBHealthCheck) Check(ctx context.Context) pkghealth.CheckResult {
+	start := time.Now()
+	if err := s.db.PingContext(ctx); err != nil {
+		return pkghealth.CheckResult{
+			Name:     s.Name(),
+			Status:   pkghealth.StatusUnhealthy,
+			Message:  "Database ping failed",
+			Duration: time.Since(start),
+			Error:    err.Error(),
+		}
+	}
+	return pkghealth.CheckResult{
+		Name:     s.Name(),
+		Status:   pkghealth.StatusHealthy,
+		Message:  "Database is healthy",
+		Duration: time.Since(start),
+	}
+}
+
+// redisV8HealthCheck 适配 go-redis/v8 客户端到 pkghealth.HealthCheck 接口
+// （pkghealth 自带的 RedisHealthCheck 绑定 v9，与本服务依赖冲突）。
+type redisV8HealthCheck struct {
+	client *redis.Client
+}
+
+func (r *redisV8HealthCheck) Name() string { return "redis" }
+
+func (r *redisV8HealthCheck) Check(ctx context.Context) pkghealth.CheckResult {
+	start := time.Now()
+	if err := r.client.Ping(ctx).Err(); err != nil {
+		return pkghealth.CheckResult{
+			Name:     r.Name(),
+			Status:   pkghealth.StatusUnhealthy,
+			Message:  "Redis ping failed",
+			Duration: time.Since(start),
+			Error:    err.Error(),
+		}
+	}
+	return pkghealth.CheckResult{
+		Name:     r.Name(),
+		Status:   pkghealth.StatusHealthy,
+		Message:  "Redis is healthy",
+		Duration: time.Since(start),
+	}
 }

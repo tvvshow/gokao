@@ -24,6 +24,8 @@ import (
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/llm"
 	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
 	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+
+	pkghealth "github.com/oktetopython/gaokao/pkg/health"
 )
 
 // @title 高考志愿填报推荐服务 API
@@ -165,14 +167,15 @@ func main() {
 		c.Next()
 	})
 
-	// 健康检查
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"service":   "recommendation-service",
-			"timestamp": time.Now().Unix(),
-		})
-	})
+	// 健康检查（共享 pkg/health：缓存连通性 + 桥接器存活）
+	healthChecker := pkghealth.NewHealthChecker()
+	healthChecker.Register(&cacheHealthCheck{cache: cacheService})
+	healthChecker.Register(&bridgeHealthCheck{bridgeType: bridgeType})
+	healthHTTP := healthChecker.HTTPHandler()
+	healthGin := func(c *gin.Context) { healthHTTP(c.Writer, c.Request) }
+	router.GET("/health", healthGin)
+	router.GET("/healthz", healthGin)
+	router.GET("/readyz", healthGin)
 
 	// API路由组
 	api := router.Group("/api/v1")
@@ -290,4 +293,47 @@ func generateContextID() string {
 	buf := make([]byte, 16)
 	_, _ = rand.Read(buf)
 	return hex.EncodeToString(buf)
+}
+
+// cacheHealthCheck 适配 cache.CacheInterface 到 pkghealth.HealthCheck 接口。
+type cacheHealthCheck struct {
+	cache cache.CacheInterface
+}
+
+func (c *cacheHealthCheck) Name() string { return "cache" }
+
+func (c *cacheHealthCheck) Check(ctx context.Context) pkghealth.CheckResult {
+	start := time.Now()
+	if err := c.cache.HealthCheck(ctx); err != nil {
+		return pkghealth.CheckResult{
+			Name:     c.Name(),
+			Status:   pkghealth.StatusDegraded,
+			Message:  "Cache backend unreachable; in-memory fallback may be active",
+			Duration: time.Since(start),
+			Error:    err.Error(),
+		}
+	}
+	return pkghealth.CheckResult{
+		Name:     c.Name(),
+		Status:   pkghealth.StatusHealthy,
+		Message:  "Cache is healthy",
+		Duration: time.Since(start),
+	}
+}
+
+// bridgeHealthCheck 报告当前推荐桥接器类型；初始化失败会在启动期 fail-fast，
+// 此处仅作为可观测性指标暴露在 /health 输出中。
+type bridgeHealthCheck struct {
+	bridgeType string
+}
+
+func (b *bridgeHealthCheck) Name() string { return "recommendation_bridge" }
+
+func (b *bridgeHealthCheck) Check(ctx context.Context) pkghealth.CheckResult {
+	return pkghealth.CheckResult{
+		Name:     b.Name(),
+		Status:   pkghealth.StatusHealthy,
+		Message:  "bridge=" + b.bridgeType,
+		Duration: 0,
+	}
 }
