@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/joho/godotenv v1.4.0
 	github.com/oktetopython/gaokao/pkg/auth v0.0.0
+	github.com/oktetopython/gaokao/pkg/config v0.0.0
 	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
@@ -66,6 +67,8 @@ require (
 )
 
 replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
+
+replace github.com/oktetopython/gaokao/pkg/config => ../../pkg/config
 
 replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
 

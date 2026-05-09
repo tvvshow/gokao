@@ -4,6 +4,7 @@ use (
 	.
 	./pkg/auth
 	./pkg/cache
+	./pkg/config
 	./pkg/database
 	./pkg/discovery
 	./pkg/errors
