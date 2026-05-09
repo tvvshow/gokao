@@ -47,8 +47,14 @@ type cppVolunteerPlan struct {
 }
 
 // CppVolunteerMatcherBridge 使用 C++ 志愿匹配引擎提供推荐能力。
+//
+// 并发模型：C++ 引擎自身通过 std::shared_mutex 保证线程安全（见
+// cpp-modules/volunteer-matcher/include/volunteer_matcher.h:300、
+// src/volunteer_matcher.cpp:52）。此处 RWMutex 仅用于隔离 handle 生命周期：
+//   - 读路径（推理、查询）持 RLock，允许 N 个 goroutine 并发进入 C++；
+//   - 写路径（Close / ClearCache 重建 handle）持 Lock，独占重建。
 type CppVolunteerMatcherBridge struct {
-	mu        sync.Mutex
+	mu        sync.RWMutex
 	handle    *C.VolunteerMatcherHandle
 	cfg       BridgeConfig
 	dataFiles bridgeDataFiles
@@ -137,8 +143,8 @@ func (b *CppVolunteerMatcherBridge) Close() error {
 }
 
 func (b *CppVolunteerMatcherBridge) GenerateRecommendations(request *RecommendationRequest) (*RecommendationResponse, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	if b.handle == nil {
 		return nil, fmt.Errorf("cpp bridge is not initialized")
@@ -229,8 +235,8 @@ func (b *CppVolunteerMatcherBridge) CompareRecommendations(request *Recommendati
 }
 
 func (b *CppVolunteerMatcherBridge) GetPerformanceMetrics() (map[string]interface{}, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	if b.handle == nil {
 		return nil, fmt.Errorf("cpp bridge is not initialized")
@@ -288,8 +294,8 @@ func (b *CppVolunteerMatcherBridge) UpdateModel(modelPath string) error {
 }
 
 func (b *CppVolunteerMatcherBridge) GetSystemStatus() (map[string]interface{}, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	if b.handle == nil {
 		return nil, fmt.Errorf("cpp bridge is not initialized")

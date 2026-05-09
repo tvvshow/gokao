@@ -280,8 +280,9 @@ VolunteerPlan VolunteerMatcher::GenerateVolunteerPlan(const Student& student, in
                      return a.match_score > b.match_score;
                  });
         
-        // 第五步：冲稳保策略分配
-        plan.recommendations = ApplyRushStableSafeStrategy(candidates, max_volunteers);
+        // 第五步：冲稳保策略分配（配置化：从 pimpl_->config_["rush_stable_safe"] 装填）
+        RushStableSafeConfig rss_cfg = LoadRushStableSafeConfig(pimpl_->config_);
+        plan.recommendations = ApplyRushStableSafeStrategy(candidates, max_volunteers, rss_cfg);
         
         // 第六步：计算方案统计
         CalculatePlanStatistics(plan);
@@ -881,92 +882,128 @@ std::string GenerateRecommendationReason(
 
 /**
  * @brief 应用冲稳保策略
+ *
+ * 算法：
+ *   1) 按 match_score 降序排（O(N log N)）。
+ *   2) 单遍扫描，按 admission_probability 分桶（无概率时回退 score_gap）；用 unordered_set
+ *      去重（key = university_id|major_id），各档计数到目标即停。
+ *   3) 兜底：再走一遍 sorted 列表填空位（同一 set 去重，无 O(N) 内层扫描）。
+ * 总复杂度：O(N log N) 排序 + O(N) 分桶/去重；旧实现兜底为 O(N²)。
  */
+
+// 从 JSON config 装填 RushStableSafeConfig；任一字段缺失/非法时保留默认值。
+RushStableSafeConfig LoadRushStableSafeConfig(const Json::Value& config) {
+    RushStableSafeConfig cfg;
+    if (!config.isObject() || !config.isMember("rush_stable_safe")) {
+        return cfg;
+    }
+    const Json::Value& node = config["rush_stable_safe"];
+    if (node.isMember("rush_probability_max") && node["rush_probability_max"].isNumeric()) {
+        cfg.rush_probability_max = node["rush_probability_max"].asDouble();
+    }
+    if (node.isMember("safe_probability_min") && node["safe_probability_min"].isNumeric()) {
+        cfg.safe_probability_min = node["safe_probability_min"].asDouble();
+    }
+    if (node.isMember("rush_ratio") && node["rush_ratio"].isNumeric()) {
+        cfg.rush_ratio = node["rush_ratio"].asDouble();
+    }
+    if (node.isMember("stable_ratio") && node["stable_ratio"].isNumeric()) {
+        cfg.stable_ratio = node["stable_ratio"].asDouble();
+    }
+    if (node.isMember("score_gap_rush_threshold") && node["score_gap_rush_threshold"].isInt()) {
+        cfg.score_gap_rush_threshold = node["score_gap_rush_threshold"].asInt();
+    }
+    if (node.isMember("score_gap_safe_threshold") && node["score_gap_safe_threshold"].isInt()) {
+        cfg.score_gap_safe_threshold = node["score_gap_safe_threshold"].asInt();
+    }
+    if (node.isMember("min_per_bucket") && node["min_per_bucket"].isInt()) {
+        cfg.min_per_bucket = std::max(0, node["min_per_bucket"].asInt());
+    }
+    return cfg;
+}
+
 std::vector<VolunteerRecommendation> ApplyRushStableSafeStrategy(
-    const std::vector<VolunteerRecommendation>& candidates, int max_volunteers) {
-    
+    const std::vector<VolunteerRecommendation>& candidates,
+    int max_volunteers,
+    const RushStableSafeConfig& config) {
+
     if (candidates.empty() || max_volunteers <= 0) {
         return {};
     }
-    
-    // 按匹配度排序
+
     std::vector<VolunteerRecommendation> sorted_candidates = candidates;
     std::sort(sorted_candidates.begin(), sorted_candidates.end(),
               [](const VolunteerRecommendation& a, const VolunteerRecommendation& b) {
                   return a.match_score > b.match_score;
               });
-    
+
+    // 各档目标数：先按 ratio 取 floor，再保证 min_per_bucket，最后 safe = max - rush - stable。
+    const int rush_target = std::max(config.min_per_bucket,
+                                     static_cast<int>(max_volunteers * config.rush_ratio));
+    const int stable_target = std::max(config.min_per_bucket,
+                                       static_cast<int>(max_volunteers * config.stable_ratio));
+    const int safe_target = std::max(0, max_volunteers - rush_target - stable_target);
+
+    enum class Bucket { Rush, Stable, Safe };
+    auto classify = [&config](const VolunteerRecommendation& c) -> Bucket {
+        // 优先用 admission_probability（步骤 3 已计算），缺失则回退 score_gap。
+        if (c.admission_probability > 0.0) {
+            if (c.admission_probability < config.rush_probability_max) return Bucket::Rush;
+            if (c.admission_probability > config.safe_probability_min) return Bucket::Safe;
+            return Bucket::Stable;
+        }
+        if (c.score_gap < config.score_gap_rush_threshold) return Bucket::Rush;
+        if (c.score_gap > config.score_gap_safe_threshold) return Bucket::Safe;
+        return Bucket::Stable;
+    };
+    auto bucket_label = [](Bucket b) -> const char* {
+        switch (b) { case Bucket::Rush: return "冲"; case Bucket::Stable: return "稳"; default: return "保"; }
+    };
+    auto candidate_key = [](const VolunteerRecommendation& c) {
+        return c.university_id + "|" + c.major_id;
+    };
+
     std::vector<VolunteerRecommendation> final_recommendations;
-    
-    // 冲稳保比例：30% : 50% : 20%
-    int rush_count = std::max(1, static_cast<int>(max_volunteers * 0.3));
-    int stable_count = std::max(1, static_cast<int>(max_volunteers * 0.5));
-    int safe_count = max_volunteers - rush_count - stable_count;
-    
-    int current_count = 0;
-    
-    // 添加冲刺志愿（高分段院校）
-    for (const auto& candidate : sorted_candidates) {
-        if (current_count >= rush_count) break;
-        if (candidate.score_gap < -10) {  // 分数低于录取线10分以上的作为冲刺
-            VolunteerRecommendation rec = candidate;
-            rec.risk_level = "冲";
-            final_recommendations.push_back(rec);
-            current_count++;
+    final_recommendations.reserve(static_cast<size_t>(max_volunteers));
+    std::unordered_set<std::string> picked;
+    picked.reserve(static_cast<size_t>(max_volunteers) * 2);
+
+    int rush_count = 0, stable_count = 0, safe_count = 0;
+    auto try_push = [&](const VolunteerRecommendation& cand, Bucket b) -> bool {
+        const std::string key = candidate_key(cand);
+        if (picked.count(key)) return false;
+        VolunteerRecommendation rec = cand;
+        rec.risk_level = bucket_label(b);
+        final_recommendations.push_back(std::move(rec));
+        picked.insert(key);
+        return true;
+    };
+
+    // 主分桶：单遍扫描，按概率/分差归档；满档即跳过。
+    for (const auto& cand : sorted_candidates) {
+        if (static_cast<int>(final_recommendations.size()) >= max_volunteers) break;
+        const Bucket b = classify(cand);
+        switch (b) {
+            case Bucket::Rush:
+                if (rush_count < rush_target && try_push(cand, b)) ++rush_count;
+                break;
+            case Bucket::Stable:
+                if (stable_count < stable_target && try_push(cand, b)) ++stable_count;
+                break;
+            case Bucket::Safe:
+                if (safe_count < safe_target && try_push(cand, b)) ++safe_count;
+                break;
         }
     }
-    
-    // 添加稳妥志愿（匹配度高的院校）
-    current_count = 0;
-    for (const auto& candidate : sorted_candidates) {
-        if (current_count >= stable_count) break;
-        if (candidate.score_gap >= -10 && candidate.score_gap <= 10) {
-            VolunteerRecommendation rec = candidate;
-            rec.risk_level = "稳";
-            final_recommendations.push_back(rec);
-            current_count++;
+
+    // 兜底：某些档位候选不足时，按全局 match_score 降序补满，沿用同一 dedup set。
+    if (static_cast<int>(final_recommendations.size()) < max_volunteers) {
+        for (const auto& cand : sorted_candidates) {
+            if (static_cast<int>(final_recommendations.size()) >= max_volunteers) break;
+            try_push(cand, Bucket::Stable);  // 兜底归入"稳"
         }
     }
-    
-    // 添加保底志愿（录取概率高的院校）
-    current_count = 0;
-    for (const auto& candidate : sorted_candidates) {
-        if (current_count >= safe_count) break;
-        if (candidate.score_gap > 10) {  // 分数高于录取线10分以上的作为保底
-            VolunteerRecommendation rec = candidate;
-            rec.risk_level = "保";
-            final_recommendations.push_back(rec);
-            current_count++;
-        }
-    }
-    
-    // 如果志愿数不够，从剩余候选中补充
-    while (final_recommendations.size() < static_cast<size_t>(max_volunteers) && 
-           final_recommendations.size() < sorted_candidates.size()) {
-        for (const auto& candidate : sorted_candidates) {
-            if (final_recommendations.size() >= static_cast<size_t>(max_volunteers)) break;
-            
-            // 检查是否已存在
-            bool exists = false;
-            for (const auto& existing : final_recommendations) {
-                if (existing.university_id == candidate.university_id && 
-                    existing.major_id == candidate.major_id) {
-                    exists = true;
-                    break;
-                }
-            }
-            
-            if (!exists) {
-                VolunteerRecommendation rec = candidate;
-                if (rec.risk_level.empty()) {
-                    rec.risk_level = "稳";  // 默认为稳妥
-                }
-                final_recommendations.push_back(rec);
-            }
-        }
-        break;
-    }
-    
+
     return final_recommendations;
 }
 

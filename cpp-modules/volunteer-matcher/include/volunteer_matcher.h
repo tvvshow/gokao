@@ -26,6 +26,9 @@
 #include <shared_mutex>
 #include "university_filter.h"
 
+// 前向声明 jsoncpp，避免在公共头中引入第三方依赖。
+namespace Json { class Value; }
+
 namespace volunteer_matcher {
 
 /**
@@ -357,13 +360,49 @@ std::string GenerateRecommendationReason(
     const Student& student, const University& university, const Major& major);
 
 /**
+ * @brief 冲稳保策略配置
+ *
+ * 控制 ApplyRushStableSafeStrategy 的分类信号与配比。
+ * - 优先依据 admission_probability 分桶；当候选未提供概率（==0）时，回退到 score_gap。
+ * - rush_ratio + stable_ratio + safe_ratio 不要求严格归一；safe 由 max_volunteers 减去前两档实际计数得出。
+ */
+struct RushStableSafeConfig {
+    // 概率阈值（admission_probability 在 [0,1]）
+    double rush_probability_max = 0.40;   // P < this → 冲
+    double safe_probability_min = 0.75;   // P > this → 保
+    //   rush_probability_max <= P <= safe_probability_min → 稳
+
+    // 配比（按 max_volunteers 计算各档目标数）
+    double rush_ratio   = 0.30;
+    double stable_ratio = 0.50;
+
+    // 概率缺失时的回退：score_gap 阈值（单位：分）
+    int score_gap_rush_threshold = -10;   // gap < this → 冲
+    int score_gap_safe_threshold = 10;    // gap > this → 保
+
+    // 每个 max_volunteers 至少各档保留的最小数（避免 ratio*max=0）
+    int min_per_bucket = 1;
+};
+
+/**
  * @brief 工具函数：应用冲稳保策略
- * @param candidates 候选推荐列表
+ * @param candidates    候选推荐列表（无需预排序，函数内部按 match_score 排序）
  * @param max_volunteers 最大志愿数
+ * @param config        策略配置；省略则使用默认值
  * @return 最终推荐列表
+ *
+ * 复杂度：O(N log N) 排序 + O(N) 分桶/去重；max_volunteers 通常远小于 N。
  */
 std::vector<VolunteerRecommendation> ApplyRushStableSafeStrategy(
-    const std::vector<VolunteerRecommendation>& candidates, int max_volunteers);
+    const std::vector<VolunteerRecommendation>& candidates,
+    int max_volunteers,
+    const RushStableSafeConfig& config = RushStableSafeConfig{});
+
+/**
+ * @brief 从 JSON 配置装填 RushStableSafeConfig；缺失字段沿用默认值。
+ * @param config JSON 根，预期含 "rush_stable_safe" 子对象
+ */
+RushStableSafeConfig LoadRushStableSafeConfig(const Json::Value& config);
 
 /**
  * @brief 工具函数：计算方案统计

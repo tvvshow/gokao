@@ -3,7 +3,6 @@ package llm
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 )
 
@@ -77,6 +76,10 @@ func (a *OpenAICompatibleAnalyzer) AnalyzeRecommendation(ctx context.Context, in
 }
 
 // Status 返回当前分析器运行状态，便于 system/status 暴露。
+//
+// 安全原则：base_url、api_key、system_prompt 等"上游接口指纹"不在此处导出，避免
+// 通过公开 status 端点泄露分析后端供攻击者直接调用或进行配额消耗。运维端如需排查可
+// 直接查 LLM_BASE_URL 环境变量或服务启动日志。
 func (a *OpenAICompatibleAnalyzer) Status() map[string]interface{} {
 	status := map[string]interface{}{
 		"enabled":       a != nil && a.client != nil && strings.TrimSpace(a.model) != "",
@@ -93,9 +96,6 @@ func (a *OpenAICompatibleAnalyzer) Status() map[string]interface{} {
 	status["model"] = a.model
 	status["temperature"] = a.temperature
 	status["max_tokens"] = a.maxTokens
-	if client, ok := a.client.(*OpenAICompatibleClient); ok {
-		status["base_url"] = sanitizeBaseURL(client.BaseURL())
-	}
 	return status
 }
 
@@ -181,7 +181,6 @@ func (a *LocalFallbackAnalyzer) Status() map[string]interface{} {
 		"provider":      "local-fallback",
 		"status":        "degraded",
 		"model":         "rule-based-summary",
-		"base_url":      "",
 		"max_tokens":    0,
 		"fallback_mode": "local_rules",
 	}
@@ -207,20 +206,4 @@ func fallbackMode(a *OpenAICompatibleAnalyzer) string {
 		}
 	}
 	return "static_fallback"
-}
-
-func sanitizeBaseURL(raw string) string {
-	if strings.TrimSpace(raw) == "" {
-		return ""
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		return ""
-	}
-	parsed.User = nil
-	parsed.Path = ""
-	parsed.RawPath = ""
-	parsed.RawQuery = ""
-	parsed.Fragment = ""
-	return strings.TrimRight(parsed.String(), "/")
 }

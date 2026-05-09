@@ -97,11 +97,3 @@ func (c *OpenAICompatibleClient) chatCompletionsURL() (string, error) {
 	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/chat/completions"
 	return parsed.String(), nil
 }
-
-// BaseURL 返回当前配置的基础地址。
-func (c *OpenAICompatibleClient) BaseURL() string {
-	if c == nil {
-		return ""
-	}
-	return c.baseURL
-}
