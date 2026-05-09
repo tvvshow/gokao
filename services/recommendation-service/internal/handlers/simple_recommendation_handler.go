@@ -158,7 +158,11 @@ func NewSimpleRecommendationHandler(bridge cppbridge.HybridRecommendationBridge,
 	}
 }
 
-// ErrorResponse 错误响应
+// ErrorResponse 错误响应（legacy）。
+//
+// 字段命名与 pkg/response.APIResponse 不一致（裸 error/message vs. error.code/error.message），
+// 前端已基于此形状解析；强迁需要前后端同步发版，本次债务清理范围内不动。
+// 新增 handler 请直接使用 pkg/response.OK / BadRequest / InternalError 等。
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Message string `json:"message"`
