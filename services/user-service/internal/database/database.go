@@ -1,55 +1,30 @@
 package database
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/oktetopython/gaokao/services/user-service/internal/config"
 	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+
+	shareddb "github.com/oktetopython/gaokao/pkg/database"
 )
 
-// Initialize 初始化数据库连接
+// Initialize 初始化数据库连接：连接 + 池配置走共享层，AutoMigrate 与 seed 由本服务负责。
 func Initialize(cfg *config.Config) (*gorm.DB, error) {
-	// 配置GORM日志级别
-	logLevel := logger.Info
-	if cfg.Environment == "production" {
-		logLevel = logger.Error
-	}
-
-	// 连接数据库
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: cfg.DatabaseURL,
-	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logLevel),
+	db, err := shareddb.OpenGorm(cfg.DatabaseConfig, shareddb.GormOpenOptions{
+		Production: cfg.Environment == "production",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, err
 	}
 
-	// 配置连接池
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database instance: %w", err)
-	}
-
-	// 设置连接池参数（使用统一配置）
-	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
-	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
-	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Second)
-	sqlDB.SetConnMaxIdleTime(time.Duration(cfg.ConnMaxIdleTime) * time.Second)
-
-	// 自动迁移数据库表
 	if err := autoMigrate(db); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
-	// 初始化默认数据
 	if err := seedDefaultData(db); err != nil {
 		return nil, fmt.Errorf("failed to seed default data: %w", err)
 	}
@@ -57,23 +32,9 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 	return db, nil
 }
 
-// InitializeRedis 初始化Redis连接
+// InitializeRedis 初始化 Redis 连接（含 ping 验证）。
 func InitializeRedis(cfg *config.Config) (*redis.Client, error) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisURL,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
-	})
-
-	// 测试连接
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-	}
-
-	return rdb, nil
+	return shareddb.OpenRedis(cfg.RedisConfig, 0)
 }
 
 // autoMigrate 自动迁移数据库表

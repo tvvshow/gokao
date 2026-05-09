@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"github.com/oktetopython/gaokao/services/data-service/internal/config"
 	"fmt"
 	"reflect"
 	"strings"
@@ -11,9 +10,10 @@ import (
 	"github.com/olivere/elastic/v7"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+
+	"github.com/oktetopython/gaokao/services/data-service/internal/config"
+	shareddb "github.com/oktetopython/gaokao/pkg/database"
 )
 
 // DB 数据库连接管理器
@@ -32,62 +32,38 @@ func NewDB(cfg *config.Config, log *logrus.Logger) (*DB, error) {
 		Logger: log,
 	}
 
-	// 初始化PostgreSQL连接
 	if err := db.initPostgreSQL(); err != nil {
 		return nil, fmt.Errorf("初始化PostgreSQL失败: %w", err)
 	}
 
-	// 初始化Redis连接
 	if err := db.initRedis(); err != nil {
 		return nil, fmt.Errorf("初始化Redis失败: %w", err)
 	}
 
-	// 初始化Elasticsearch连接
+	// Elasticsearch 不是必需的，失败也继续
 	if err := db.initElasticsearch(); err != nil {
 		log.Warnf("初始化Elasticsearch失败: %v", err)
-		// Elasticsearch不是必需的，继续执行
 	}
 
 	return db, nil
 }
 
-// initPostgreSQL 初始化PostgreSQL连接
+// initPostgreSQL 初始化 PostgreSQL 连接 + 自动迁移。
 func (db *DB) initPostgreSQL() error {
-	// 配置GORM日志
-	var gormLogger logger.Interface
-	if db.Config.Environment == "debug" {
-		gormLogger = logger.Default.LogMode(logger.Info)
-	} else {
-		gormLogger = logger.Default.LogMode(logger.Error)
-	}
-
-	// 连接PostgreSQL
-	conn, err := gorm.Open(postgres.Open(db.Config.DatabaseURL), &gorm.Config{
-		Logger: gormLogger,
-		NowFunc: func() time.Time {
-			return time.Now().Local()
-		},
+	conn, err := shareddb.OpenGorm(db.Config.DatabaseConfig, shareddb.GormOpenOptions{
+		Production: db.Config.Environment != "debug",
 	})
 	if err != nil {
-		return fmt.Errorf("连接PostgreSQL失败: %w", err)
+		return err
 	}
 
-	// 配置连接池
+	// 验证连接（OpenGorm 内部已 ping，但这里再做一次以保留原日志语义）
 	sqlDB, err := conn.DB()
 	if err != nil {
 		return fmt.Errorf("获取SQL DB实例失败: %w", err)
 	}
-
-	// 设置连接池参数（使用统一配置）
-	sqlDB.SetMaxIdleConns(db.Config.MaxIdleConns)                // 最大空闲连接数
-	sqlDB.SetMaxOpenConns(db.Config.MaxOpenConns)               // 最大打开连接数
-	sqlDB.SetConnMaxLifetime(time.Duration(db.Config.ConnMaxLifetime) * time.Second) // 连接最大生存时间
-	sqlDB.SetConnMaxIdleTime(time.Duration(db.Config.ConnMaxIdleTime) * time.Second) // 连接最大空闲时间
-
-	// 测试连接
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("PostgreSQL连接测试失败: %w", err)
 	}
@@ -95,7 +71,6 @@ func (db *DB) initPostgreSQL() error {
 	db.PostgreSQL = conn
 	db.Logger.Info("PostgreSQL连接成功")
 
-	// 自动迁移数据库表
 	if err := db.migrate(); err != nil {
 		return fmt.Errorf("数据库迁移失败: %w", err)
 	}
@@ -103,29 +78,12 @@ func (db *DB) initPostgreSQL() error {
 	return nil
 }
 
-// initRedis 初始化Redis连接
+// initRedis 初始化 Redis 连接（共享层应用统一池/超时常量）。
 func (db *DB) initRedis() error {
-	opts := &redis.Options{
-		Addr:         db.Config.RedisURL,
-		Password:     db.Config.RedisPassword,
-		DB:           db.Config.RedisDB,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 5,
-	}
-
-	client := redis.NewClient(opts)
-
-	// 测试连接
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := client.Ping(ctx).Err(); err != nil {
+	client, err := shareddb.OpenRedis(db.Config.RedisConfig, 0)
+	if err != nil {
 		return fmt.Errorf("Redis连接测试失败: %w", err)
 	}
-
 	db.Redis = client
 	db.Logger.Info("Redis连接成功")
 	return nil
