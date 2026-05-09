@@ -1,96 +1,43 @@
+// response.go 兼容层。
+//
+// 历史上 data-service 在此自定义了 APIResponse / ErrorInfo / PaginationInfo 与全套
+// New*Response 工厂；现在统一到 pkg/response，本文件保留为薄包装：
+//   - 类型为 pkg/response 类型的别名，handler 现存对 *APIResponse 字段的直接访问继续生效；
+//   - New* 工厂转发到 pkg/response 的构造函数；
+//   - WithRequestID 受益方法保留；新代码建议直接用 response.OK(c, data) 等 helper。
 package handlers
 
 import (
-	"time"
+	sharedresp "github.com/oktetopython/gaokao/pkg/response"
 )
 
-// APIResponse 统一API响应结构
-type APIResponse struct {
-	Success   bool        `json:"success"`
-	Message   string      `json:"message"`
-	Data      interface{} `json:"data,omitempty"`
-	Error     *ErrorInfo  `json:"error,omitempty"`
-	Timestamp int64       `json:"timestamp"`
-	RequestID string      `json:"request_id,omitempty"`
-}
+type (
+	APIResponse    = sharedresp.APIResponse
+	ErrorInfo      = sharedresp.ErrorInfo
+	PaginationInfo = sharedresp.PaginationInfo
+)
 
-// ErrorInfo 错误信息结构
-type ErrorInfo struct {
-	Code    string      `json:"code"`
-	Message string      `json:"message"`
-	Details interface{} `json:"details,omitempty"`
-}
-
-// PaginationInfo 分页信息结构
-type PaginationInfo struct {
-	Page       int   `json:"page"`
-	PageSize   int   `json:"page_size"`
-	Total      int64 `json:"total"`
-	TotalPages int   `json:"total_pages"`
-}
-
-// NewSuccessResponse 创建成功响应
+// NewSuccessResponse 创建成功响应（默认消息 "操作成功"）。
 func NewSuccessResponse(data interface{}) *APIResponse {
-	return &APIResponse{
-		Success:   true,
-		Message:   "操作成功",
-		Data:      data,
-		Timestamp: time.Now().Unix(),
-	}
+	return sharedresp.Success(nil, data, "")
 }
 
-// NewSuccessResponseWithMessage 创建带消息的成功响应
+// NewSuccessResponseWithMessage 创建带自定义消息的成功响应。
 func NewSuccessResponseWithMessage(data interface{}, message string) *APIResponse {
-	return &APIResponse{
-		Success:   true,
-		Message:   message,
-		Data:      data,
-		Timestamp: time.Now().Unix(),
-	}
+	return sharedresp.Success(nil, data, message)
 }
 
-// NewErrorResponse 创建错误响应
+// NewErrorResponse 通用错误响应；旧调用方未传 code，固定为 "GENERAL_ERROR"。
 func NewErrorResponse(message string) *APIResponse {
-	return &APIResponse{
-		Success:   false,
-		Message:   message,
-		Error: &ErrorInfo{
-			Code:    "GENERAL_ERROR",
-			Message: message,
-		},
-		Timestamp: time.Now().Unix(),
-	}
+	return sharedresp.Error(nil, "GENERAL_ERROR", message, nil)
 }
 
-// NewErrorResponseWithCode 创建带错误码的错误响应
+// NewErrorResponseWithCode 带错误码的错误响应。
 func NewErrorResponseWithCode(code, message string) *APIResponse {
-	return &APIResponse{
-		Success:   false,
-		Message:   message,
-		Error: &ErrorInfo{
-			Code:    code,
-			Message: message,
-		},
-		Timestamp: time.Now().Unix(),
-	}
+	return sharedresp.Error(nil, code, message, nil)
 }
 
-// NewValidationErrorResponse 创建验证错误响应
+// NewValidationErrorResponse 验证失败响应（VALIDATION_ERROR + 详情）。
 func NewValidationErrorResponse(details interface{}) *APIResponse {
-	return &APIResponse{
-		Success: false,
-		Message: "请求参数验证失败",
-		Error: &ErrorInfo{
-			Code:    "VALIDATION_ERROR",
-			Message: "请求参数验证失败",
-			Details: details,
-		},
-		Timestamp: time.Now().Unix(),
-	}
-}
-
-// WithRequestID 设置请求ID
-func (r *APIResponse) WithRequestID(requestID string) *APIResponse {
-	r.RequestID = requestID
-	return r
+	return sharedresp.Error(nil, "VALIDATION_ERROR", "请求参数验证失败", details)
 }
