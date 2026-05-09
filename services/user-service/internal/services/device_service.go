@@ -396,14 +396,26 @@ func (s *DeviceService) GetDeviceSecurityStatus(ctx context.Context, userID uint
 	}, nil
 }
 
-// GetPerformanceStatistics 获取性能统计信息
+// GetPerformanceStatistics 获取性能统计信息的只读快照。
+//
+// 注意：旧实现 `stats := *s.performanceStats` 会把内嵌的 sync.RWMutex 一并按
+// 值拷贝（go vet 报警），返回的副本与源结构体共享一份"已被其它锁副本观察过的状态"，
+// 是真实并发 bug。改为字段级显式拷贝，新结构体内置一把全新的零值 RWMutex，
+// 调用方禁止再对其加锁/写入。
 func (s *DeviceService) GetPerformanceStatistics() *PerformanceStatistics {
 	s.performanceStats.mutex.RLock()
 	defer s.performanceStats.mutex.RUnlock()
 
-	// 返回副本以避免并发修改
-	stats := *s.performanceStats
-	return &stats
+	return &PerformanceStatistics{
+		TotalRequests:       s.performanceStats.TotalRequests,
+		SuccessfulRequests:  s.performanceStats.SuccessfulRequests,
+		FailedRequests:      s.performanceStats.FailedRequests,
+		AverageResponseTime: s.performanceStats.AverageResponseTime,
+		LastRequestTime:     s.performanceStats.LastRequestTime,
+		CacheHitRate:        s.performanceStats.CacheHitRate,
+		TotalCacheHits:      s.performanceStats.TotalCacheHits,
+		TotalCacheMisses:    s.performanceStats.TotalCacheMisses,
+	}
 }
 
 // ResetPerformanceStatistics 重置性能统计信息
