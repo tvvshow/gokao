@@ -351,3 +351,21 @@ test_ci_trigger.txt
 .ai-rules/
 .augment/
 .ace-tool/
+
+# AI assistant config files (workspace-only, not for repo)
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+CODEX.md
+COPILOT.md
+CURSOR.md
+WINDSURF.md
+**/CLAUDE.md
+**/AGENTS.md
+**/GEMINI.md
+**/CODEX.md
+**/COPILOT.md
+**/CURSOR.md
+**/WINDSURF.md
+.ai-rules/
+memories/
