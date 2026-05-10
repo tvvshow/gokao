@@ -248,10 +248,16 @@ type rateBucket struct {
 	last   time.Time
 }
 
+// rateLimiter 维护按 client key（IP）分桶的令牌桶。
+// sync.Map 长时间运行后会无限增长，cleanupLoop 周期淘汰空闲 bucket 防止内存泄漏。
 type rateLimiter struct {
-	rate  float64
-	burst float64
-	m     sync.Map // key: client id (IP) -> *rateBucket
+	rate    float64
+	burst   float64
+	m       sync.Map // key: client id (IP) -> *rateBucket
+	idleTTL time.Duration
+	now     func() time.Time
+	stopCh  chan struct{}
+	once    sync.Once
 }
 
 type routeRateLimitRule struct {
@@ -260,19 +266,78 @@ type routeRateLimitRule struct {
 	limiter  *rateLimiter
 }
 
+const (
+	// rate limiter bucket TTL：超过 idleTTL 未访问的 IP bucket 会被淘汰。
+	// 选 10min 是 P95 用户会话间隔的保守上界，命中无害（重建零成本）。
+	rateLimiterDefaultIdleTTL = 10 * time.Minute
+	// 扫描间隔：1min 一次足以让长尾不爆，且 sync.Map.Range 在万级桶下耗时可忽略（<1ms）。
+	rateLimiterCleanupInterval = 1 * time.Minute
+)
+
 func newRateLimiter(ratePerSec, burst int) *rateLimiter {
-	rl := &rateLimiter{
-		rate:  float64(ratePerSec),
-		burst: float64(burst),
-	}
+	rl := newRateLimiterWithDeps(ratePerSec, burst, rateLimiterDefaultIdleTTL, time.Now)
+	go rl.cleanupLoop(rateLimiterCleanupInterval)
 	return rl
+}
+
+// newRateLimiterWithDeps 暴露 idleTTL / now 注入入口供测试快进时间，
+// 不启动 cleanup goroutine，测试用 evictIdle() 直接同步触发淘汰。
+func newRateLimiterWithDeps(ratePerSec, burst int, idleTTL time.Duration, nowFn func() time.Time) *rateLimiter {
+	if nowFn == nil {
+		nowFn = time.Now
+	}
+	return &rateLimiter{
+		rate:    float64(ratePerSec),
+		burst:   float64(burst),
+		idleTTL: idleTTL,
+		now:     nowFn,
+		stopCh:  make(chan struct{}),
+	}
+}
+
+// cleanupLoop 周期触发淘汰；stopCh 关闭即退出，sync.Once 保证 stop 幂等。
+func (rl *rateLimiter) cleanupLoop(interval time.Duration) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-rl.stopCh:
+			return
+		case <-t.C:
+			rl.evictIdle()
+		}
+	}
+}
+
+// evictIdle 扫描所有 bucket，淘汰超过 idleTTL 未访问的；返回淘汰条数便于测试。
+// 锁顺序：先 bucket.mu 读 last，释放后再 m.Delete，避免与 allow() 并发死锁。
+func (rl *rateLimiter) evictIdle() int {
+	evicted := 0
+	now := rl.now()
+	rl.m.Range(func(k, v any) bool {
+		b := v.(*rateBucket)
+		b.mu.Lock()
+		idle := now.Sub(b.last) > rl.idleTTL
+		b.mu.Unlock()
+		if idle {
+			rl.m.Delete(k)
+			evicted++
+		}
+		return true
+	})
+	return evicted
+}
+
+// stop 关闭 cleanup goroutine；多次调用安全。
+func (rl *rateLimiter) stop() {
+	rl.once.Do(func() { close(rl.stopCh) })
 }
 
 func (rl *rateLimiter) allow(key string) (ok bool, retryAfterSec int) {
 	if key == "" {
 		key = "unknown"
 	}
-	now := time.Now()
+	now := rl.now()
 	v, _ := rl.m.LoadOrStore(key, &rateBucket{tokens: rl.burst, last: now})
 	b := v.(*rateBucket)
 

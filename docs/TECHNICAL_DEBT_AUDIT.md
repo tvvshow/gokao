@@ -11,10 +11,10 @@
 | 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
-| 中等 (P-11~P-25) | 15 | **10** | 3 | 2 |
+| 中等 (P-11~P-25) | 15 | **11** | 3 | 1 |
 | 重复代码 (A~I) | 9 | 3 | 3 | 3 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **23** | **6** | **10** |
+| **合计** | **39** | **24** | **6** | **9** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -39,6 +39,7 @@
 | P-20 | 无 HTTP Server 超时 | 732b9e4 | `services/user-service/main.go:210-217` |
 | P-21 | membership 缓存形同虚设 | 7043249 | `services/payment-service/internal/services/membership_service.go:131-137,544` |
 | P-01 | LIKE 全表扫描审计偏差纠正 + hot_searches 索引 | eef5eb7 + 本次 | `services/data-service/internal/database/database.go:271` |
+| P-14 | rateLimiter sync.Map TTL 淘汰 | 本次 | `services/api-gateway/main.go:244-303`（cleanup goroutine + 注入时钟） |
 | B | Config 辅助函数重复 | 80094dc | 各服务 `getEnv*` 已委托 `pkg/config` |
 | C | CORS 中间件 5 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
 | D | RequestID/TraceID 4 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
@@ -199,21 +200,22 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### B.3 [✗ PENDING] P-14 rateLimiter sync.Map 无 TTL
+#### B.3 [✓ FIXED] P-14 rateLimiter sync.Map 无 TTL
 
-**现状**：`services/api-gateway/main.go:251-269` 用 `sync.Map` 存 IP→bucket，无淘汰逻辑。长时间运行后 IP 集合膨胀，内存泄漏。
+**现状（已修复）**：原 `rateLimiter.m sync.Map` 存 IP→bucket 无淘汰逻辑，长期运行 IP 集合膨胀导致内存泄漏。
 
-**期望**：bucket 超过 N 分钟未访问自动清除。
-
-**步骤**：
-1. 给 `rateBucket` 加 `last time.Time` 字段（已有，但未用作淘汰）。
-2. `newRateLimiter` 启 cleanup goroutine：每 1min 扫一次，删除 `time.Since(last) > 10min` 的 entry。
-3. shutdown 时关闭 cleanup（`context.WithCancel`）。
+**修复内容**：
+1. `services/api-gateway/main.go:244-303` 给 `rateLimiter` 加 `idleTTL`、`now func() time.Time`、`stopCh` 字段。
+2. `newRateLimiter` 默认 `idleTTL=10min`、cleanup `interval=1min`，启动 `cleanupLoop` goroutine。
+3. 新增 `newRateLimiterWithDeps(rps, burst, idleTTL, nowFn)` 工厂供测试注入时钟，不启动 goroutine。
+4. `evictIdle()` 同步扫描 `sync.Map.Range`，淘汰 `now - bucket.last > idleTTL` 的 entry。锁顺序：先 `bucket.mu` 读 last 再释放，再 `m.Delete`，避免与 `allow()` 并发死锁。
+5. `stop()` 用 `sync.Once` 关闭 stopCh，多次调用安全。
+6. `allow()` 时间源从 `time.Now()` 切到 `rl.now()`，与 `evictIdle()` 共用同一时钟，保证测试快进时 `last`/`now` 时间基一致。
 
 **验证**：
-- 单测：插入 1000 个 key，等 1s 后调 cleanup（test 用注入时钟），断言 sync.Map 长度归 0。
-
-**工作量**：~2h。
+- `services/api-gateway/rate_limiter_test.go` 4 个新测试：EvictsIdleBuckets / KeepsActiveBuckets / StopIsIdempotent / AllowUsesInjectedClock 全绿。
+- `go test ./services/api-gateway/...` 全绿（27.6s，含原 22 个测试）。
+- `go build ./...` 干净。
 
 ---
 
