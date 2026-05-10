@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -130,9 +131,11 @@ func (s *MembershipService) Subscribe(ctx context.Context, userID, orderNo strin
 func (s *MembershipService) GetMembershipStatus(ctx context.Context, userID string) (*models.MembershipStatusResponse, error) {
 	// 先从缓存获取
 	cacheKey := fmt.Sprintf("membership:%s", userID)
-	if cached, err := s.redis.Get(ctx, cacheKey).Result(); err == nil && cached != "" {
-		// 解析缓存数据
-		// 这里简化处理，实际应该序列化/反序列化
+	if cached, err := s.redis.Get(ctx, cacheKey).Bytes(); err == nil {
+		var cachedResp models.MembershipStatusResponse
+		if json.Unmarshal(cached, &cachedResp) == nil {
+			return &cachedResp, nil
+		}
 	}
 
 	// 从数据库获取最新的会员信息
@@ -537,9 +540,12 @@ func (s *MembershipService) extendMembership(ctx context.Context, userID string,
 }
 
 func (s *MembershipService) cacheMembershipStatus(ctx context.Context, userID string, status *models.MembershipStatusResponse) {
-	// 实际实现中应该序列化status并缓存
 	cacheKey := fmt.Sprintf("membership:%s", userID)
-	s.redis.Set(ctx, cacheKey, "cached", 5*time.Minute)
+	data, err := json.Marshal(status)
+	if err != nil {
+		return
+	}
+	s.redis.Set(ctx, cacheKey, data, 5*time.Minute)
 }
 
 func (s *MembershipService) clearMembershipCache(ctx context.Context, userID string) {

@@ -602,27 +602,29 @@ func (s *SearchService) getMajorSuggestions(ctx context.Context, keyword string,
 	return suggestions
 }
 
-// recordSearch 记录搜索
+// recordSearch 记录搜索（带超时 context，防止 goroutine 堆积）
 func (s *SearchService) recordSearch(ctx context.Context, keyword, province, category string) {
-	// 更新热搜数据
 	go func() {
+		recordCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		today := time.Now().Truncate(24 * time.Hour)
 
 		var hotSearch models.HotSearch
-		result := s.db.PostgreSQL.Where("keyword = ? AND date = ? AND category = ?", keyword, today, category).First(&hotSearch)
+		result := s.db.PostgreSQL.WithContext(recordCtx).
+			Where("keyword = ? AND date = ? AND category = ?", keyword, today, category).
+			First(&hotSearch)
 
 		if result.Error == gorm.ErrRecordNotFound {
-			// 创建新记录
 			hotSearch = models.HotSearch{
 				Keyword:     keyword,
 				SearchCount: 1,
 				Category:    category,
 				Date:        today,
 			}
-			s.db.PostgreSQL.Create(&hotSearch)
+			s.db.PostgreSQL.WithContext(recordCtx).Create(&hotSearch)
 		} else if result.Error == nil {
-			// 更新计数
-			s.db.PostgreSQL.Model(&hotSearch).Update("search_count", gorm.Expr("search_count + ?", 1))
+			s.db.PostgreSQL.WithContext(recordCtx).Model(&hotSearch).Update("search_count", gorm.Expr("search_count + ?", 1))
 		}
 	}()
 }

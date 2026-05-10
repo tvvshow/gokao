@@ -404,18 +404,15 @@ func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*Unive
 
 	db := s.db.PostgreSQL.Model(&models.University{})
 
-	// 1. 单条聚合查询获取总数 + 各级别数量
+	// 1. 单条聚合查询获取总数 + 各级别数量（CASE WHEN 兼容 SQLite + PostgreSQL）
 	var counts struct {
-		Total          int64
-		By985          int64
-		By211          int64
-		ByDoubleFirst  int64
+		Total         int64
+		By985         int64
+		By211         int64
+		ByDoubleFirst int64
 	}
-	if err := db.Select(
-		"COUNT(*) as total",
-		"COUNT(*) FILTER (WHERE level = '985') as by_985",
-		"COUNT(*) FILTER (WHERE level = '211') as by_211",
-		"COUNT(*) FILTER (WHERE level = 'double_first_class') as by_double_first",
+	if err := s.db.PostgreSQL.Raw(
+		"SELECT COUNT(*) as Total, SUM(CASE WHEN level = '985' THEN 1 ELSE 0 END) as By985, SUM(CASE WHEN level = '211' THEN 1 ELSE 0 END) as By211, SUM(CASE WHEN level = 'double_first_class' THEN 1 ELSE 0 END) as ByDoubleFirst FROM universities WHERE deleted_at IS NULL",
 	).Scan(&counts).Error; err != nil {
 		return nil, fmt.Errorf("统计院校数量失败: %w", err)
 	}
