@@ -268,6 +268,9 @@ func (db *DB) createIndices() error {
 		"CREATE INDEX IF NOT EXISTS idx_universities_code_trgm ON universities USING gin (LOWER(code) gin_trgm_ops)",
 		"CREATE INDEX IF NOT EXISTS idx_universities_alias_trgm ON universities USING gin (LOWER(alias) gin_trgm_ops)",
 		"CREATE INDEX IF NOT EXISTS idx_majors_name_trgm ON majors USING gin (LOWER(name) gin_trgm_ops)",
+		// hot_searches.keyword 走 SearchService.AutoComplete 的高频路径（每次输入触发），
+		// eef5eb7 的 follow-up：keyword 列还在 seq scan。补一条 trgm 表达式索引把它也带进索引扫描。
+		"CREATE INDEX IF NOT EXISTS idx_hot_searches_keyword_trgm ON hot_searches USING gin (LOWER(keyword) gin_trgm_ops)",
 	}
 
 	createdCount := 0
