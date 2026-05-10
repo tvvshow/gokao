@@ -11,8 +11,10 @@ RUN apk add --no-cache git ca-certificates tzdata
 # 复制go mod文件
 COPY services/user-service/go.mod services/user-service/go.sum ./
 COPY pkg/auth /app/pkg/auth
+COPY pkg/config /app/pkg/config
 COPY pkg/database /app/pkg/database
 COPY pkg/errors /app/pkg/errors
+COPY pkg/health /app/pkg/health
 COPY pkg/logger /app/pkg/logger
 
 # 下载依赖

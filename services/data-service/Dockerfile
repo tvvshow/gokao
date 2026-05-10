@@ -9,19 +9,15 @@ RUN apk add --no-cache git ca-certificates tzdata
 
 # 复制go mod文件
 COPY services/data-service/go.mod services/data-service/go.sum ./
-COPY pkg/auth /app/pkg/auth
-COPY pkg/errors /app/pkg/errors
-COPY pkg/database /app/pkg/database
-COPY pkg/logger /app/pkg/logger
+
+# 复制所有 replace 引用的 pkg 模块（go mod download 前必须存在）
+COPY pkg/ /app/pkg/
 
 # 下载依赖
 RUN go mod download
 
 # 复制源代码
 COPY services/data-service ./
-
-# 复制共享pkg模块
-COPY pkg/ /app/pkg/
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .

@@ -9,6 +9,7 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 COPY services/recommendation-service/go.mod services/recommendation-service/go.sum ./
+COPY pkg/health /app/pkg/health
 RUN go mod download
 
 # 构建 C++ 共享库

@@ -10,6 +10,7 @@ RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
 # 复制go mod文件
 COPY services/payment-service/go.mod services/payment-service/go.sum ./
 COPY pkg/auth /app/pkg/auth
+COPY pkg/health /app/pkg/health
 
 # 下载依赖
 RUN go mod download
