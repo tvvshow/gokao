@@ -11,10 +11,10 @@
 | 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
-| 中等 (P-11~P-25) | 15 | **8** | 3 | 4 |
+| 中等 (P-11~P-25) | 15 | **9** | 3 | 3 |
 | 重复代码 (A~I) | 9 | 3 | 3 | 3 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **21** | **6** | **12** |
+| **合计** | **39** | **22** | **6** | **11** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -82,23 +82,33 @@
 
 ---
 
-#### A.2 [✗ PENDING] P-19 admission_service 多查询无事务
+#### A.2 [✓ FIXED] P-19 admission_service 多查询无事务（+ 发现隐性 builder 污染 bug）
 
-**现状**：`services/data-service/internal/services/admission_service.go` 中 `PredictAdmission`（line 330）等方法做多次 DB 读取却无事务包裹，`AnalyzeAdmissionData`（line 213）同。grep `tx |Begin|Transaction` 在该文件 0 命中。
+**审计描述偏差纠正**：原审计指出三个方法（`AnalyzeAdmissionData` / `PredictAdmission` / `GetAdmissionStatistics`）需包事务。复审实际代码：
+- `AnalyzeAdmissionData`（line 213）：3 SELECT (admission + university + major)，**需要事务**保证关联一致。
+- `PredictAdmission`（line 330）：**只 1 个 SELECT**（line 343 `query.Find(...)`），事务无收益，本次保留不动。
+- `GetAdmissionStatistics`（line 387）：4 个 Count/Scan，**有事务收益且存在更严重的隐性 bug**（见下）。
 
-**期望**：所有读多条数据后做计算的方法用 `db.Transaction(ctx, func(tx) {...})` 包裹，保证读到一致快照。
+**隐性真根因（比审计原描述更严重）**：原 `GetAdmissionStatistics` 复用同一 `*gorm.DB` 链式 builder 直接调用 4 次终止操作：
+```go
+baseQuery := s.db.PostgreSQL.Model(...)
+baseQuery.Count(&total)
+baseQuery.Select("province, ...").Group("province").Scan(&provinceStats)
+baseQuery.Select("batch, ...").Group("batch").Scan(&batchStats)   // ← 仍带前一次 Select(province)
+```
+GORM v2 不自动 Clone Select/Group/Order 条件，第二次 Scan 时 builder 还带着前次的 `Select(province)` / `Group(province)`，**by_batch / score_distribution 统计结果会错位**。
 
-**步骤**：
-1. 列出该文件中"多 SELECT 计算"的方法：`AnalyzeAdmissionData`、`PredictAdmission`、`GetAdmissionStatistics`。
-2. 改造为 `s.db.PostgreSQL.WithContext(ctx).Transaction(...)`，事务内用 `tx.Where(...)` 替换 `s.db.PostgreSQL.Where(...)`。
-3. 评估隔离级别：`gorm.WithCustomConfig(&gorm.Config{IsolationLevel: sql.LevelRepeatableRead})` 是否需要——如下游有 admission 写入并发，则需。
-4. 单测：mock 两次返回不一致的数据，断言 PredictAdmission 行为符合预期（要么取一致快照，要么报错）。
+**修复内容**：
+1. `AnalyzeAdmissionData` 改为 `db.PostgreSQL.WithContext(ctx).Transaction(func(tx *gorm.DB) error {...})` 包裹，3 SELECT 内部统一用 `tx`。
+2. `GetAdmissionStatistics` 同样包事务，且每次终止操作前用 `tx.Session(&gorm.Session{})` 创建新会话隔离 builder 状态。新增 3 个 named types `AdmissionProvinceStat` / `AdmissionBatchStat` / `AdmissionScoreDistribution` 让聚合结果可被外部断言。
+3. `PredictAdmission` 保持原样（单 SELECT 无事务必要）。
+
+**附带修复**：诊断过程发现 `tests/integration_test.go::getFirstUniversityID()` 用 `db.First(&university)` —— University.ID 是 `uuid.New()` 随机生成，主键升序与插入顺序无关，导致测试随机命中清华或北大而 fixture 仅与北大关联。改为 `db.Where("code = ?", "10001").First(...)` 显式取北大，消除测试的概率性 flakiness。
 
 **验证**：
-- 单测覆盖每个改造方法。
-- `go test -race` 多 goroutine 并发场景。
-
-**工作量**：~4h。
+- `services/data-service/internal/services/admission_service_test.go` 新增 2 个 sqlite in-memory 单测覆盖 builder 污染修复：`TestGetAdmissionStatistics_NoBuilderPollution`（断言 by_batch 不被前次 Select(province) 污染）、`TestGetAdmissionStatistics_NoYearFilter`（断言 year=0 时跨年汇总）。
+- `go test ./services/data-service/...` 全绿（含 internal/services 1.165s + tests 集成测试 2.016s）。
+- `go build ./...`（workspace）干净。
 
 ---
 

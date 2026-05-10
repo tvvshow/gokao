@@ -228,42 +228,54 @@ func (s *AdmissionService) AnalyzeAdmissionData(ctx context.Context, universityI
 		}
 	}
 
-	// 构建基础查询
-	query := s.db.PostgreSQL.Model(&models.AdmissionData{}).
-		Where("university_id = ?", universityID).
-		Where("province = ?", province).
-		Where("category = ?", category)
+	// 主表 + university + major 三次读取置于同一事务，确保读到一致快照。
+	// 仅读不写，因此使用默认隔离级别（PG ReadCommitted）已足够；如下游出现写并发再升级。
+	var (
+		admissionData []models.AdmissionData
+		university    *models.University
+		major         *models.Major
+	)
+	txErr := s.db.PostgreSQL.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		query := tx.Model(&models.AdmissionData{}).
+			Where("university_id = ?", universityID).
+			Where("province = ?", province).
+			Where("category = ?", category)
 
-	if majorID != "" {
-		query = query.Where("major_id = ?", majorID)
-	}
+		if majorID != "" {
+			query = query.Where("major_id = ?", majorID)
+		}
 
-	// 获取录取数据
-	var admissionData []models.AdmissionData
-	if err := query.Order("year ASC").Find(&admissionData).Error; err != nil {
-		return nil, fmt.Errorf("查询录取数据失败: %w", err)
-	}
+		if err := query.Order("year ASC").Find(&admissionData).Error; err != nil {
+			return fmt.Errorf("查询录取数据失败: %w", err)
+		}
 
-	if len(admissionData) == 0 {
-		return nil, fmt.Errorf("未找到相关录取数据")
+		if len(admissionData) == 0 {
+			return fmt.Errorf("未找到相关录取数据")
+		}
+
+		if universityID != "" {
+			var u models.University
+			if err := tx.Where("id = ?", universityID).First(&u).Error; err == nil {
+				university = &u
+			}
+		}
+
+		if majorID != "" {
+			var m models.Major
+			if err := tx.Where("id = ?", majorID).First(&m).Error; err == nil {
+				major = &m
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	// 构建分析结果
-	analysis := &AdmissionAnalysis{}
-
-	// 获取院校和专业信息
-	if universityID != "" {
-		var university models.University
-		if err := s.db.PostgreSQL.Where("id = ?", universityID).First(&university).Error; err == nil {
-			analysis.University = &university
-		}
-	}
-
-	if majorID != "" {
-		var major models.Major
-		if err := s.db.PostgreSQL.Where("id = ?", majorID).First(&major).Error; err == nil {
-			analysis.Major = &major
-		}
+	analysis := &AdmissionAnalysis{
+		University: university,
+		Major:      major,
 	}
 
 	// 计算趋势数据
@@ -398,51 +410,64 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 		}
 	}
 
-	stats := make(map[string]interface{})
+	var (
+		total         int64
+		provinceStats []AdmissionProvinceStat
+		batchStats    []AdmissionBatchStat
+		scores        AdmissionScoreDistribution
+	)
 
-	// 基础查询
-	baseQuery := s.db.PostgreSQL.Model(&models.AdmissionData{})
-	if year > 0 {
-		baseQuery = baseQuery.Where("year = ?", year)
+	// 4 次聚合统计放在同一事务内取一致快照。
+	// 关键修复：先前实现复用同一 *gorm.DB 链式 builder 直接调用多次 Count/Scan，
+	// GORM v2 不会自动 Clone Select/Group/Order 条件，第二次 Scan 仍带前一次的 Select(province)，
+	// 导致 batch / score 统计结果错位。改用 Session(&gorm.Session{}) 在每次终止操作前隔离 builder 状态。
+	txErr := s.db.PostgreSQL.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		newQuery := func() *gorm.DB {
+			q := tx.Session(&gorm.Session{}).Model(&models.AdmissionData{})
+			if year > 0 {
+				q = q.Where("year = ?", year)
+			}
+			return q
+		}
+
+		if err := newQuery().Count(&total).Error; err != nil {
+			return fmt.Errorf("统计总数失败: %w", err)
+		}
+
+		if err := newQuery().
+			Select("province, count(*) as count").
+			Group("province").
+			Order("count DESC").
+			Limit(20).
+			Scan(&provinceStats).Error; err != nil {
+			return fmt.Errorf("按省份统计失败: %w", err)
+		}
+
+		if err := newQuery().
+			Select("batch, count(*) as count").
+			Group("batch").
+			Scan(&batchStats).Error; err != nil {
+			return fmt.Errorf("按批次统计失败: %w", err)
+		}
+
+		if err := newQuery().
+			Select("AVG(avg_score) as avg_score, MIN(min_score) as min_score, MAX(max_score) as max_score").
+			Where("avg_score > 0").
+			Scan(&scores).Error; err != nil {
+			return fmt.Errorf("分数分布统计失败: %w", err)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
 	}
 
-	// 总数统计
-	var total int64
-	baseQuery.Count(&total)
-	stats["total"] = total
-
-	// 按省份统计
-	var provinceStats []struct {
-		Province string `json:"province"`
-		Count    int64  `json:"count"`
+	stats := map[string]interface{}{
+		"total":              total,
+		"by_province":        provinceStats,
+		"by_batch":           batchStats,
+		"score_distribution": scores,
 	}
-	baseQuery.Select("province, count(*) as count").
-		Group("province").
-		Order("count DESC").
-		Limit(20).
-		Scan(&provinceStats)
-	stats["by_province"] = provinceStats
-
-	// 按批次统计
-	var batchStats []struct {
-		Batch string `json:"batch"`
-		Count int64  `json:"count"`
-	}
-	baseQuery.Select("batch, count(*) as count").
-		Group("batch").
-		Scan(&batchStats)
-	stats["by_batch"] = batchStats
-
-	// 分数分布统计
-	var scoreStats struct {
-		AvgScore float64 `json:"avg_score"`
-		MinScore float64 `json:"min_score"`
-		MaxScore float64 `json:"max_score"`
-	}
-	baseQuery.Select("AVG(avg_score) as avg_score, MIN(min_score) as min_score, MAX(max_score) as max_score").
-		Where("avg_score > 0").
-		Scan(&scoreStats)
-	stats["score_distribution"] = scoreStats
 
 	// 缓存结果
 	if s.db.Redis != nil && s.db.Config.CacheEnabled {
@@ -451,6 +476,25 @@ func (s *AdmissionService) GetAdmissionStatistics(ctx context.Context, year int)
 	}
 
 	return stats, nil
+}
+
+// AdmissionProvinceStat 按省份汇总的录取条目数。
+type AdmissionProvinceStat struct {
+	Province string `json:"province"`
+	Count    int64  `json:"count"`
+}
+
+// AdmissionBatchStat 按批次汇总的录取条目数。
+type AdmissionBatchStat struct {
+	Batch string `json:"batch"`
+	Count int64  `json:"count"`
+}
+
+// AdmissionScoreDistribution 录取分数分布。
+type AdmissionScoreDistribution struct {
+	AvgScore float64 `json:"avg_score"`
+	MinScore float64 `json:"min_score"`
+	MaxScore float64 `json:"max_score"`
 }
 
 // 辅助方法

@@ -454,9 +454,13 @@ func (suite *IntegrationTestSuite) TestPaginationAndFiltering() {
 }
 
 // 辅助方法
+// getFirstUniversityID 显式按 Code 取北大（admission fixture 关联的院校），
+// 而不是依赖 db.First()。后者按主键升序取首条，但 University.ID 是 uuid.New()
+// 随机生成的，主键序与插入顺序无关 — 这会导致测试随机命中清华或北大，
+// 而 admission_data 仅与北大关联，测试稳定性变成概率事件。
 func (suite *IntegrationTestSuite) getFirstUniversityID() string {
 	var university models.University
-	suite.db.First(&university)
+	suite.db.Where("code = ?", "10001").First(&university)
 	return university.ID.String()
 }
 
