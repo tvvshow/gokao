@@ -147,6 +147,12 @@ func (db *DB) migrate() error {
 		db.Logger.Warnf("创建扩展 pgcrypto 失败（可能权限不足）：%v", err)
 	}
 
+	// pg_trgm 扩展为搜索路径上的 LOWER(col) LIKE '%xxx%' 提供 GIN 三元组索引支持。
+	// 创建失败不阻塞启动，但搜索将退化为全表扫描，必须在日志中明显标记。
+	if err := db.PostgreSQL.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;").Error; err != nil {
+		db.Logger.Warnf("PERFORMANCE_DEGRADED: 创建扩展 pg_trgm 失败，搜索将退化为全表扫描（可能权限不足）：%v", err)
+	}
+
 	// 初始化迁移器
 	migrator := NewMigrator(db.PostgreSQL)
 	if err := migrator.SetupMigrationTable(); err != nil {
@@ -254,10 +260,14 @@ func (db *DB) createIndices() error {
 		// 搜索和分析表索引
 		"CREATE INDEX IF NOT EXISTS idx_search_indices_type_province ON search_indices(type, province)",
 		"CREATE INDEX IF NOT EXISTS idx_analysis_results_user_created ON analysis_results(user_id, created_at)",
-		
-		// 全文搜索索引
-		"CREATE INDEX IF NOT EXISTS idx_universities_name_gin ON universities USING gin(to_tsvector('chinese', name))",
-		"CREATE INDEX IF NOT EXISTS idx_majors_name_gin ON majors USING gin(to_tsvector('chinese', name))",
+
+		// pg_trgm 表达式索引：覆盖 services 层 LOWER(col) LIKE '%kw%' 模式。
+		// 必须按 LOWER(col) 建表达式索引，planner 才会用——否则索引按 col 但 WHERE 按 LOWER(col)。
+		// to_tsvector('chinese',...) 的旧方案在 postgres:15-alpine 上根本建不起来（无 chinese 词典）。
+		"CREATE INDEX IF NOT EXISTS idx_universities_name_trgm ON universities USING gin (LOWER(name) gin_trgm_ops)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_code_trgm ON universities USING gin (LOWER(code) gin_trgm_ops)",
+		"CREATE INDEX IF NOT EXISTS idx_universities_alias_trgm ON universities USING gin (LOWER(alias) gin_trgm_ops)",
+		"CREATE INDEX IF NOT EXISTS idx_majors_name_trgm ON majors USING gin (LOWER(name) gin_trgm_ops)",
 	}
 
 	createdCount := 0
