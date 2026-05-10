@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -540,9 +541,9 @@ func (s *PaymentService) validateRefundRequest(req *models.RefundRequest) error 
 	return nil
 }
 
-// generateOrderID 生成订单ID
+// generateOrderID 生成订单ID（纳秒时间戳 + 4位随机后缀，避免并发冲突）
 func generateOrderID() string {
-	return fmt.Sprintf("GK%d", time.Now().UnixNano())
+	return fmt.Sprintf("GK%d%04d", time.Now().UnixNano(), rand.Intn(10000))
 }
 
 // ListPayments 获取支付记录列表

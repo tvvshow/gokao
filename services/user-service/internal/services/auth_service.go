@@ -220,37 +220,25 @@ func (s *AuthService) Logout(userID uuid.UUID, refreshToken string) error {
 
 // GetUserPermissions 获取用户权限
 func (s *AuthService) GetUserPermissions(userID uuid.UUID) ([]string, error) {
-	// 获取用户角色
+	// 验证用户存在
 	var user models.User
-	if err := s.db.Preload("Roles").Where("id = ?", userID).First(&user).Error; err != nil {
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// 获取角色权限
+	// 获取角色权限（单条 JOIN 查询替代 N+1）
 	var permissions []string
-	permissionMap := make(map[string]bool)
-
-	for _, role := range user.Roles {
-		// 获取角色权限关联
-		var rolePermissions []models.RolePermission
-		if err := s.db.Where("role_id = ?", role.ID).Find(&rolePermissions).Error; err != nil {
-			return nil, fmt.Errorf("failed to get role permissions: %w", err)
-		}
-
-		// 获取权限详情
-		for _, rp := range rolePermissions {
-			var permission models.Permission
-			if err := s.db.Where("id = ?", rp.PermissionID).First(&permission).Error; err != nil {
-				continue
-			}
-			if !permissionMap[permission.Name] {
-				permissions = append(permissions, permission.Name)
-				permissionMap[permission.Name] = true
-			}
-		}
+	err := s.db.Table("permissions").
+		Select("DISTINCT permissions.name").
+		Joins("JOIN role_permissions ON role_permissions.permission_id = permissions.id").
+		Joins("JOIN user_roles ON user_roles.role_id = role_permissions.role_id").
+		Where("user_roles.user_id = ?", userID).
+		Pluck("name", &permissions).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user permissions: %w", err)
 	}
 
 	return permissions, nil

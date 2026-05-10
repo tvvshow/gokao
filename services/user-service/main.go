@@ -112,7 +112,7 @@ func main() {
 	roleHandler := handlers.NewRoleHandler(roleService)
 
 	// Initialize permission middleware with caching-backed role/permission checks
-	perm := middleware.NewPermission(userService, roleService, cfg.JWTSecret)
+	perm := middleware.NewPermission(userService, roleService, cfg.JWTSecret, redisClient)
 
 	// 创建Gin路由器
 	r := gin.New()

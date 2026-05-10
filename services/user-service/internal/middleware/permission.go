@@ -1,15 +1,19 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
-
-	"github.com/tvvshow/gokao/services/user-service/internal/models"
-	"github.com/tvvshow/gokao/services/user-service/internal/services"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/tvvshow/gokao/pkg/auth"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/services"
 )
 
 // Permission 权限中间件
@@ -17,14 +21,16 @@ type Permission struct {
 	userService    *services.UserService
 	roleService    *services.RoleService
 	authMiddleware *auth.AuthMiddleware
+	redis          *redis.Client
 }
 
 // NewPermission 创建权限中间件
-func NewPermission(userService *services.UserService, roleService *services.RoleService, jwtSecret string) *Permission {
+func NewPermission(userService *services.UserService, roleService *services.RoleService, jwtSecret string, redisClient *redis.Client) *Permission {
 	return &Permission{
 		userService:    userService,
 		roleService:    roleService,
 		authMiddleware: auth.NewAuthMiddleware(jwtSecret),
+		redis:          redisClient,
 	}
 }
 
@@ -64,8 +70,8 @@ func (p *Permission) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 检查用户是否存在并获取完整用户信息
-		user, err := p.userService.GetUserByID(userID)
+		// 检查用户是否存在并获取完整用户信息（Redis 缓存优先）
+		user, err := p.getCachedUser(c.Request.Context(), userID)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, models.APIResponse{
 				Success: false,
@@ -90,6 +96,39 @@ func (p *Permission) RequireAuth() gin.HandlerFunc {
 		c.Set("user", user)
 		c.Next()
 	}
+}
+
+const authCacheTTL = 5 * time.Minute
+
+func (p *Permission) cacheKey(userID uuid.UUID) string {
+	return fmt.Sprintf("auth:user:%s", userID.String())
+}
+
+// getCachedUser 从 Redis 缓存获取用户，缓存未命中则查库并回填。
+func (p *Permission) getCachedUser(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+	key := p.cacheKey(userID)
+
+	if p.redis != nil {
+		if cached, err := p.redis.Get(ctx, key).Bytes(); err == nil {
+			var user models.User
+			if json.Unmarshal(cached, &user) == nil {
+				return &user, nil
+			}
+		}
+	}
+
+	user, err := p.userService.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.redis != nil {
+		if data, err := json.Marshal(user); err == nil {
+			p.redis.Set(ctx, key, data, authCacheTTL)
+		}
+	}
+
+	return user, nil
 }
 
 // AdminOnly 仅管理员可访问

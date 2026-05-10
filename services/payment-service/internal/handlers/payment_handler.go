@@ -167,17 +167,8 @@ func (h *PaymentHandler) PaymentCallback(c *gin.Context) {
 		return
 	}
 
-	var req PaymentCallbackRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.WithError(err).Warn("Invalid payment callback request")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-		})
-		return
-	}
-
-	// 处理支付回调
+	// 处理支付回调（HandleCallback 直接从 request.Body 读取原始字节做签名验证，
+	// 不能先用 ShouldBindJSON 消费 body，否则后续 ReadAll 读到空）
 	result, err := h.paymentService.HandleCallback(c.Request.Context(), channel, c.Request)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to handle payment callback")
@@ -189,11 +180,6 @@ func (h *PaymentHandler) PaymentCallback(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Payment processed successfully",
-	})
 }
 
 // RefundRequest 退款请求

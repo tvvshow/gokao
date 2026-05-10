@@ -74,16 +74,6 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 	}
 }
 
-// RequirePermission 权限验证中间件
-func RequirePermission(requiredPermission string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 这里可以扩展为更细粒度的权限检查
-		// 目前简化为角色检查
-		// 在实际项目中，可以从数据库查询用户的具体权限
-		c.Next()
-	}
-}
-
 // ContextHeaders 透传或生成请求链路标识
 func ContextHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -35,6 +35,20 @@ type paymentRepository struct {
 	tx *sql.Tx // 当前事务，如果存在
 }
 
+// queryer abstracts *sql.DB and *sql.Tx shared methods.
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+}
+
+func (r *paymentRepository) q() queryer {
+	if r.tx != nil {
+		return r.tx
+	}
+	return r.db
+}
+
 // NewPaymentRepository 创建支付数据访问实例
 func NewPaymentRepository(db *sql.DB) PaymentRepository {
 	return &paymentRepository{
@@ -81,15 +95,10 @@ func (r *paymentRepository) CreatePayment(ctx context.Context, payment *models.P
 	payment.CreatedAt = time.Now()
 	payment.UpdatedAt = time.Now()
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
 	var id int64
-	err := db.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, query,
 		payment.OrderNo,
 		payment.UserID,
 		payment.Amount,
@@ -128,15 +137,10 @@ func (r *paymentRepository) CreateRefund(ctx context.Context, refund *models.Ref
 	refund.CreatedAt = time.Now()
 	refund.UpdatedAt = time.Now()
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
 	var id int64
-	err := db.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, query,
 		refund.RefundNo,
 		refund.OrderNo,
 		refund.ChannelRefundNo,
@@ -166,14 +170,9 @@ func (r *paymentRepository) GetPaymentByID(ctx context.Context, paymentID string
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	row := db.QueryRowContext(ctx, query, paymentID)
+	row := q.QueryRowContext(ctx, query, paymentID)
 
 	var payment models.PaymentOrder
 	var paidAt, expiredAt sql.NullTime
@@ -233,14 +232,9 @@ func (r *paymentRepository) GetPaymentByIDWithLock(ctx context.Context, paymentI
 		FOR UPDATE
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	row := db.QueryRowContext(ctx, query, paymentID)
+	row := q.QueryRowContext(ctx, query, paymentID)
 
 	var payment models.PaymentOrder
 	var paidAt, expiredAt sql.NullTime
@@ -299,14 +293,9 @@ func (r *paymentRepository) GetPaymentByOrderID(ctx context.Context, orderID str
 		WHERE order_no = $1 AND deleted_at IS NULL
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	row := db.QueryRowContext(ctx, query, orderID)
+	row := q.QueryRowContext(ctx, query, orderID)
 
 	var payment models.PaymentOrder
 	var paidAt, expiredAt sql.NullTime
@@ -364,14 +353,9 @@ func (r *paymentRepository) UpdatePaymentStatus(ctx context.Context, paymentID, 
 		WHERE id = $4 AND deleted_at IS NULL
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	result, err := db.ExecContext(ctx, query, status, tradeNo, time.Now(), paymentID)
+	result, err := q.ExecContext(ctx, query, status, tradeNo, time.Now(), paymentID)
 	if err != nil {
 		return fmt.Errorf("failed to update payment status: %w", err)
 	}
@@ -396,14 +380,9 @@ func (r *paymentRepository) UpdatePaymentAmount(ctx context.Context, paymentID s
 		WHERE id = $3 AND deleted_at IS NULL
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	result, err := db.ExecContext(ctx, query, amount, time.Now(), paymentID)
+	result, err := q.ExecContext(ctx, query, amount, time.Now(), paymentID)
 	if err != nil {
 		return fmt.Errorf("failed to update payment amount: %w", err)
 	}
@@ -555,14 +534,9 @@ func (r *paymentRepository) ClosePayment(ctx context.Context, paymentID string) 
 		WHERE id = $2 AND status = 'pending' AND deleted_at IS NULL
 	`
 
-	var db *sql.DB
-	if r.tx != nil {
-		db = nil // 使用事务
-	} else {
-		db = r.db
-	}
+	q := r.q()
 
-	result, err := db.ExecContext(ctx, query, time.Now(), paymentID)
+	result, err := q.ExecContext(ctx, query, time.Now(), paymentID)
 	if err != nil {
 		return fmt.Errorf("failed to close payment: %w", err)
 	}
