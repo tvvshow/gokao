@@ -394,7 +394,7 @@ type UniversityStatistics struct {
 	ByNature      map[string]int64 `json:"by_nature"`
 }
 
-// GetUniversityStatistics 获取院校统计信息
+// GetUniversityStatistics 获取院校统计信息（4 条聚合查询替代原来 7 条独立查询）
 func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*UniversityStatistics, error) {
 	stats := &UniversityStatistics{
 		ByProvince: make(map[string]int64),
@@ -402,72 +402,56 @@ func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*Unive
 		ByNature:   make(map[string]int64),
 	}
 
-	// 总数
-	if err := s.db.PostgreSQL.Model(&models.University{}).Count(&stats.Total).Error; err != nil {
-		return nil, fmt.Errorf("统计院校总数失败: %w", err)
-	}
+	db := s.db.PostgreSQL.Model(&models.University{})
 
-	// 985院校数量
-	if err := s.db.PostgreSQL.Model(&models.University{}).Where("level = ?", "985").Count(&stats.By985).Error; err != nil {
-		return nil, fmt.Errorf("统计985院校失败: %w", err)
+	// 1. 单条聚合查询获取总数 + 各级别数量
+	var counts struct {
+		Total          int64
+		By985          int64
+		By211          int64
+		ByDoubleFirst  int64
 	}
+	if err := db.Select(
+		"COUNT(*) as total",
+		"COUNT(*) FILTER (WHERE level = '985') as by_985",
+		"COUNT(*) FILTER (WHERE level = '211') as by_211",
+		"COUNT(*) FILTER (WHERE level = 'double_first_class') as by_double_first",
+	).Scan(&counts).Error; err != nil {
+		return nil, fmt.Errorf("统计院校数量失败: %w", err)
+	}
+	stats.Total = counts.Total
+	stats.By985 = counts.By985
+	stats.By211 = counts.By211
+	stats.ByDoubleFirst = counts.ByDoubleFirst
 
-	// 211院校数量
-	if err := s.db.PostgreSQL.Model(&models.University{}).Where("level = ?", "211").Count(&stats.By211).Error; err != nil {
-		return nil, fmt.Errorf("统计211院校失败: %w", err)
-	}
-
-	// 双一流院校数量
-	if err := s.db.PostgreSQL.Model(&models.University{}).Where("level = ?", "double_first_class").Count(&stats.ByDoubleFirst).Error; err != nil {
-		return nil, fmt.Errorf("统计双一流院校失败: %w", err)
-	}
-
-	// 按省份统计
-	type ProvinceCount struct {
-		Province string
-		Count    int64
-	}
-	var provinceCounts []ProvinceCount
-	if err := s.db.PostgreSQL.Model(&models.University{}).
-		Select("province, COUNT(*) as count").
-		Group("province").
-		Scan(&provinceCounts).Error; err != nil {
-		return nil, fmt.Errorf("按省份统计失败: %w", err)
-	}
-	for _, pc := range provinceCounts {
-		stats.ByProvince[pc.Province] = pc.Count
-	}
-
-	// 按类型统计
-	type TypeCount struct {
-		Type  string
+	// 2-4. 三条 GROUP BY 查询（不同维度无法合并）
+	type groupCount struct {
+		Key   string
 		Count int64
 	}
-	var typeCounts []TypeCount
-	if err := s.db.PostgreSQL.Model(&models.University{}).
-		Select("type, COUNT(*) as count").
-		Group("type").
-		Scan(&typeCounts).Error; err != nil {
-		return nil, fmt.Errorf("按类型统计失败: %w", err)
+
+	var provinceCounts []groupCount
+	if err := db.Select("province as key, COUNT(*) as count").Group("province").Scan(&provinceCounts).Error; err != nil {
+		return nil, fmt.Errorf("按省份统计失败: %w", err)
 	}
-	for _, tc := range typeCounts {
-		stats.ByType[tc.Type] = tc.Count
+	for _, gc := range provinceCounts {
+		stats.ByProvince[gc.Key] = gc.Count
 	}
 
-	// 按性质统计
-	type NatureCount struct {
-		Nature string
-		Count  int64
+	var typeCounts []groupCount
+	if err := db.Select("type as key, COUNT(*) as count").Group("type").Scan(&typeCounts).Error; err != nil {
+		return nil, fmt.Errorf("按类型统计失败: %w", err)
 	}
-	var natureCounts []NatureCount
-	if err := s.db.PostgreSQL.Model(&models.University{}).
-		Select("nature, COUNT(*) as count").
-		Group("nature").
-		Scan(&natureCounts).Error; err != nil {
+	for _, gc := range typeCounts {
+		stats.ByType[gc.Key] = gc.Count
+	}
+
+	var natureCounts []groupCount
+	if err := db.Select("nature as key, COUNT(*) as count").Group("nature").Scan(&natureCounts).Error; err != nil {
 		return nil, fmt.Errorf("按性质统计失败: %w", err)
 	}
-	for _, nc := range natureCounts {
-		stats.ByNature[nc.Nature] = nc.Count
+	for _, gc := range natureCounts {
+		stats.ByNature[gc.Key] = gc.Count
 	}
 
 	return stats, nil
