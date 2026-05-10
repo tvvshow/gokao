@@ -312,7 +312,11 @@ const handleUserCommand = (command: string) => {
 
 .dark .nav-track {
   border-color: rgb(71 85 105 / 0.55);
-  background: linear-gradient(120deg, rgb(15 23 42 / 0.9), rgb(30 41 59 / 0.9));
+  background: linear-gradient(
+    120deg,
+    rgb(15 23 42 / 0.9),
+    rgb(30 41 59 / 0.9)
+  );
 }
 
 .mobile-menu-panel {
@@ -343,7 +347,11 @@ const handleUserCommand = (command: string) => {
 }
 
 .dark .logo-container {
-  background: linear-gradient(145deg, rgb(14 116 144 / 0.45), rgb(15 118 110 / 0.45));
+  background: linear-gradient(
+    145deg,
+    rgb(14 116 144 / 0.45),
+    rgb(15 118 110 / 0.45)
+  );
   border-color: rgb(56 189 248 / 0.35);
 }
 

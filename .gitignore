@@ -331,6 +331,9 @@ logstash/
 .terraform/
 .terraform.lock.hcl
 
+# vcpkg (local C++ package manager, not part of project source)
+vcpkg/
+
 # Large files
 gaokao.rar
 gaokaohub_-ai-college-application-assistant.zip

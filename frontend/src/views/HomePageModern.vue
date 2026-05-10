@@ -517,7 +517,11 @@ onMounted(() => {
   padding: 0.52rem 1rem;
   border-radius: 999px;
   border: 1px solid rgb(14 165 233 / 0.3);
-  background: linear-gradient(120deg, rgb(224 242 254 / 0.95), rgb(204 251 241 / 0.95));
+  background: linear-gradient(
+    120deg,
+    rgb(224 242 254 / 0.95),
+    rgb(204 251 241 / 0.95)
+  );
   color: #0369a1;
   font-size: 0.84rem;
   font-weight: 700;
@@ -526,7 +530,11 @@ onMounted(() => {
 
 .dark .hero-kicker {
   border-color: rgb(56 189 248 / 0.3);
-  background: linear-gradient(120deg, rgb(8 47 73 / 0.82), rgb(17 94 89 / 0.82));
+  background: linear-gradient(
+    120deg,
+    rgb(8 47 73 / 0.82),
+    rgb(17 94 89 / 0.82)
+  );
   color: #67e8f9;
 }
 

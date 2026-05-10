@@ -250,7 +250,11 @@ const handleFavorite = (recommendation: Recommendation) =>
   margin-bottom: 24px;
   border-radius: 14px;
   padding: 6px 8px;
-  background: linear-gradient(120deg, rgb(248 250 252 / 0.94), rgb(240 249 255 / 0.94));
+  background: linear-gradient(
+    120deg,
+    rgb(248 250 252 / 0.94),
+    rgb(240 249 255 / 0.94)
+  );
   border: 1px solid rgb(148 163 184 / 0.24);
 }
 
@@ -295,7 +299,11 @@ const handleFavorite = (recommendation: Recommendation) =>
 }
 
 .dark .category-tabs {
-  background: linear-gradient(120deg, rgb(15 23 42 / 0.86), rgb(30 41 59 / 0.86));
+  background: linear-gradient(
+    120deg,
+    rgb(15 23 42 / 0.86),
+    rgb(30 41 59 / 0.86)
+  );
   border-color: rgb(71 85 105 / 0.52);
 }
 
