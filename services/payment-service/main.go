@@ -17,7 +17,6 @@ import (
 	"github.com/tvvshow/gokao/services/payment-service/internal/middleware"
 	"github.com/tvvshow/gokao/services/payment-service/internal/repository"
 	"github.com/tvvshow/gokao/services/payment-service/internal/service"
-	"github.com/tvvshow/gokao/services/payment-service/internal/services"
 
 	pkghealth "github.com/tvvshow/gokao/pkg/health"
 
@@ -72,7 +71,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to initialize payment service:", err)
 	}
-	membershipService := services.NewMembershipService(db, redisClient)
+	membershipService := service.NewMembershipService(db, redisClient)
 
 	// 初始化处理器
 	paymentHandler := handlers.NewPaymentHandler(paymentService, logger)

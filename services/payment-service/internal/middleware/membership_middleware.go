@@ -5,16 +5,16 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tvvshow/gokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 )
 
 // MembershipMiddleware 会员权限中间件
 type MembershipMiddleware struct {
-	membershipService *services.MembershipService
+	membershipService *service.MembershipService
 }
 
 // NewMembershipMiddleware 创建会员权限中间件
-func NewMembershipMiddleware(membershipService *services.MembershipService) *MembershipMiddleware {
+func NewMembershipMiddleware(membershipService *service.MembershipService) *MembershipMiddleware {
 	return &MembershipMiddleware{
 		membershipService: membershipService,
 	}
