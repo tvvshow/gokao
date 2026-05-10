@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tvvshow/gokao/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tvvshow/gokao/pkg/errors"
 )
 
 // captureLogs is a helper to capture log.Println output during tests.
