@@ -323,19 +323,26 @@ func (s *UniversityService) ListUniversities(ctx context.Context, params Univers
 		return nil, fmt.Errorf("统计院校数量失败: %w", err)
 	}
 
-	// 排序
-	sortBy := "national_rank"
-	if params.SortBy != "" {
-		sortBy = params.SortBy
+	// 排序（白名单防 SQL 注入）
+	allowedSortFields := map[string]string{
+		"":             "national_rank",
+		"ranking":      "national_rank",
+		"national_rank": "national_rank",
+		"name":         "name",
+		"province":     "province",
+		"type":         "type",
+		"level":        "level",
+		"founded_year": "founded_year",
 	}
-	if sortBy == "ranking" {
-		sortBy = "national_rank"
+	sortCol, ok := allowedSortFields[params.SortBy]
+	if !ok {
+		sortCol = "national_rank"
 	}
 	sortOrder := "ASC"
 	if params.SortOrder == "desc" {
 		sortOrder = "DESC"
 	}
-	query = query.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
+	query = query.Order(fmt.Sprintf("%s %s", sortCol, sortOrder))
 
 	// 分页
 	offset := (params.Page - 1) * params.PageSize

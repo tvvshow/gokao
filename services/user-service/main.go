@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -206,7 +207,14 @@ func main() {
 	logrus.Infof("🔒 JWT Secret configured: %t", cfg.JWTSecret != "")
 	logrus.Infof("📊 Database: %s", cfg.DatabaseURL)
 
-	if err := r.Run(":" + port); err != nil {
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal("Failed to start server:", err)
 	}
 }

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"sort"
+
 	"github.com/tvvshow/gokao/services/data-service/internal/database"
 	"runtime"
 	"sync"
@@ -373,18 +375,9 @@ func (d *DurationStat) calculatePercentiles() {
 		return
 	}
 
-	// 简单排序（生产环境中应使用更高效的算法）
 	samples := make([]time.Duration, len(d.Recent))
 	copy(samples, d.Recent)
-
-	// 冒泡排序（简化实现）
-	for i := 0; i < len(samples)-1; i++ {
-		for j := 0; j < len(samples)-1-i; j++ {
-			if samples[j] > samples[j+1] {
-				samples[j], samples[j+1] = samples[j+1], samples[j]
-			}
-		}
-	}
+	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
 
 	// 计算百分位数
 	n := len(samples)
