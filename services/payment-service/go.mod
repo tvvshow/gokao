@@ -10,11 +10,13 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/lib/pq v1.12.3
-	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/smartwalle/alipay/v3 v3.2.29
 	github.com/stretchr/testify v1.10.0
+	github.com/tvvshow/gokao/pkg/config v0.0.0
+	github.com/tvvshow/gokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/middleware v0.0.0
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.21
 	golang.org/x/time v0.15.0
 	gorm.io/gorm v1.31.1
@@ -37,6 +39,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -61,4 +64,8 @@ require (
 
 replace github.com/tvvshow/gokao/pkg/auth => ../../pkg/auth
 
+replace github.com/tvvshow/gokao/pkg/config => ../../pkg/config
+
 replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
+
+replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware
