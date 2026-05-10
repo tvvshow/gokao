@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	pkgconfig "github.com/tvvshow/gokao/pkg/config"
 )
 
 // Config 应用配置
@@ -219,38 +221,17 @@ func getEnvAsIntAlias(keys []string, defaultValue int) int {
 	return defaultValue
 }
 
-// getEnv 获取环境变量，如果不存在则返回默认值
+// getEnv 获取环境变量，如果不存在则返回默认值（委托 pkg/config）
 func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	return pkgconfig.GetEnv(key, defaultValue)
 }
 
-// getEnvAsInt 获取环境变量作为整数
+// getEnvAsInt 获取环境变量作为整数（委托 pkg/config）
 func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := getEnv(key, "")
-	if valueStr == "" {
-		return defaultValue
-	}
-
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
-	}
-
-	return defaultValue
+	return pkgconfig.GetEnvAsInt(key, defaultValue)
 }
 
-// getEnvAsBool 获取环境变量作为布尔值
+// getEnvAsBool 获取环境变量作为布尔值（委托 pkg/config）
 func getEnvAsBool(key string, defaultValue bool) bool {
-	valueStr := getEnv(key, "")
-	if valueStr == "" {
-		return defaultValue
-	}
-
-	if value, err := strconv.ParseBool(valueStr); err == nil {
-		return value
-	}
-
-	return defaultValue
+	return pkgconfig.GetEnvAsBool(key, defaultValue)
 }

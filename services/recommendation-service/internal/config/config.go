@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	pkgconfig "github.com/tvvshow/gokao/pkg/config"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -329,25 +331,14 @@ func loadFromEnv(config *Config) {
 	}
 }
 
+// firstNonEmptyEnv 委托 pkg/config.FirstNonEmpty
 func firstNonEmptyEnv(keys ...string) string {
-	for _, key := range keys {
-		value := strings.TrimSpace(os.Getenv(key))
-		if value != "" {
-			return value
-		}
-	}
-	return ""
+	return pkgconfig.FirstNonEmpty(keys...)
 }
 
+// normalizePortValue 委托 pkg/config.NormalizePort
 func normalizePortValue(port string) string {
-	port = strings.TrimSpace(port)
-	if port == "" {
-		return port
-	}
-	if strings.HasPrefix(port, ":") {
-		return port[1:]
-	}
-	return port
+	return pkgconfig.NormalizePort(port)
 }
 
 func getEnvInt(key string) (int, bool) {
