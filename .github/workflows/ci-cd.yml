@@ -154,15 +154,9 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.25'
-    
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    
+        # setup-go@v5 默认 cache: true，自动管理 ~/go/pkg/mod 与 ~/.cache/go-build
+        # 不要再叠加 actions/cache，否则 tar 解到已存在文件 → "Cannot open: File exists"
+
     - name: Run Go Tests
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gaokao_test?sslmode=disable
