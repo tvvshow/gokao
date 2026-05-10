@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -167,29 +168,35 @@ func cacheMiddleware(cache *cacheManager, ttl time.Duration) gin.HandlerFunc {
 			}
 		}
 
-		// Cache miss, continue processing
+		// Cache miss — wrap response writer to capture body
+		bw := &bodyWriter{ResponseWriter: c.Writer, body: &bytes.Buffer{}}
+		c.Writer = bw
 		c.Next()
 
 		// Cache the response if successful
-		if c.Writer.Status() == http.StatusOK {
-			// Capture response data
-			responseData, exists := c.Get("response_data")
-			if exists {
-				if data, ok := responseData.([]byte); ok {
-					err := cache.client.Set(c.Request.Context(), cacheKey, data, ttl).Err()
-					if err != nil {
-						cache.logger.WithError(err).Warn("Failed to cache response")
-					} else {
-						cache.logger.WithFields(logrus.Fields{
-							"cache_key": cacheKey,
-							"hit":       false,
-							"ttl":       ttl.String(),
-						}).Debug("Cache miss - response cached")
-					}
-				}
+		if c.Writer.Status() == http.StatusOK && bw.body.Len() > 0 {
+			if err := cache.client.Set(c.Request.Context(), cacheKey, bw.body.Bytes(), ttl).Err(); err != nil {
+				cache.logger.WithError(err).Warn("Failed to cache response")
+			} else {
+				cache.logger.WithFields(logrus.Fields{
+					"cache_key": cacheKey,
+					"hit":       false,
+					"ttl":       ttl.String(),
+				}).Debug("Cache miss - response cached")
 			}
 		}
 	}
+}
+
+// bodyWriter wraps gin.ResponseWriter to capture the response body for caching.
+type bodyWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (w *bodyWriter) Write(b []byte) (int, error) {
+	w.body.Write(b)
+	return w.ResponseWriter.Write(b)
 }
 
 func newMetrics() *metrics {
