@@ -93,7 +93,9 @@
                           计算机科学与技术
                         </div>
                       </div>
-                      <div class="ml-auto hero-preview__tag hero-preview__tag--a">
+                      <div
+                        class="ml-auto hero-preview__tag hero-preview__tag--a"
+                      >
                         冲刺
                       </div>
                     </div>
@@ -115,7 +117,9 @@
                           软件工程
                         </div>
                       </div>
-                      <div class="ml-auto hero-preview__tag hero-preview__tag--b">
+                      <div
+                        class="ml-auto hero-preview__tag hero-preview__tag--b"
+                      >
                         稳妥
                       </div>
                     </div>
@@ -137,7 +141,9 @@
                           电气工程
                         </div>
                       </div>
-                      <div class="ml-auto hero-preview__tag hero-preview__tag--c">
+                      <div
+                        class="ml-auto hero-preview__tag hero-preview__tag--c"
+                      >
                         保底
                       </div>
                     </div>

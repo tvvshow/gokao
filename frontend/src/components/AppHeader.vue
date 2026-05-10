@@ -302,21 +302,16 @@ const handleUserCommand = (command: string) => {
   padding: 0.25rem;
   border-radius: 0.9rem;
   border: 1px solid rgb(148 163 184 / 0.24);
-  background:
-    linear-gradient(
-      120deg,
-      rgb(248 250 252 / 0.78),
-      rgb(241 245 249 / 0.78)
-    );
+  background: linear-gradient(
+    120deg,
+    rgb(248 250 252 / 0.78),
+    rgb(241 245 249 / 0.78)
+  );
 }
 
 .dark .nav-track {
   border-color: rgb(71 85 105 / 0.55);
-  background: linear-gradient(
-    120deg,
-    rgb(15 23 42 / 0.9),
-    rgb(30 41 59 / 0.9)
-  );
+  background: linear-gradient(120deg, rgb(15 23 42 / 0.9), rgb(30 41 59 / 0.9));
 }
 
 .mobile-menu-panel {

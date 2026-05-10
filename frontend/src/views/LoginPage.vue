@@ -326,7 +326,11 @@ const guestLogin = () => {
 .login-page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 8% 12%, rgb(56 189 248 / 0.32) 0, transparent 38%),
+    radial-gradient(
+      circle at 8% 12%,
+      rgb(56 189 248 / 0.32) 0,
+      transparent 38%
+    ),
     radial-gradient(
       circle at 92% 86%,
       rgb(20 184 166 / 0.28) 0,

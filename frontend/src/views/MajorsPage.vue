@@ -51,7 +51,9 @@
               </el-col>
             </el-row>
             <div class="filter-actions">
-              <el-button type="primary" @click="handleSearch">搜索专业</el-button>
+              <el-button type="primary" @click="handleSearch"
+                >搜索专业</el-button
+              >
               <el-button @click="handleReset">重置条件</el-button>
             </div>
           </el-form>
@@ -120,7 +122,10 @@
           </el-col>
         </el-row>
 
-        <el-empty v-if="!loading && majors.length === 0" description="未找到匹配的专业" />
+        <el-empty
+          v-if="!loading && majors.length === 0"
+          description="未找到匹配的专业"
+        />
       </div>
 
       <!-- 分页 -->
@@ -328,7 +333,11 @@ onMounted(() => {
 .filter-panel {
   border-radius: 14px;
   border: 1px solid rgb(148 163 184 / 0.24);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(248 250 252 / 0.95));
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.95),
+    rgb(248 250 252 / 0.95)
+  );
   box-shadow: 0 16px 30px -28px rgb(14 165 233 / 0.5);
 }
 

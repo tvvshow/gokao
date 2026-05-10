@@ -13,7 +13,8 @@
       <div class="card p-6 mb-8 filter-panel">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="space-y-2">
-            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
+            <label
+              class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校名称</label
             >
             <div class="relative">
@@ -31,7 +32,8 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
+            <label
+              class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >所在省份</label
             >
             <select v-model="searchForm.province" class="input">
@@ -47,7 +49,8 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
+            <label
+              class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校类型</label
             >
             <select v-model="searchForm.type" class="input">
@@ -62,7 +65,8 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-slate-700 dark:text-slate-300"
+            <label
+              class="text-sm font-medium text-slate-700 dark:text-slate-300"
               >院校层次</label
             >
             <select v-model="searchForm.level" class="input">
@@ -250,7 +254,9 @@
                   </div>
                 </div>
 
-                <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <div
+                  class="space-y-2 text-sm text-slate-600 dark:text-slate-300"
+                >
                   <div class="flex items-center">
                     <MapPinIcon class="w-4 h-4 mr-2" />
                     {{ university.province }} · {{ university.city }}
@@ -297,7 +303,10 @@
                         >
                           {{ major }}
                         </span>
-                        <span v-if="university.strongMajors.length > 2" class="text-xs text-slate-500">
+                        <span
+                          v-if="university.strongMajors.length > 2"
+                          class="text-xs text-slate-500"
+                        >
                           等{{ university.strongMajors.length - 2 }}个
                         </span>
                       </div>
@@ -553,15 +562,31 @@ onMounted(() => {
 /* 自定义样式 */
 .page-shell {
   background:
-    radial-gradient(900px circle at 8% 0%, rgb(34 211 238 / 0.08), transparent 48%),
-    radial-gradient(760px circle at 95% 95%, rgb(56 189 248 / 0.08), transparent 45%),
+    radial-gradient(
+      900px circle at 8% 0%,
+      rgb(34 211 238 / 0.08),
+      transparent 48%
+    ),
+    radial-gradient(
+      760px circle at 95% 95%,
+      rgb(56 189 248 / 0.08),
+      transparent 45%
+    ),
     #f8fafc;
 }
 
 .dark .page-shell {
   background:
-    radial-gradient(800px circle at 8% 2%, rgb(6 182 212 / 0.12), transparent 48%),
-    radial-gradient(720px circle at 95% 95%, rgb(14 116 144 / 0.12), transparent 45%),
+    radial-gradient(
+      800px circle at 8% 2%,
+      rgb(6 182 212 / 0.12),
+      transparent 48%
+    ),
+    radial-gradient(
+      720px circle at 95% 95%,
+      rgb(14 116 144 / 0.12),
+      transparent 45%
+    ),
     #020617;
 }
 

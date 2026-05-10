@@ -453,7 +453,11 @@ watch(() => route.params.id, fetchDetail);
 <style scoped>
 .header-card {
   background:
-    radial-gradient(circle at top right, rgba(125, 211, 252, 0.24), transparent 45%),
+    radial-gradient(
+      circle at top right,
+      rgba(125, 211, 252, 0.24),
+      transparent 45%
+    ),
     linear-gradient(135deg, #0f766e 0%, #0e7490 52%, #164e63 100%);
   color: #f8fafc;
   padding: 2rem;
