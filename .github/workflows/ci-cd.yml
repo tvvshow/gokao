@@ -21,21 +21,21 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: '1.25'
         cache: true
     
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
     
     - name: Cache Node modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -79,7 +79,7 @@ jobs:
     
     # 上传覆盖率报告
     - name: Upload coverage (artifact)
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: go-coverage
         path: services/api-gateway/coverage.out
@@ -148,10 +148,10 @@ jobs:
           - 6379:6379
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: '1.25'
         # setup-go@v5 默认 cache: true，自动管理 ~/go/pkg/mod 与 ~/.cache/go-build
@@ -166,7 +166,7 @@ jobs:
         go tool cover -html=coverage.out -o coverage.html
     
     - name: Upload Coverage Reports
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.out
         flags: unittests
@@ -189,7 +189,7 @@ jobs:
         module: [device-fingerprint, license, volunteer-matcher]
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Install C++ Dependencies
       run: |
@@ -197,7 +197,7 @@ jobs:
         sudo apt-get install -y build-essential cmake libssl-dev libjsoncpp-dev pkg-config
     
     - name: Cache CMake builds
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           cpp-modules/${{ matrix.module }}/build
@@ -230,7 +230,7 @@ jobs:
         fi
     
     - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: cpp-${{ matrix.module }}-artifacts
         path: |
@@ -251,7 +251,7 @@ jobs:
         service: [api-gateway, user-service, data-service, payment-service, recommendation-service]
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
@@ -292,15 +292,15 @@ jobs:
     if: github.event_name == 'push'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
     
     - name: Cache Node modules
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -351,7 +351,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -373,7 +373,7 @@ jobs:
     environment: staging
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
@@ -410,7 +410,7 @@ jobs:
     environment: production
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
@@ -460,10 +460,10 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
     
@@ -484,7 +484,7 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Run K6 Performance Tests
       uses: grafana/k6-action@v0.3.1
