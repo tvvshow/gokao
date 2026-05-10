@@ -11,10 +11,10 @@
 | 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
-| 中等 (P-11~P-25) | 15 | **11** | 3 | 1 |
+| 中等 (P-11~P-25) | 15 | **12** | 3 | 0 |
 | 重复代码 (A~I) | 9 | 3 | 3 | 3 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **24** | **6** | **9** |
+| **合计** | **39** | **25** | **6** | **8** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -40,6 +40,7 @@
 | P-21 | membership 缓存形同虚设 | 7043249 | `services/payment-service/internal/services/membership_service.go:131-137,544` |
 | P-01 | LIKE 全表扫描审计偏差纠正 + hot_searches 索引 | eef5eb7 + 本次 | `services/data-service/internal/database/database.go:271` |
 | P-14 | rateLimiter sync.Map TTL 淘汰 | 本次 | `services/api-gateway/main.go:244-303`（cleanup goroutine + 注入时钟） |
+| P-24 | 100MB 流式导入 | 本次 | `services/data-service/internal/services/data_processing_service.go`（Process*DataStream + upsert helpers） |
 | B | Config 辅助函数重复 | 80094dc | 各服务 `getEnv*` 已委托 `pkg/config` |
 | C | CORS 中间件 5 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
 | D | RequestID/TraceID 4 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
@@ -242,21 +243,28 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### B.6 [✗ PENDING] P-24 100MB 文件全量读入内存
+#### B.6 [✓ FIXED] P-24 100MB 文件全量读入内存
 
-**现状**：`services/data-service/internal/services/data_import_service.go:30` 用 `io.ReadAll(file)` 一次性读入。
+**现状（已修复）**：原 `data_import_service.go:30` 调 `io.ReadAll(file)` 把整个 100MB 上传文件读进 `[]byte`，再 `json.Unmarshal` 又复制一份对象切片到内存，峰值 >= 文件大小 × 2。
 
-**期望**：`json.NewDecoder(file).Decode(&v)` 流式解析；如果是 NDJSON/数组逐项处理，用 `decoder.Token()` 流式。
-
-**步骤**：
-1. 看 import 的输入格式（JSON 数组 / NDJSON / object）。
-2. 重写为 `for decoder.More() { decoder.Decode(&item); process(item) }`。
-3. 增加 `--max-memory` 监控点（pprof）确认内存峰值下降。
+**修复内容**：
+1. `services/data-service/internal/services/data_processing_service.go` 新增三个流式入口：
+   - `ProcessUniversityDataStream(io.Reader) error`
+   - `ProcessMajorDataStream(io.Reader) error`
+   - `ProcessAdmissionDataStream(io.Reader) error`
+   每个用 `json.NewDecoder(r)` + `expectArrayStart` 校验顶层 `[`，再循环 `dec.More() / dec.Decode(&item)` 逐条 upsert。内存峰值仅为单条 record + decoder 内部 buffer（约 KB 级），与文件大小解耦。
+2. 旧 `ProcessUniversityData([]byte)` / `ProcessMajorData([]byte)` / `ProcessAdmissionData([]byte)` 保留，内部 `bytes.NewReader(data)` 委托给流式版本 —— `data_handler.ProcessData` 的 JSON-in-body API 路径无需改动。
+3. `data_import_service.ImportFromFile` 删除 `io.ReadAll`，把 `multipart.File`（实现 `io.Reader`）直接传给流式入口。
+4. 抽取 `upsertUniversity` / `upsertMajor` / `upsertAdmission` 三个 helper 消除流式与兼容入口的 upsert 重复逻辑。事务在最外层包裹，任何一条解析或写入失败立即 Rollback。
+5. `expectArrayStart` 显式校验顶层 token 为 `[`，避免 `dec.More()` 在非数组 JSON（对象/单值）下行为不定。
 
 **验证**：
-- 用 100MB 测试文件运行，内存峰值应 << 100MB（理想 <10MB）。
+- `services/data-service/internal/services/data_processing_service_stream_test.go` 新增 7 个测试：HappyPath / RejectsNonArray / RollbackOnPartialFailure / EmptyArray / MajorHappyPath / AdmissionHappyPath / LegacyByteEntry。
+- `go test ./services/data-service/...` 全绿（services 1.185s + tests 2.049s + middleware 0.702s）。
+- `go build ./...`（workspace）干净。
 
-**工作量**：~3h。
+**残留风险**：
+- 单事务 + 流式 decode：100K-1M 条记录单事务在 PG 上完全可行，但极端大文件（1000 万+ 条）单事务可能撞 max_wal_size。后续如果业务出现这种规模，再切到批 commit（每 N 条提交一次）—— 设计上已抽出 upsert helper，切换零摩擦。
 
 ---
 

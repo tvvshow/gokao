@@ -2,12 +2,12 @@ package services
 
 import (
 	"fmt"
-	"github.com/tvvshow/gokao/services/data-service/internal/database"
-	"io"
 	"mime/multipart"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/tvvshow/gokao/services/data-service/internal/database"
 )
 
 // DataImportService 数据导入服务
@@ -24,46 +24,21 @@ func NewDataImportService(db *database.DB, logger *logrus.Logger) *DataImportSer
 	}
 }
 
-// ImportFromFile 从文件导入数据
+// ImportFromFile 从上传文件流式导入数据。
+// multipart.File 实现 io.Reader，直接传给 ProcessXxxDataStream，
+// 不再走 io.ReadAll —— 100MB 文件不再顶到 100MB 内存峰值（P-24）。
 func (s *DataImportService) ImportFromFile(file multipart.File, fileType string) error {
-	// 读取文件内容
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("读取文件失败: %w", err)
-	}
-
-	// 根据文件类型处理数据
+	processingService := NewDataProcessingService(s.db, s.logger)
 	switch fileType {
 	case "universities":
-		return s.importUniversities(data)
+		return processingService.ProcessUniversityDataStream(file)
 	case "majors":
-		return s.importMajors(data)
+		return processingService.ProcessMajorDataStream(file)
 	case "admissions":
-		return s.importAdmissions(data)
+		return processingService.ProcessAdmissionDataStream(file)
 	default:
 		return fmt.Errorf("不支持的文件类型: %s", fileType)
 	}
-}
-
-// importUniversities 导入高校数据
-func (s *DataImportService) importUniversities(data []byte) error {
-	// 使用数据处理服务处理高校数据
-	processingService := NewDataProcessingService(s.db, s.logger)
-	return processingService.ProcessUniversityData(data)
-}
-
-// importMajors 导入专业数据
-func (s *DataImportService) importMajors(data []byte) error {
-	// 使用数据处理服务处理专业数据
-	processingService := NewDataProcessingService(s.db, s.logger)
-	return processingService.ProcessMajorData(data)
-}
-
-// importAdmissions 导入录取数据
-func (s *DataImportService) importAdmissions(data []byte) error {
-	// 使用数据处理服务处理录取数据
-	processingService := NewDataProcessingService(s.db, s.logger)
-	return processingService.ProcessAdmissionData(data)
 }
 
 // ValidateFile 验证上传的文件
