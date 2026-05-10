@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"github.com/tvvshow/gokao/services/data-service/internal/handlers"
 	"net/http"
 	"strconv"
@@ -12,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	pkgmiddleware "github.com/tvvshow/gokao/pkg/middleware"
 )
 
 // Logger 日志中间件
@@ -23,7 +23,7 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 		}
 		traceID := c.GetHeader("X-Trace-ID")
 		if traceID == "" {
-			traceID = generateTraceID()
+			traceID = uuid.New().String()
 		}
 		c.Set("request_id", requestID)
 		c.Set("trace_id", traceID)
@@ -63,35 +63,16 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 	}
 }
 
-// CORS 跨域中间件
+// CORS 跨域中间件（委托 pkg/middleware 统一实现）
 func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
-		if origin != "" {
-			c.Header("Access-Control-Allow-Origin", origin)
-		} else {
-			c.Header("Access-Control-Allow-Origin", "*")
-		}
-
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Request-ID, X-Trace-ID")
-		c.Header("Access-Control-Expose-Headers", "Content-Length, X-Request-ID, X-Trace-ID")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Max-Age", "86400")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	}
-}
-
-func generateTraceID() string {
-	buf := make([]byte, 16)
-	_, _ = rand.Read(buf)
-	return hex.EncodeToString(buf)
+	return pkgmiddleware.CORS(pkgmiddleware.CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "X-Request-ID", "X-Trace-ID"},
+		ExposeHeaders:    []string{"Content-Length", "X-Request-ID", "X-Trace-ID"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	})
 }
 
 // RateLimit 限流中间件

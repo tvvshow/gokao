@@ -7,12 +7,14 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	pkgmiddleware "github.com/tvvshow/gokao/pkg/middleware"
 )
 
 func TestContextHeadersMiddlewarePropagatesIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(contextHeadersMiddleware())
+	r.Use(pkgmiddleware.RequestID(), pkgmiddleware.TraceID())
 	r.GET("/health", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
@@ -35,7 +37,7 @@ func TestContextHeadersMiddlewarePropagatesIDs(t *testing.T) {
 func TestContextHeadersMiddlewareGeneratesIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(contextHeadersMiddleware())
+	r.Use(pkgmiddleware.RequestID(), pkgmiddleware.TraceID())
 	r.GET("/health", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
@@ -56,24 +58,16 @@ func TestContextHeadersMiddlewareGeneratesIDs(t *testing.T) {
 func TestRecommendationCORSAllowsTraceHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(contextHeadersMiddleware())
-	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID, X-Trace-ID")
-		c.Header("Access-Control-Expose-Headers", "X-Request-ID, X-Trace-ID")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	r.Use(pkgmiddleware.RequestID(), pkgmiddleware.TraceID())
+	r.Use(pkgmiddleware.CORS(pkgmiddleware.DefaultCORSConfig()))
 	r.GET("/health", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodOptions, "/health", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
 	w := httptest.NewRecorder()
+
 	r.ServeHTTP(w, req)
 
 	if got := w.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(got, "X-Trace-ID") {
