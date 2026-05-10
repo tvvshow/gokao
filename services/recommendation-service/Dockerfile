@@ -6,7 +6,8 @@ RUN apk add --no-cache \
     openssl-dev jsoncpp-dev \
     linux-headers
 
-WORKDIR /app
+# WORKDIR must match the go.mod location so replace directives resolve correctly
+WORKDIR /app/services/recommendation-service
 
 COPY services/recommendation-service/go.mod services/recommendation-service/go.sum ./
 COPY pkg/health /app/pkg/health
@@ -53,7 +54,7 @@ RUN cd /usr/local/lib \
     && if [ -n "$jsoncpp_ver" ] && [ ! -e /usr/lib/libjsoncpp.so.26 ]; then \
          ln -sf "$jsoncpp_ver" /usr/lib/libjsoncpp.so.26; \
        fi
-COPY --from=builder /app/recommendation-service .
+COPY --from=builder /app/services/recommendation-service/recommendation-service .
 
 RUN mkdir -p logs data && chown -R appuser:appgroup /app
 USER appuser
