@@ -10,11 +10,11 @@
 
 | 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
 |------|------|---------|-----------|-----------|
-| 严重 (P-01~P-10) | 10 | **9** | 0 | 1 |
+| 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **8** | 3 | 4 |
 | 重复代码 (A~I) | 9 | 3 | 3 | 3 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **20** | **6** | **13** |
+| **合计** | **39** | **21** | **6** | **12** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -56,24 +56,29 @@
 
 ### 阶段 A — 安全/正确性（必须先于功能）
 
-#### A.1 [✗ PENDING] P-08 支付幂等性缺失
+#### A.1 [✓ FIXED] P-08 支付幂等性缺失
 
-**现状**：`CreatePayment` / `RefundPayment` 接口无去重，重试触发多笔订单/退款。grep `Idempotency-Key|SetNX` 全仓 0 命中。
+**现状（已修复）**：原 `CreatePayment` / `RefundPayment` 接口无去重，客户端重试触发多笔订单。
 
-**期望**：客户端可通过 `Idempotency-Key` HTTP header 标识请求；服务端用 Redis `SET NX EX` 抢锁，重复键返回首次结果。
-
-**步骤**：
-1. 在 `pkg/middleware` 新增 `Idempotency(redis, ttl)` 中间件：从 header 读 key，`SETNX idem:<key> <hash> EX <ttl>`，未抢到则查 `idem:<key>:result` 直接返回。
-2. handler 成功响应后将 `(status, body)` 写入 `idem:<key>:result`。
-3. payment-service 路由中，`POST /payments`、`POST /refunds` 注册该中间件，TTL 24h。
-4. 文档：`POST` 接口的 Swagger 注释加上 `X-Idempotency-Key` header 必填（`payment-service` Swagger init 后自动同步）。
+**修复内容**：
+1. `pkg/middleware/idempotency.go` 新增通用 `Idempotency(store IdempotencyStore, ttl)` 中间件。`IdempotencyStore` 是 `SetNX/Get/Set` 三方法的最小接口，让 `pkg/middleware` 保持零 Redis SDK 依赖。
+2. `services/payment-service/internal/middleware/idempotency_store.go` 提供 redis v8 客户端的 `IdempotencyStore` 实现。
+3. `main.go` 把中间件挂到 `POST /payments` 与 `POST /refunds`，TTL 24h。
+4. 行为：
+   - 客户端 `X-Idempotency-Key` 头声明键；首次请求 handler 正常执行并缓存 2xx 响应（24h）。
+   - 重放同 key 时直接回放首次响应，handler **不再执行**。
+   - 首请求执行中再次重放返回 `409 Conflict + X-Idempotency-Status: in-flight`。
+   - Redis 故障时 fail-open（继续放行，标 `X-Idempotency-Status: store-error`），避免支付路径被基础设施抖动拖住。
+   - 非 2xx 响应不缓存，允许客户端用同 key 重试纠错。
+   - 客户端未带 header 时整段绕过 — 兼容旧客户端。
+5. `pkg/middleware/idempotency_test.go` 含 7 个子测试覆盖：无 header 放行、首请求落库、重放回放、in-flight 409、store-error fail-open、非 2xx 不缓存、Content-Type 保留。
 
 **验证**：
-- 单测：构造同 key 两次请求，断言第二次走缓存且响应字节级相等。
-- 集成：用 `httptest` server 模拟客户端重试，订单表只新增 1 条。
-- 失败注入：第一次 handler 返回前 panic，键应过期或留尾巴 → 验证 TTL 行为。
+- `go test ./pkg/middleware/` 7 个子测试通过（0.637s）。
+- `go build ./...`（workspace）干净。
+- `go test ./services/payment-service/...` 全绿。
 
-**工作量**：~6h（含中间件 + 单测 + 集成测试）。
+**部署说明**：README 已同步幂等性头部使用矩阵。
 
 ---
 

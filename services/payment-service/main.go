@@ -118,7 +118,11 @@ func main() {
 	// 支付路由
 	paymentGroup := v1.Group("/payments")
 	{
-		paymentGroup.POST("", paymentHandler.CreatePayment)
+		// 幂等中间件挂在写入类接口上，TTL 24h 覆盖客户端常见重试窗口；
+		// 客户端可通过 X-Idempotency-Key 头声明键，重复键直接回放首次响应。
+		idempotency := middleware.Idempotency(redisClient, 24*time.Hour)
+
+		paymentGroup.POST("", idempotency, paymentHandler.CreatePayment)
 		paymentGroup.GET("/:payment_id", paymentHandler.QueryPayment)
 		paymentGroup.POST("/:payment_id/close", paymentHandler.ClosePayment)
 		paymentGroup.GET("", paymentHandler.ListPayments)
@@ -133,7 +137,7 @@ func main() {
 	// 退款路由
 	refundGroup := v1.Group("/refunds")
 	{
-		refundGroup.POST("", paymentHandler.Refund)
+		refundGroup.POST("", middleware.Idempotency(redisClient, 24*time.Hour), paymentHandler.Refund)
 		refundGroup.GET("/:refund_id", paymentHandler.QueryRefund)
 	}
 

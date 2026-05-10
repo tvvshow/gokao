@@ -76,6 +76,19 @@ All APIs (except health check and payment callbacks) require JWT authentication 
 Authorization: Bearer <your-jwt-token>
 ```
 
+### Idempotency (POST /payments, POST /refunds)
+Write-side endpoints accept an optional `X-Idempotency-Key` header. Behavior:
+
+| Scenario | Response |
+|----------|----------|
+| First request with key | Handler runs; 2xx response cached for 24h. Response carries `X-Idempotency-Status: stored`. |
+| Replay with same key (cached) | Handler **does not run**; first response is replayed byte-for-byte. `X-Idempotency-Status: replayed`. |
+| Replay while first request in-flight | `409 Conflict` with `X-Idempotency-Status: in-flight`. Client should retry shortly. |
+| Redis unavailable | Request passes through (fail-open). `X-Idempotency-Status: store-error`. |
+| Header omitted | Bypassed entirely — no caching, no lock. |
+
+Non-2xx responses are **not** cached, so clients may retry with the same key after a 4xx/5xx to nudge a corrective outcome. TTL is 24 hours.
+
 ### Endpoints
 
 #### Health Check
