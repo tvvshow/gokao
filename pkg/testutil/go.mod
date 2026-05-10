@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/testutil
+module github.com/tvvshow/gokao/pkg/testutil
 
 go 1.23.0
 

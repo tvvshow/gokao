@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/health
+module github.com/tvvshow/gokao/pkg/health
 
 go 1.23.0
 

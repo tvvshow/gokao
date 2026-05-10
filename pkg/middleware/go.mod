@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/middleware
+module github.com/tvvshow/gokao/pkg/middleware
 
 go 1.23.0
 

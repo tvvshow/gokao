@@ -6,10 +6,10 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/config"
-	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/config"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
 
-	shareddb "github.com/oktetopython/gaokao/pkg/database"
+	shareddb "github.com/tvvshow/gokao/pkg/database"
 )
 
 // Initialize 初始化数据库连接：连接 + 池配置走共享层，AutoMigrate 与 seed 由本服务负责。

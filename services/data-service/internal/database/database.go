@@ -12,8 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
-	"github.com/oktetopython/gaokao/services/data-service/internal/config"
-	shareddb "github.com/oktetopython/gaokao/pkg/database"
+	"github.com/tvvshow/gokao/services/data-service/internal/config"
+	shareddb "github.com/tvvshow/gokao/pkg/database"
 )
 
 // DB 数据库连接管理器

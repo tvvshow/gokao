@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"github.com/tvvshow/gokao/services/data-service/internal/models"
 	"gorm.io/gorm"
 )
 

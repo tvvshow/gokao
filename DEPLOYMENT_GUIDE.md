@@ -1015,7 +1015,7 @@ done
 
 ### 🆘 获取帮助
 - **文档中心**: https://docs.gaokaohub.com
-- **GitHub Issues**: https://github.com/oktetopython/gaokao/issues
+- **GitHub Issues**: https://github.com/tvvshow/gokao/issues
 - **技术交流群**: QQ群 123456789
 - **邮件支持**: devops@gaokaohub.com
 

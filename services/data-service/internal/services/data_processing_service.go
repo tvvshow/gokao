@@ -3,8 +3,8 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/oktetopython/gaokao/services/data-service/internal/database"
-	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"github.com/tvvshow/gokao/services/data-service/internal/database"
+	"github.com/tvvshow/gokao/services/data-service/internal/models"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

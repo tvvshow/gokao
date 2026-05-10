@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/adapters"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/adapters"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 )

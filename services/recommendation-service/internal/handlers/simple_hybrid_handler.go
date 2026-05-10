@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // ABTestGroup A/B测试组

@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/metrics
+module github.com/tvvshow/gokao/pkg/metrics
 
 go 1.23.0
 

@@ -43,7 +43,7 @@
 
 | 类型 | 数量 | 说明 |
 |------|------|------|
-| 根模块 | 1 | `github.com/oktetopython/gaokao` |
+| 根模块 | 1 | `github.com/tvvshow/gokao` |
 | 服务模块 | 6 | api-gateway/data/user/payment/recommendation/monitoring |
 | monitoring 子模块 | 2 | internal/alerts, internal/metrics |
 | pkg 共享 | 14 | auth/cache/database/discovery/errors/health/logger/metrics/middleware/models/scripts/shared/testutil/utils |

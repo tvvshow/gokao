@@ -7,7 +7,7 @@ package config
 import (
 	"time"
 
-	sharedcfg "github.com/oktetopython/gaokao/pkg/config"
+	sharedcfg "github.com/tvvshow/gokao/pkg/config"
 )
 
 // Config 数据服务配置结构。

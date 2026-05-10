@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/oktetopython/gaokao/services/data-service/internal/services"
+	"github.com/tvvshow/gokao/services/data-service/internal/services"
 	"net/http"
 	"strconv"
 

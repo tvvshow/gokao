@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/oktetopython/gaokao/pkg/testutil"
+	"github.com/tvvshow/gokao/pkg/testutil"
 )
 
 // APIIntegrationTestSuite API集成测试套件

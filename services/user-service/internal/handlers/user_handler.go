@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/services"
+	"github.com/tvvshow/gokao/services/user-service/internal/services"
 )
 
 // UserHandler 用户处理器

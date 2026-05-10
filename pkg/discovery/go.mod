@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/discovery
+module github.com/tvvshow/gokao/pkg/discovery
 
 go 1.23.0
 

@@ -1,6 +1,6 @@
 package database
 
-import "github.com/oktetopython/gaokao/services/data-service/internal/models"
+import "github.com/tvvshow/gokao/services/data-service/internal/models"
 
 func migratableModels() []interface{} {
 	return []interface{}{

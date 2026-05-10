@@ -16,8 +16,8 @@ import (
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 
-	"github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts"
-	"github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics"
+	"github.com/tvvshow/gokao/services/monitoring-service/internal/alerts"
+	"github.com/tvvshow/gokao/services/monitoring-service/internal/metrics"
 )
 
 func main() {

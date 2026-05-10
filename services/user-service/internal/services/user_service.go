@@ -10,8 +10,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/config"
-	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/config"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
 )
 
 // UserService 用户服务

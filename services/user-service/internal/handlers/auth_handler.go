@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/models"
-	"github.com/oktetopython/gaokao/services/user-service/internal/services"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/services"
 )
 
 // AuthHandler 认证处理器

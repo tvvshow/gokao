@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oktetopython/gaokao/pkg/scripts"
+	"github.com/tvvshow/gokao/pkg/scripts"
 )
 
 // 阳光高考平台配置

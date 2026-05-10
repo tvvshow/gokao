@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/logger
+module github.com/tvvshow/gokao/pkg/logger
 
 go 1.23.0
 

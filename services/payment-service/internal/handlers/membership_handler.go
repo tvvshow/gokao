@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
 // MembershipService 定义会员处理器依赖的服务接口。

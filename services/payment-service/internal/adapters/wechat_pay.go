@@ -18,7 +18,7 @@ import (
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/refunddomestic"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
 // WechatPayAdapter 微信支付适配器

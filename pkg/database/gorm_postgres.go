@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
-	sharedcfg "github.com/oktetopython/gaokao/pkg/config"
+	sharedcfg "github.com/tvvshow/gokao/pkg/config"
 )
 
 // GormOpenOptions 构造 GORM 连接时的可调项。

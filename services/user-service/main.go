@@ -11,13 +11,13 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/config"
-	"github.com/oktetopython/gaokao/services/user-service/internal/database"
-	"github.com/oktetopython/gaokao/services/user-service/internal/handlers"
-	"github.com/oktetopython/gaokao/services/user-service/internal/middleware"
-	"github.com/oktetopython/gaokao/services/user-service/internal/services"
+	"github.com/tvvshow/gokao/services/user-service/internal/config"
+	"github.com/tvvshow/gokao/services/user-service/internal/database"
+	"github.com/tvvshow/gokao/services/user-service/internal/handlers"
+	"github.com/tvvshow/gokao/services/user-service/internal/middleware"
+	"github.com/tvvshow/gokao/services/user-service/internal/services"
 
-	pkghealth "github.com/oktetopython/gaokao/pkg/health"
+	pkghealth "github.com/tvvshow/gokao/pkg/health"
 )
 
 // @title GaokaoHub User Service API

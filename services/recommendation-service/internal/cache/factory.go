@@ -2,7 +2,7 @@ package cache
 
 import (
 	"fmt"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/config"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/config"
 )
 
 // NewCache creates a cache instance based on configuration

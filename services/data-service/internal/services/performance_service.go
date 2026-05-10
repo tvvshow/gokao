@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"github.com/oktetopython/gaokao/services/data-service/internal/database"
+	"github.com/tvvshow/gokao/services/data-service/internal/database"
 	"runtime"
 	"sync"
 	"time"

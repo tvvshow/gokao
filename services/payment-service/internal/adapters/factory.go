@@ -3,7 +3,7 @@ package adapters
 import (
 	"fmt"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
+	"github.com/tvvshow/gokao/services/payment-service/internal/config"
 )
 
 // paymentAdapterFactory 支付适配器工厂实现

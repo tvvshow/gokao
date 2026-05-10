@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
+	"github.com/tvvshow/gokao/services/payment-service/internal/config"
 	"golang.org/x/time/rate"
 )
 

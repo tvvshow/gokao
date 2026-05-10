@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao
+module github.com/tvvshow/gokao
 
 go 1.25.5
 
@@ -13,15 +13,15 @@ require (
 	gorm.io/gorm v1.30.2
 )
 
-replace github.com/oktetopython/gaokao/pkg/shared => ./pkg/shared
+replace github.com/tvvshow/gokao/pkg/shared => ./pkg/shared
 
-replace github.com/oktetopython/gaokao/pkg/scripts => ./pkg/scripts
+replace github.com/tvvshow/gokao/pkg/scripts => ./pkg/scripts
 
-replace github.com/oktetopython/gaokao/pkg/auth => ./pkg/auth
+replace github.com/tvvshow/gokao/pkg/auth => ./pkg/auth
 
-replace github.com/oktetopython/gaokao/pkg/errors => ./pkg/errors
+replace github.com/tvvshow/gokao/pkg/errors => ./pkg/errors
 
-replace github.com/oktetopython/gaokao/pkg/middleware => ./pkg/middleware
+replace github.com/tvvshow/gokao/pkg/middleware => ./pkg/middleware
 
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect

@@ -12,8 +12,8 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/service"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 )
 
 // PaymentHandler 支付处理器

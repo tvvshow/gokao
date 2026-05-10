@@ -2,10 +2,10 @@ package tests
 
 import (
 	"context"
-	"github.com/oktetopython/gaokao/services/data-service/internal/config"
-	"github.com/oktetopython/gaokao/services/data-service/internal/database"
-	"github.com/oktetopython/gaokao/services/data-service/internal/models"
-	"github.com/oktetopython/gaokao/services/data-service/internal/services"
+	"github.com/tvvshow/gokao/services/data-service/internal/config"
+	"github.com/tvvshow/gokao/services/data-service/internal/database"
+	"github.com/tvvshow/gokao/services/data-service/internal/models"
+	"github.com/tvvshow/gokao/services/data-service/internal/services"
 	"testing"
 	"time"
 

@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/services/data-service
+module github.com/tvvshow/gokao/services/data-service
 
 go 1.24.0
 
@@ -6,10 +6,10 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.4.0
 	github.com/joho/godotenv v1.4.0
-	github.com/oktetopython/gaokao/pkg/config v0.0.0
-	github.com/oktetopython/gaokao/pkg/database v0.0.0
-	github.com/oktetopython/gaokao/pkg/health v0.0.0
-	github.com/oktetopython/gaokao/pkg/response v0.0.0
+	github.com/tvvshow/gokao/pkg/config v0.0.0
+	github.com/tvvshow/gokao/pkg/database v0.0.0
+	github.com/tvvshow/gokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sirupsen/logrus v1.9.3
@@ -78,16 +78,16 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
+replace github.com/tvvshow/gokao/pkg/auth => ../../pkg/auth
 
-replace github.com/oktetopython/gaokao/pkg/config => ../../pkg/config
+replace github.com/tvvshow/gokao/pkg/config => ../../pkg/config
 
-replace github.com/oktetopython/gaokao/pkg/response => ../../pkg/response
+replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response
 
-replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
+replace github.com/tvvshow/gokao/pkg/errors => ../../pkg/errors
 
-replace github.com/oktetopython/gaokao/pkg/database => ../../pkg/database
+replace github.com/tvvshow/gokao/pkg/database => ../../pkg/database
 
-replace github.com/oktetopython/gaokao/pkg/health => ../../pkg/health
+replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 
-replace github.com/oktetopython/gaokao/pkg/logger => ../../pkg/logger
+replace github.com/tvvshow/gokao/pkg/logger => ../../pkg/logger

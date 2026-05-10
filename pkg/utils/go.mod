@@ -1,3 +1,3 @@
-module github.com/oktetopython/gaokao/pkg/utils
+module github.com/tvvshow/gokao/pkg/utils
 
 go 1.22

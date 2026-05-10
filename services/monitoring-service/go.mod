@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/services/monitoring-service
+module github.com/tvvshow/gokao/services/monitoring-service
 
 go 1.24.0
 
@@ -6,8 +6,8 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/lib/pq v1.10.9
-	github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts v0.0.0-00010101000000-000000000000
-	github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics v0.0.0-00010101000000-000000000000
+	github.com/tvvshow/gokao/services/monitoring-service/internal/alerts v0.0.0-00010101000000-000000000000
+	github.com/tvvshow/gokao/services/monitoring-service/internal/metrics v0.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.27.0
 )
 
@@ -46,6 +46,6 @@ require (
 )
 
 replace (
-	github.com/oktetopython/gaokao/services/monitoring-service/internal/alerts => ./internal/alerts
-	github.com/oktetopython/gaokao/services/monitoring-service/internal/metrics => ./internal/metrics
+	github.com/tvvshow/gokao/services/monitoring-service/internal/alerts => ./internal/alerts
+	github.com/tvvshow/gokao/services/monitoring-service/internal/metrics => ./internal/metrics
 )

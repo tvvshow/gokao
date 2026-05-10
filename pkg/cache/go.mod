@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/cache
+module github.com/tvvshow/gokao/pkg/cache
 
 go 1.23.0
 

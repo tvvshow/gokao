@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )

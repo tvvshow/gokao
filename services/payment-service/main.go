@@ -11,15 +11,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/config"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/database"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/handlers"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/middleware"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/repository"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/service"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/config"
+	"github.com/tvvshow/gokao/services/payment-service/internal/database"
+	"github.com/tvvshow/gokao/services/payment-service/internal/handlers"
+	"github.com/tvvshow/gokao/services/payment-service/internal/middleware"
+	"github.com/tvvshow/gokao/services/payment-service/internal/repository"
+	"github.com/tvvshow/gokao/services/payment-service/internal/service"
+	"github.com/tvvshow/gokao/services/payment-service/internal/services"
 
-	pkghealth "github.com/oktetopython/gaokao/pkg/health"
+	pkghealth "github.com/tvvshow/gokao/pkg/health"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/services"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"

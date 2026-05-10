@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
 type membershipServiceStub struct {

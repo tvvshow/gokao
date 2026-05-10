@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/oktetopython/gaokao/services/data-service/internal/services"
+	"github.com/tvvshow/gokao/services/data-service/internal/services"
 	"time"
 
 	"github.com/gin-gonic/gin"

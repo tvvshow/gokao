@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oktetopython/gaokao/services/data-service/internal/models"
+	"github.com/tvvshow/gokao/services/data-service/internal/models"
 )
 
 func TestMigratableModelsIncludeStatisticsTables(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/smartwalle/alipay/v3"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
 // AlipayAdapter 支付宝支付适配器

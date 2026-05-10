@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/pkg/auth"
+	"github.com/tvvshow/gokao/pkg/auth"
 	"github.com/sirupsen/logrus"
 )
 
 // JWTAuth JWT认证中间件 (已废弃 - 请使用 pkg/auth)
-// DEPRECATED: Use github.com/oktetopython/gaokao/pkg/auth.AuthMiddleware instead
+// DEPRECATED: Use github.com/tvvshow/gokao/pkg/auth.AuthMiddleware instead
 func JWTAuth(jwtSecret string) gin.HandlerFunc {
 	// 使用共享的认证中间件
 	authMiddleware := auth.NewAuthMiddleware(jwtSecret)

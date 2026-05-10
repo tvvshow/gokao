@@ -17,15 +17,15 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "github.com/oktetopython/gaokao/services/recommendation-service/docs"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/cache"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/config"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/handlers"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/llm"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	_ "github.com/tvvshow/gokao/services/recommendation-service/docs"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/cache"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/config"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/handlers"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/llm"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/services"
+	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
 
-	pkghealth "github.com/oktetopython/gaokao/pkg/health"
+	pkghealth "github.com/tvvshow/gokao/pkg/health"
 )
 
 // @title 高考志愿填报推荐服务 API

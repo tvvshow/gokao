@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/oktetopython/gaokao/pkg/shared"
+	"github.com/tvvshow/gokao/pkg/shared"
 )
 
 // 实用工具箱API配置

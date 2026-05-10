@@ -1,11 +1,11 @@
-module github.com/oktetopython/gaokao/services/recommendation-service
+module github.com/tvvshow/gokao/services/recommendation-service
 
 go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/joho/godotenv v1.4.0
-	github.com/oktetopython/gaokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
@@ -86,4 +86,4 @@ require (
 	gorm.io/gorm v1.25.0 // indirect
 )
 
-replace github.com/oktetopython/gaokao/pkg/health => ../../pkg/health
+replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health

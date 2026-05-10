@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/pkg/errors"
+	"github.com/tvvshow/gokao/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 

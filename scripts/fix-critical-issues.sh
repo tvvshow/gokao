@@ -239,7 +239,7 @@ EOF
 
     # 创建go.mod
     cat > "$AUTH_DIR/go.mod" << 'EOF'
-module github.com/oktetopython/gaokao/pkg/auth
+module github.com/tvvshow/gokao/pkg/auth
 
 go 1.21
 
@@ -332,7 +332,7 @@ var (
 EOF
 
     cat > "$ERRORS_DIR/go.mod" << 'EOF'
-module github.com/oktetopython/gaokao/pkg/errors
+module github.com/tvvshow/gokao/pkg/errors
 
 go 1.21
 EOF

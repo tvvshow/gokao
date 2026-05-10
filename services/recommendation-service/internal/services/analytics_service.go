@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/types"
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/types"
+	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // MetricsCollector 指标收集器

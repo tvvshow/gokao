@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/oktetopython/gaokao/services/data-service/internal/config"
-	"github.com/oktetopython/gaokao/services/data-service/internal/database"
-	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
-	"github.com/oktetopython/gaokao/services/data-service/internal/middleware"
-	"github.com/oktetopython/gaokao/services/data-service/internal/services"
+	"github.com/tvvshow/gokao/services/data-service/internal/config"
+	"github.com/tvvshow/gokao/services/data-service/internal/database"
+	"github.com/tvvshow/gokao/services/data-service/internal/handlers"
+	"github.com/tvvshow/gokao/services/data-service/internal/middleware"
+	"github.com/tvvshow/gokao/services/data-service/internal/services"
 
-	pkghealth "github.com/oktetopython/gaokao/pkg/health"
+	pkghealth "github.com/tvvshow/gokao/pkg/health"
 	"net/http"
 	"os"
 	"os/signal"

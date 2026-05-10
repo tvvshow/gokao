@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // DataSyncService 数据同步服务

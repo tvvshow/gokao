@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/oktetopython/gaokao/pkg/scripts"
+	"github.com/tvvshow/gokao/pkg/scripts"
 )
 
 // UniversityInfo 高校信息结构（与爬虫脚本保持一致）

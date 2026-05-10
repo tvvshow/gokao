@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/scripts
+module github.com/tvvshow/gokao/scripts
 
 go 1.21
 

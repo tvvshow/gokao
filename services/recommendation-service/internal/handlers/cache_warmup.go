@@ -6,7 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/oktetopython/gaokao/services/recommendation-service/pkg/cppbridge"
+	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
 )
 
 // CacheWarmOptions 缓存预热配置

@@ -12,8 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/config"
-	"github.com/oktetopython/gaokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/config"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
 )
 
 // RoleService 角色服务

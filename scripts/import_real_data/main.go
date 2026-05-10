@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/oktetopython/gaokao/pkg/shared"
+	"github.com/tvvshow/gokao/pkg/shared"
 	_ "github.com/lib/pq"
 )
 

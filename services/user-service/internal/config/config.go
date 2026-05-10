@@ -10,7 +10,7 @@ package config
 import (
 	"time"
 
-	sharedcfg "github.com/oktetopython/gaokao/pkg/config"
+	sharedcfg "github.com/tvvshow/gokao/pkg/config"
 )
 
 // Config 应用配置结构。

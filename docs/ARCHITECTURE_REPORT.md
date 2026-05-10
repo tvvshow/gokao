@@ -101,7 +101,7 @@
 
 ### 5.2 仍待统一
 
-1. 当前仓库正确命名空间为 `github.com/oktetopython/gaokao/*`，不需要迁移到其他前缀。  
+1. 当前仓库正确命名空间为 `github.com/tvvshow/gokao/*`，不需要迁移到其他前缀。  
 2. `replace` 指令并非仅出现在两个服务：当前共 16 条，分布在 6 个 `go.mod` 中（root、api-gateway、data-service、user-service、payment-service、monitoring-service）。  
 3. `services/recommendation-service/go.mod` 当前未使用 `replace` 指令；服务间治理状态不一致，增加维护复杂度。
 
@@ -162,7 +162,7 @@
 
 ### 短期（1-2 个迭代）
 
-1. 冻结并遵循现有正确模块前缀 `github.com/oktetopython/gaokao/*`。  
+1. 冻结并遵循现有正确模块前缀 `github.com/tvvshow/gokao/*`。  
 2. 分批清理 6 个模块中的 `replace` 指令，优先处理服务模块，再处理 root/monitoring 内部替换。  
 3. 将 CORS 策略收敛到网关，逐步移除下游服务重复 CORS 中间件。  
 4. 先补网关路由契约测试，再重构路由重写逻辑。

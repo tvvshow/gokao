@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/services/api-gateway
+module github.com/tvvshow/gokao/services/api-gateway
 
 go 1.24.0
 
@@ -6,9 +6,9 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/oktetopython/gaokao/pkg/auth v0.0.0
-	github.com/oktetopython/gaokao/pkg/errors v0.0.0
-	github.com/oktetopython/gaokao/pkg/middleware v0.0.0
+	github.com/tvvshow/gokao/pkg/auth v0.0.0
+	github.com/tvvshow/gokao/pkg/errors v0.0.0
+	github.com/tvvshow/gokao/pkg/middleware v0.0.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/swaggo/files v1.0.1
@@ -62,8 +62,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
+replace github.com/tvvshow/gokao/pkg/auth => ../../pkg/auth
 
-replace github.com/oktetopython/gaokao/pkg/errors => ../../pkg/errors
+replace github.com/tvvshow/gokao/pkg/errors => ../../pkg/errors
 
-replace github.com/oktetopython/gaokao/pkg/middleware => ../../pkg/middleware
+replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware

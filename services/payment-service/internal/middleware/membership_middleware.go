@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/services"
 )
 
 // MembershipMiddleware 会员权限中间件

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oktetopython/gaokao/services/payment-service/internal/models"
+	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
 // PaymentRepository 支付数据访问接口

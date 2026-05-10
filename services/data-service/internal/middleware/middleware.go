@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/oktetopython/gaokao/services/data-service/internal/handlers"
+	"github.com/tvvshow/gokao/services/data-service/internal/handlers"
 	"net/http"
 	"strconv"
 	"time"

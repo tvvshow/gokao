@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/services/payment-service
+module github.com/tvvshow/gokao/services/payment-service
 
 go 1.25.0
 
@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/lib/pq v1.12.3
-	github.com/oktetopython/gaokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/smartwalle/alipay/v3 v3.2.29
@@ -59,6 +59,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/oktetopython/gaokao/pkg/auth => ../../pkg/auth
+replace github.com/tvvshow/gokao/pkg/auth => ../../pkg/auth
 
-replace github.com/oktetopython/gaokao/pkg/health => ../../pkg/health
+replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health

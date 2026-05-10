@@ -8,7 +8,7 @@
 package handlers
 
 import (
-	sharedresp "github.com/oktetopython/gaokao/pkg/response"
+	sharedresp "github.com/tvvshow/gokao/pkg/response"
 )
 
 type (

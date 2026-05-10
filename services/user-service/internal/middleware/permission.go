@@ -3,13 +3,13 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/oktetopython/gaokao/services/user-service/internal/models"
-	"github.com/oktetopython/gaokao/services/user-service/internal/services"
+	"github.com/tvvshow/gokao/services/user-service/internal/models"
+	"github.com/tvvshow/gokao/services/user-service/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/oktetopython/gaokao/pkg/auth"
+	"github.com/tvvshow/gokao/pkg/auth"
 )
 
 // Permission 权限中间件

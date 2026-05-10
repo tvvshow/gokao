@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oktetopython/gaokao/pkg/scripts"
+	"github.com/tvvshow/gokao/pkg/scripts"
 )
 
 // ExtendedUniversity 扩展大学结构

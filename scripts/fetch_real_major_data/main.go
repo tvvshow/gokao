@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/oktetopython/gaokao/pkg/scripts"
+	"github.com/tvvshow/gokao/pkg/scripts"
 )
 
 // 咕咕数据API配置

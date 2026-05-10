@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oktetopython/gaokao/pkg/scripts"
+	"github.com/tvvshow/gokao/pkg/scripts"
 )
 
 // UniversityInfo 高校信息结构

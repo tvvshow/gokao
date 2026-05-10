@@ -32,13 +32,13 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	// Security middleware
-	"github.com/oktetopython/gaokao/pkg/middleware"
+	"github.com/tvvshow/gokao/pkg/middleware"
 
 	// Unified error handling
-	"github.com/oktetopython/gaokao/pkg/errors"
+	"github.com/tvvshow/gokao/pkg/errors"
 
 	// JWT 认证
-	authPkg "github.com/oktetopython/gaokao/pkg/auth"
+	authPkg "github.com/tvvshow/gokao/pkg/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"

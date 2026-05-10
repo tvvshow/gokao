@@ -1,4 +1,4 @@
-module github.com/oktetopython/gaokao/pkg/response
+module github.com/tvvshow/gokao/pkg/response
 
 go 1.23.0
 

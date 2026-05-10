@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oktetopython/gaokao/services/recommendation-service/internal/services"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/services"
 	"github.com/sirupsen/logrus"
 )
 

@@ -1,18 +1,18 @@
-module github.com/oktetopython/gaokao/pkg/database
+module github.com/tvvshow/gokao/pkg/database
 
 go 1.23.0
 
 require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/oktetopython/gaokao/pkg/config v0.0.0
+	github.com/tvvshow/gokao/pkg/config v0.0.0
 	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sirupsen/logrus v1.9.3
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.30.2
 )
 
-replace github.com/oktetopython/gaokao/pkg/config => ../config
+replace github.com/tvvshow/gokao/pkg/config => ../config
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

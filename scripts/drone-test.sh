@@ -308,7 +308,7 @@ provide_activation_guide() {
     echo "   https://your-drone-server.com"
     echo ""
     echo "2. 找到并激活仓库"
-    echo "   - 找到 'oktetopython/gaokao' 仓库"
+    echo "   - 找到 'tvvshow/gokao' 仓库"
     echo "   - 点击 'ACTIVATE' 按钮"
     echo ""
     echo "3. 配置Secrets (在仓库设置中):"
@@ -323,7 +323,7 @@ provide_activation_guide() {
     echo "   git push origin master"
     echo ""
     echo "5. 监控构建进度:"
-    echo "   https://your-drone-server.com/oktetopython/gaokao"
+    echo "   https://your-drone-server.com/tvvshow/gokao"
     echo ""
 }
 
