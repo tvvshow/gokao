@@ -372,21 +372,27 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### C.3 [⚠ PARTIAL] A. handler 错误响应 100+ 处 gin.H{}
+#### C.3 [✓ FIXED] A. handler 错误响应 100+ 处 gin.H{}
 
-**现状**：payment-service handler 仍 30+ 处 `c.JSON(http.StatusXxx, gin.H{"error": ..., "message": ...})`。其他服务未审。
+**现状（已修复）**：267 处 `c.JSON(http.StatusXxx, gin.H{...})` 已全部收敛到 `pkg/response` 工厂。生产代码残留 0 处（剩余 7 处仅在测试 fixture 中作为 mock handler 输出，保留以保持测试可读性）。
 
-**期望**：统一通过 `pkg/response` 工厂函数：`response.BadRequest(c, "msg")`、`response.OK(c, data)` 等。
+**修复内容**：
+1. `pkg/response` 补齐 9 个工厂：`CreatedWithMessage` / `NotImplemented` / `Locked` / `TooManyRequests` / `ServiceUnavailable` / `GatewayTimeout` / `RequestTimeout` / `Gone` / `WriteError`（含单元测试）。
+2. 13 个生产文件（handlers + middleware + main + pkg/auth/discovery/middleware）改用 `response.{BadRequest/NotFound/InternalError/OK/OKWithMessage/Created/CreatedWithMessage/Unauthorized/Forbidden/NotImplemented/ServiceUnavailable/Locked/Conflict/TooManyRequests/AbortWithError}`。
+3. `pkg/auth/pkg/discovery/pkg/middleware/services/monitoring-service` 等 go.mod 添加 `require + replace pkg/response`。
+4. `services/api-gateway/{go.mod,Dockerfile}` + `services/monitoring-service/Dockerfile` 同步补齐 pkg/response 依赖 + COPY。
 
-**步骤**：
-1. 先在 `pkg/response` 补齐工厂函数（若缺）。
-2. 写一个 codemod / sed 脚本批量替换最常见的 4 种 pattern（Bad/Internal/NotFound/OK）。
-3. 人工审剩余的特殊 case（带 details 字段的）。
+**特殊处理**：
+- `auth_handler.Login/RefreshToken` 在 data 内同时保留 `access_token`/`refresh_token`/`expires_at` 旧字段；frontend `isWrappedResponse` 双模式自动适配。
+- 支付回调 `PaymentCallback`/`Refund` 返回原始 result 对象（由外部支付网关消费），通过 `response.OK(c, result)` 统一仍保留 service 层结构。
+- `WebhookTest` 使用 `OKWithMessage` 包装自定义 payload。
 
 **验证**：
-- grep `gin.H{` 在 services/ 中应大幅下降（从 100+ 到 < 20）。
+- `grep "c\\.JSON\\(http\\.Status.+gin\\.H\\{" services pkg` → 0 production matches（仅 7 处 test fixture）。
+- CI run 25648661907 全绿，所有服务 build + test 通过。
+- 净 LOC 减少 ~908 行（移除冗余 c.Abort()、重复 gin.H 字段模板）。
 
-**工作量**：~6h（机械化部分 1h，人工审 5h）。
+**遗留**：测试 fixture 中的 mock handler 保持原样（不属于审计范围，保留以维持测试可读性）。
 
 ---
 
@@ -577,7 +583,7 @@ else { recType = "冲刺" }
 | **P1**（本周） | B.1 P-01 LIKE / B.3 P-14 rateLimiter / B.6 P-24 流式读 | 性能与稳定性瓶颈 |
 | **P2**（下周） | B.2 P-15 stats / B.4 P-17/P-25 ctx / B.7 P-13 logrus | 优化项 |
 | **P3**（第 3-4 周） | C.1 BeforeCreate / C.2 APIResponse / C.4 JSONB / C.6 SecurityHeaders | 重复代码治理 |
-| **P4**（持续） | C.3 gin.H / C.5 Redis init | 长尾治理 |
+| **P4**（持续） | C.5 Redis init | 长尾治理 |
 | **P5**（产品决策后） | D.1 CDF / D.2 三分法 / D.4 Score 分离 | 算法升级，需产品同步 |
 | **P6**（评估后） | D.3 ML stub 删除 / D.5 真数据接入 | D.3 易；D.5 需基础设施投入 |
 
