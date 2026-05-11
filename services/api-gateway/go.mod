@@ -6,14 +6,14 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/tvvshow/gokao/pkg/auth v0.0.0
-	github.com/tvvshow/gokao/pkg/errors v0.0.0
-	github.com/tvvshow/gokao/pkg/middleware v0.0.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.2
+	github.com/tvvshow/gokao/pkg/auth v0.0.0
+	github.com/tvvshow/gokao/pkg/errors v0.0.0
+	github.com/tvvshow/gokao/pkg/middleware v0.0.0
 )
 
 require (
@@ -49,6 +49,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
+	github.com/tvvshow/gokao/pkg/response v0.0.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/arch v0.3.0 // indirect
@@ -67,3 +68,5 @@ replace github.com/tvvshow/gokao/pkg/auth => ../../pkg/auth
 replace github.com/tvvshow/gokao/pkg/errors => ../../pkg/errors
 
 replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware
+
+replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response

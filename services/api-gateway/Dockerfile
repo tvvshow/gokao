@@ -9,6 +9,7 @@ COPY services/api-gateway/go.mod services/api-gateway/go.sum ./
 COPY pkg/auth /app/pkg/auth
 COPY pkg/errors /app/pkg/errors
 COPY pkg/middleware /app/pkg/middleware
+COPY pkg/response /app/pkg/response
 RUN go mod download
 
 # Copy the rest of the source
