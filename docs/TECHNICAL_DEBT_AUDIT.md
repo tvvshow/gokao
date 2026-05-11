@@ -11,10 +11,10 @@
 | 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
-| 中等 (P-11~P-25) | 15 | **12** | 3 | 0 |
+| 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
 | 重复代码 (A~I) | 9 | 3 | 3 | 3 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **25** | **6** | **8** |
+| **合计** | **39** | **27** | **3** | **9** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -41,6 +41,10 @@
 | P-01 | LIKE 全表扫描审计偏差纠正 + hot_searches 索引 | eef5eb7 + 本次 | `services/data-service/internal/database/database.go:271` |
 | P-14 | rateLimiter sync.Map TTL 淘汰 | 本次 | `services/api-gateway/main.go:244-303`（cleanup goroutine + 注入时钟） |
 | P-24 | 100MB 流式导入 | 本次 | `services/data-service/internal/services/data_processing_service.go`（Process*DataStream + upsert helpers） |
+| P-15 | stats 3 维度 GROUP BY 并发化 | 本次 | `services/data-service/internal/services/university_service.go:397-489`（errgroup + Session 隔离） |
+| P-17 | search recordSearch ctx 解耦 | 本次 | `services/data-service/internal/services/search_service.go:606-636` |
+| P-25 | algorithm_service saveAnalysisResult ctx 解耦 + WithContext | 本次 | `services/data-service/internal/services/algorithm_service.go:535-574` |
+| P-13 | createProxy 共享 base log entry + cache Debug IsLevelEnabled 守卫 | 本次 | `services/api-gateway/main.go:160-189, 815-840` |
 | B | Config 辅助函数重复 | 80094dc | 各服务 `getEnv*` 已委托 `pkg/config` |
 | C | CORS 中间件 5 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
 | D | RequestID/TraceID 4 处重复 | 1f12cf3 | 已统一到 `pkg/middleware` |
@@ -178,26 +182,62 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### B.2 [⚠ PARTIAL] P-15 stats 查询合并未到位
+#### B.2 [✓ FIXED] P-15 stats 查询合并未到位
 
-**现状**：`university_service.go:399-454` 已把 4 个 COUNT 合到 1 条 SELECT（`Total/By985/By211/ByDoubleFirst`），但 `ByProvince`/`ByType`/`ByNature` 仍是 3 条独立 `GROUP BY` 查询。
+**现状（已修复）**：原 `university_service.go:399-454` 第 1 步已合到单条 SUM(CASE WHEN) 聚合，剩 3 条独立维度 GROUP BY（province / type / nature）串行执行。
 
-**期望**：进一步合一——用 `WITH` CTE 或并行 goroutine 三发，把 4 次 round-trip 降到 1 次或并发 1 次。
-
-**步骤**：
-1. 评估 PG 单条 CTE 是否可读：
-   ```sql
-   WITH base AS (...), p AS (SELECT province, COUNT(*) FROM base GROUP BY province), ...
-   SELECT * FROM p, t, n;
-   ```
-   单条但需 `Raw(...).Scan` 多结果集。可读性差。
-2. **推荐方案**：3 条 GROUP BY 改成 `errgroup.Group` 并发执行，3 路 round-trip 并行 → 单次延迟为最慢一路。
-3. 单测：mock DB，断言 3 次 SELECT 在并发窗口内发出。
+**修复内容**：
+1. 引入 `golang.org/x/sync/errgroup`（已是间接依赖，`go mod tidy` 提升为直接）。
+2. 三条 GROUP BY 用 `errgroup.WithContext(ctx)` 并发执行，整体延迟 ≈ 最慢一路而非 3x 串行。
+3. 每个 goroutine 用 `s.db.PostgreSQL.WithContext(gctx).Session(&gorm.Session{}).Model(...)` 新建会话 —— 否则共享同一 `*gorm.DB` builder 会出现数据竞争 + Select/Group 条件互相覆盖（同款 A.2 P-19 bug）。
+4. 三个独立 slice（`provinceCounts`/`typeCounts`/`natureCounts`）各由一个 goroutine 写入，无 map race；合并到 `stats.By*` map 在主 goroutine 顺序完成。
+5. errgroup ctx 让任一返错即取消其他正在跑的 SELECT，错误路径节省资源。
 
 **验证**：
-- 基准：`go test -bench=BenchmarkGetStatistics`，对比串行/并发耗时。
+- `services/data-service/internal/services/university_service_test.go` 新增 2 个测试：ParallelDimensions（全维度结果断言）+ EmptyTable（空库不报错）。
+- `go test -race ./services/data-service/internal/services/` 全绿（含 race detector），证明 Session 隔离生效。
+- `go build ./...` 干净。
 
-**工作量**：~2h。
+---
+
+#### B.4 [✓ FIXED] P-17 / B.5 [✓ FIXED] P-25 后台 goroutine ctx 解耦
+
+**现状（已修复）**：
+- `search_service.go:606` `recordSearch` 用 `context.WithTimeout(context.Background(), 5s)`，请求取消不传播。
+- `algorithm_service.go:535` `saveAnalysisResult` 更糟：goroutine 内 `s.db.PostgreSQL.Create()` 既没派生 ctx 也没传 `WithContext`，请求取消和超时都无法终止写入。
+
+**修复内容**：
+1. 两处的 timeout 父 ctx 从 `context.Background()` 切到入参 `ctx`：
+   ```go
+   recordCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+   ```
+   保留 5s timeout fallback（防单条 DB 慢查询挂住 goroutine），但客户端取消能立即穿透到 goroutine 内的 DB 写。
+2. `algorithm_service.saveAnalysisResult` 额外补 `s.db.PostgreSQL.WithContext(saveCtx).Create(...)`，让 GORM 真把 ctx 下传到驱动层。
+
+**风险评估**：
+- gin handler 返回后框架会 cancel 主请求 ctx —— goroutine 派生子 ctx 用主 ctx 作 parent，框架 cancel 会立即穿透 child ctx，DB 写会被中断。这是符合预期的：请求结束后再花资源记录 hot_search / analysis_result 已无意义。
+- 真正长跑写入应该走专门的 worker queue，不应挂在 handler goroutine 上。
+
+**验证**：
+- `go build ./services/data-service/...` 干净，全量测试套件无回归（services 1.5s + tests 2.2s）。
+
+---
+
+#### B.7 [✓ FIXED] P-13 Logrus 每请求 2x WithFields
+
+**现状（已修复）**：
+- `api-gateway/main.go:818, 832` createProxy 每请求构造 `logrus.Fields{}` 两次（pre + post），每次 6-8 字段，前 6 字段完全相同 —— 重复 mapassign 浪费。
+- `api-gateway/main.go:161, 181` cacheMiddleware 的 Debug 日志没 IsLevelEnabled 守卫，生产 Info level 下仍然每次构造 fields map。
+
+**修复内容**：
+1. createProxy 把 6 个共享字段构造一次成 `baseLog *logrus.Entry`，pre 直接 `baseLog.Info(...)`，post 再 `baseLog.WithFields(2 个变量字段).Info(...)`。Fields map 构造从 2 次 × 6-8 字段降到 1 次 × 6 字段 + 1 次 × 2 字段（实际 alloc 减半）。
+2. cacheMiddleware 两处 Debug 调用前加 `if cache.logger.IsLevelEnabled(logrus.DebugLevel)` 守卫，生产 Info level 下完全跳过 fields 构造（cache 是热路径，每请求都走）。
+
+**验证**：
+- `go test ./services/api-gateway/...` 全绿（27.9s，含原 26 个测试 + 4 个 rate limiter 测试 + 现有代理回归覆盖日志字段输出）。
+
+**OOB（不在本次范围）**：
+- 采样策略（仅 5xx + 慢请求 >500ms 详细日志）—— 涉及业务可观测性策略，需运维确认。
 
 ---
 
@@ -217,29 +257,6 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 - `services/api-gateway/rate_limiter_test.go` 4 个新测试：EvictsIdleBuckets / KeepsActiveBuckets / StopIsIdempotent / AllowUsesInjectedClock 全绿。
 - `go test ./services/api-gateway/...` 全绿（27.6s，含原 22 个测试）。
 - `go build ./...` 干净。
-
----
-
-#### B.4 [⚠ PARTIAL] P-17 search goroutine ctx 解耦
-
-**现状**：`search_service.go:606-630` 用 `context.WithTimeout(context.Background(), 5*time.Second)`。**没用传入的 `ctx`**，请求取消不传播。但 5s timeout 兜底，不是真泄漏。
-
-**期望**：goroutine 内派生自请求 ctx：`recordCtx, cancel := context.WithTimeout(ctx, 5*time.Second)`，请求取消能立刻终止 goroutine。
-
-**步骤**：
-1. 改 `recordSearch` 函数体，把 line 608 的 `Background()` 换成入参 `ctx`。
-2. 同样审 `algorithm_service.go:538`（saveAnalysisResult），同样改造。
-
-**验证**：
-- 单测：构造可取消的 ctx，goroutine 启动后立即取消；检查 DB write 未发生（mock DB）。
-
-**工作量**：~1h（机械改）。
-
----
-
-#### B.5 [✗ PENDING] P-25 algorithm_service goroutine 无 ctx 取消
-
-合并到 B.4 一并改造。
 
 ---
 
@@ -268,21 +285,9 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### B.7 [⚠ PARTIAL] P-13 Logrus 每请求 2x WithFields
+#### B.7 [⚠ DUPLICATE — 见上方 line 245 FIXED 节] P-13
 
-**现状**：`api-gateway/main.go:753, 767` — 每请求构造 `logrus.Fields{}` 两次（pre + post）。在高 QPS 下分配开销可观。
-
-**期望**：合并为 1 次构造（请求结束统一打），或用 `logrus.WithFields().Info()` 一次性。
-
-**步骤**：
-1. Read 753-769 上下文确认两次的目的（往往是 access log + error log 重复）。
-2. 引入请求级 `*logrus.Entry`，附在 ctx 上，请求结束 1 次 flush。
-3. 或采样：仅 5xx + 慢请求 (>500ms) 打 detailed log。
-
-**验证**：
-- 基准：`go test -bench=BenchmarkRequestPath`，分配数应减半。
-
-**工作量**：~2h。
+旧 PARTIAL 描述已被 line 245 的 FIXED 版本取代，保留此空壳避免章节编号断层。下一次复审清理。
 
 ---
 

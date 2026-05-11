@@ -11,6 +11,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -394,15 +395,21 @@ type UniversityStatistics struct {
 	ByNature      map[string]int64 `json:"by_nature"`
 }
 
-// GetUniversityStatistics 获取院校统计信息（4 条聚合查询替代原来 7 条独立查询）
+// GetUniversityStatistics 获取院校统计信息。
+//
+// 第 1 步是一条 4-列 SUM(CASE WHEN) 聚合，单次 round-trip。
+// 第 2-4 步是 3 条独立维度的 GROUP BY（province / type / nature），无法合并到
+// 同一 SELECT —— 改用 errgroup 并发触发，整体延迟约等于最慢一路而非串行 3x。
+//
+// 并发实现关键：每个 goroutine 必须用 db.Session(&gorm.Session{}) 新建会话，
+// 否则共享同一个 *gorm.DB builder 会出现数据竞争 + Select/Group 条件互相覆盖
+// （A.2 P-19 修复同款 bug）。
 func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*UniversityStatistics, error) {
 	stats := &UniversityStatistics{
 		ByProvince: make(map[string]int64),
 		ByType:     make(map[string]int64),
 		ByNature:   make(map[string]int64),
 	}
-
-	db := s.db.PostgreSQL.Model(&models.University{})
 
 	// 1. 单条聚合查询获取总数 + 各级别数量（CASE WHEN 兼容 SQLite + PostgreSQL）
 	var counts struct {
@@ -411,7 +418,7 @@ func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*Unive
 		By211         int64
 		ByDoubleFirst int64
 	}
-	if err := s.db.PostgreSQL.Raw(
+	if err := s.db.PostgreSQL.WithContext(ctx).Raw(
 		"SELECT COUNT(*) as Total, SUM(CASE WHEN level = '985' THEN 1 ELSE 0 END) as By985, SUM(CASE WHEN level = '211' THEN 1 ELSE 0 END) as By211, SUM(CASE WHEN level = 'double_first_class' THEN 1 ELSE 0 END) as ByDoubleFirst FROM universities WHERE deleted_at IS NULL",
 	).Scan(&counts).Error; err != nil {
 		return nil, fmt.Errorf("统计院校数量失败: %w", err)
@@ -421,31 +428,68 @@ func (s *UniversityService) GetUniversityStatistics(ctx context.Context) (*Unive
 	stats.By211 = counts.By211
 	stats.ByDoubleFirst = counts.ByDoubleFirst
 
-	// 2-4. 三条 GROUP BY 查询（不同维度无法合并）
+	// 2-4. 三条 GROUP BY 查询并发执行
 	type groupCount struct {
 		Key   string
 		Count int64
 	}
 
-	var provinceCounts []groupCount
-	if err := db.Select("province as key, COUNT(*) as count").Group("province").Scan(&provinceCounts).Error; err != nil {
-		return nil, fmt.Errorf("按省份统计失败: %w", err)
+	// 三个独立 map 各由一个 goroutine 写入，互不交叉 —— 无 map race。
+	// errgroup ctx 任一 goroutine 返错即取消其他正在跑的 SELECT。
+	var (
+		provinceCounts []groupCount
+		typeCounts     []groupCount
+		natureCounts   []groupCount
+	)
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		if err := s.db.PostgreSQL.WithContext(gctx).
+			Session(&gorm.Session{}).
+			Model(&models.University{}).
+			Select("province as key, COUNT(*) as count").
+			Group("province").
+			Scan(&provinceCounts).Error; err != nil {
+			return fmt.Errorf("按省份统计失败: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if err := s.db.PostgreSQL.WithContext(gctx).
+			Session(&gorm.Session{}).
+			Model(&models.University{}).
+			Select("type as key, COUNT(*) as count").
+			Group("type").
+			Scan(&typeCounts).Error; err != nil {
+			return fmt.Errorf("按类型统计失败: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if err := s.db.PostgreSQL.WithContext(gctx).
+			Session(&gorm.Session{}).
+			Model(&models.University{}).
+			Select("nature as key, COUNT(*) as count").
+			Group("nature").
+			Scan(&natureCounts).Error; err != nil {
+			return fmt.Errorf("按性质统计失败: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
+
+	// 合并到 stats 在主 goroutine 中完成，避免并发写同一结构体字段。
 	for _, gc := range provinceCounts {
 		stats.ByProvince[gc.Key] = gc.Count
 	}
-
-	var typeCounts []groupCount
-	if err := db.Select("type as key, COUNT(*) as count").Group("type").Scan(&typeCounts).Error; err != nil {
-		return nil, fmt.Errorf("按类型统计失败: %w", err)
-	}
 	for _, gc := range typeCounts {
 		stats.ByType[gc.Key] = gc.Count
-	}
-
-	var natureCounts []groupCount
-	if err := db.Select("nature as key, COUNT(*) as count").Group("nature").Scan(&natureCounts).Error; err != nil {
-		return nil, fmt.Errorf("按性质统计失败: %w", err)
 	}
 	for _, gc := range natureCounts {
 		stats.ByNature[gc.Key] = gc.Count

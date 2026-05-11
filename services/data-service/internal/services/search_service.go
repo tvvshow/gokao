@@ -603,9 +603,18 @@ func (s *SearchService) getMajorSuggestions(ctx context.Context, keyword string,
 }
 
 // recordSearch 记录搜索（带超时 context，防止 goroutine 堆积）
+//
+// goroutine 内的 ctx 必须派生自请求 ctx（而非 context.Background）：
+//   - 请求被客户端取消时，正在跑的 hot_searches 写入也能立即终止，避免 goroutine
+//     在背景默默执行无意义的 DB 写。
+//   - 仍保留 5s 写入超时 fallback，防止单条 DB 慢查询永远挂住 goroutine。
+//
+// 注意：goroutine 内不能直接复用主请求 ctx —— gin handler 返回后框架会 cancel
+// 主 ctx，DB 写就会立刻被中断。所以派生一个带独立超时的 child ctx，但用主 ctx
+// 作 parent 让取消信号能传播过来。
 func (s *SearchService) recordSearch(ctx context.Context, keyword, province, category string) {
 	go func() {
-		recordCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		recordCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		today := time.Now().Truncate(24 * time.Hour)

@@ -532,10 +532,17 @@ func (s *AlgorithmService) calculateConfidence(recommendations []VolunteerRecomm
 	return avgScore / 100.0 // 转换为0-1范围
 }
 
-// saveAnalysisResult 保存分析结果
+// saveAnalysisResult 保存分析结果（异步写入，不阻塞匹配响应）。
+//
+// 修复 P-25：原实现 goroutine 内调 s.db.PostgreSQL.Create 既没派生 ctx 也没传
+// WithContext，请求取消时背景写依然继续，且单次 DB 慢查询能让 goroutine 永远
+// 挂住。改造为派生自请求 ctx 的 5s 子 ctx + WithContext 传到 GORM，让取消
+// 信号和超时都能终止写入。
 func (s *AlgorithmService) saveAnalysisResult(ctx context.Context, req VolunteerMatchRequest, response *VolunteerMatchResponse) {
-	// 将结果保存到数据库
 	go func() {
+		saveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
 		preferences, _ := json.Marshal(req.Preferences)
 		results, _ := json.Marshal(response)
 
@@ -560,7 +567,7 @@ func (s *AlgorithmService) saveAnalysisResult(ctx context.Context, req Volunteer
 			}
 		}
 
-		if err := s.db.PostgreSQL.Create(&analysisResult).Error; err != nil {
+		if err := s.db.PostgreSQL.WithContext(saveCtx).Create(&analysisResult).Error; err != nil {
 			s.logger.Errorf("保存分析结果失败: %v", err)
 		}
 	}()

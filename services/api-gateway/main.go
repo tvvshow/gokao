@@ -158,10 +158,14 @@ func cacheMiddleware(cache *cacheManager, ttl time.Duration) gin.HandlerFunc {
 			// Cache hit
 			var response gin.H
 			if err := json.Unmarshal(cachedData, &response); err == nil {
-				cache.logger.WithFields(logrus.Fields{
-					"cache_key": cacheKey,
-					"hit":       true,
-				}).Debug("Cache hit")
+				// Debug 日志加 IsLevelEnabled 守卫 —— 默认 Info level 下避免每次 hit
+				// 都构造 logrus.Fields{}（map alloc）。cache 路径是热路径，每请求都走。
+				if cache.logger.IsLevelEnabled(logrus.DebugLevel) {
+					cache.logger.WithFields(logrus.Fields{
+						"cache_key": cacheKey,
+						"hit":       true,
+					}).Debug("Cache hit")
+				}
 				c.JSON(http.StatusOK, response)
 				c.Abort()
 				return
@@ -177,7 +181,8 @@ func cacheMiddleware(cache *cacheManager, ttl time.Duration) gin.HandlerFunc {
 		if c.Writer.Status() == http.StatusOK && bw.body.Len() > 0 {
 			if err := cache.client.Set(c.Request.Context(), cacheKey, bw.body.Bytes(), ttl).Err(); err != nil {
 				cache.logger.WithError(err).Warn("Failed to cache response")
-			} else {
+			} else if cache.logger.IsLevelEnabled(logrus.DebugLevel) {
+				// 同款 IsLevelEnabled 守卫：避免每次 miss 写缓存后都构造 Fields map。
 				cache.logger.WithFields(logrus.Fields{
 					"cache_key": cacheKey,
 					"hit":       false,
@@ -815,29 +820,27 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 		}
 
 		// 记录请求日志
-		pm.logger.WithFields(logrus.Fields{
+		// 共享 base entry（service/method/path/user_id/request_id/trace_id 6 字段），
+		// 请求前后两条日志复用 —— 原实现两次 logrus.Fields{} 构造 + WithFields，每请求
+		// 12 次 mapassign。改造后 base 字段只构造 1 次，post 阶段仅追加 2 个变量字段。
+		baseLog := pm.logger.WithFields(logrus.Fields{
 			"service":    serviceName,
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
 			"user_id":    c.GetString("user_id"),
 			"request_id": c.GetString("request_id"),
 			"trace_id":   c.GetString("trace_id"),
-		}).Info("Proxying request to service")
+		})
+		baseLog.Info("Proxying request to service")
 
 		// 执行代理
 		proxy.ServeHTTP(c.Writer, c.Request)
 
-		// 记录响应日志
+		// 记录响应日志（在 base 上追加 status_code/duration 两个字段）
 		duration := time.Since(startTime)
-		pm.logger.WithFields(logrus.Fields{
-			"service":     serviceName,
-			"method":      c.Request.Method,
-			"path":        c.Request.URL.Path,
+		baseLog.WithFields(logrus.Fields{
 			"status_code": c.Writer.Status(),
 			"duration":    duration.String(),
-			"user_id":     c.GetString("user_id"),
-			"request_id":  c.GetString("request_id"),
-			"trace_id":    c.GetString("trace_id"),
 		}).Info("Request completed")
 
 		// 阻止Gin继续处理
