@@ -59,7 +59,8 @@ func TestRateLimiter_KeepsActiveBuckets(t *testing.T) {
 }
 
 // TestRateLimiter_StopIsIdempotent 验证 stop 多次调用不 panic（close on closed channel 防护）。
-func TestRateLimiter_StopIsIdempotent(t *testing.T) {
+// t 参数仅满足 testing 框架签名要求，函数体本身不依赖 t —— revive 用 _ 显式标记。
+func TestRateLimiter_StopIsIdempotent(_ *testing.T) {
 	rl := newRateLimiter(10, 20)
 	rl.stop()
 	rl.stop()
