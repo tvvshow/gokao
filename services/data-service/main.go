@@ -9,6 +9,7 @@ import (
 	"github.com/tvvshow/gokao/services/data-service/internal/services"
 
 	pkghealth "github.com/tvvshow/gokao/pkg/health"
+	pkgmw "github.com/tvvshow/gokao/pkg/middleware"
 	"net/http"
 	"os"
 	"os/signal"
@@ -96,7 +97,7 @@ func main() {
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.Recovery(logger))
 	router.Use(middleware.CORS()) // 启用CORS中间件，支持前端跨域请求
-	router.Use(middleware.Security())
+	router.Use(pkgmw.SecurityHeaders())
 	router.Use(middleware.RateLimit(logger))
 	router.Use(middleware.ValidatePageSize(cfg.MaxPageSize))
 	router.Use(middleware.PerformanceMonitoring(performanceService))

@@ -19,6 +19,7 @@ import (
 	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 
 	pkghealth "github.com/tvvshow/gokao/pkg/health"
+	pkgmw "github.com/tvvshow/gokao/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -90,6 +91,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS())
 	router.Use(middleware.RequestID())
+	router.Use(pkgmw.SecurityHeaders())
 	router.Use(middleware.RateLimit(cfg.RateLimit))
 
 	// 健康检查（共享 pkg/health：DB(*sql.DB) + Redis(v8) 实测）

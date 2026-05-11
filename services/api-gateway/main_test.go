@@ -112,8 +112,14 @@ func TestSecurityHeaders_OnGET(t *testing.T) {
 	if hdr.Get("X-XSS-Protection") != "1; mode=block" {
 		t.Fatalf("missing or wrong X-XSS-Protection: %q", hdr.Get("X-XSS-Protection"))
 	}
-	if hdr.Get("Referrer-Policy") != "" {
-		t.Fatalf("missing or wrong Referrer-Policy: %q", hdr.Get("Referrer-Policy"))
+	if got := hdr.Get("Referrer-Policy"); got != "strict-origin-when-cross-origin" {
+		t.Fatalf("missing or wrong Referrer-Policy: %q", got)
+	}
+	if got := hdr.Get("Strict-Transport-Security"); got != "max-age=31536000; includeSubDomains" {
+		t.Fatalf("missing or wrong Strict-Transport-Security: %q", got)
+	}
+	if got := hdr.Get("Content-Security-Policy"); got != "default-src 'self'" {
+		t.Fatalf("missing or wrong Content-Security-Policy: %q", got)
 	}
 }
 

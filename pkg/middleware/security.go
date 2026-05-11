@@ -86,16 +86,37 @@ func (b *InMemoryTokenBlacklist) AddToBlacklist(token string, expiry time.Durati
 	return nil
 }
 
-// SecurityHeaders 安全头中间件
+// SecurityHeaders 包级中间件：设置标准安全响应头，无需配置。
+// 推荐所有服务直接 r.Use(middleware.SecurityHeaders())。
+//
+// 头列表（与 SecurityMiddleware.SecurityHeaders method 行为一致）：
+//   - X-Content-Type-Options: nosniff
+//   - X-Frame-Options: DENY
+//   - X-XSS-Protection: 1; mode=block
+//   - Strict-Transport-Security: max-age=31536000; includeSubDomains
+//   - Content-Security-Policy: default-src 'self'
+//   - Referrer-Policy: strict-origin-when-cross-origin
+func SecurityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Header("Content-Security-Policy", "default-src 'self'")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	}
+}
+
+// SecurityHeaders method 形式，保留 api-gateway 现有用法（securityMiddleware.SecurityHeaders()）。
+// sm.config.SecurityHeaders=true 时委托给包级 SecurityHeaders；否则 no-op，
+// 让 SecurityConfig 仍能从 env 驱动开关。
 func (sm *SecurityMiddleware) SecurityHeaders() gin.HandlerFunc {
+	handler := SecurityHeaders()
 	return func(c *gin.Context) {
 		if sm.config.SecurityHeaders {
-			// 设置安全头
-			c.Header("X-Content-Type-Options", "nosniff")
-			c.Header("X-Frame-Options", "DENY")
-			c.Header("X-XSS-Protection", "1; mode=block")
-			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-			c.Header("Content-Security-Policy", "default-src 'self'")
+			handler(c)
+			return
 		}
 		c.Next()
 	}

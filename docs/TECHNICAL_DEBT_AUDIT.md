@@ -12,9 +12,9 @@
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | **4** | 3 | 2 |
+| 重复代码 (A~I) | 9 | **5** | 2 | 2 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **28** | **3** | **8** |
+| **合计** | **39** | **29** | **2** | **8** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -420,18 +420,26 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### C.6 [⚠ PARTIAL] I. SecurityHeaders 仍 2 处自定义
+#### C.6 [✓ FIXED] I. SecurityHeaders 统一
 
-**现状**：
-- `services/api-gateway/main.go:461` 已用 `securityMiddleware.SecurityHeaders()` ✓
-- `services/data-service/internal/middleware/middleware.go:224` 直接 `c.Header("X-Content-Type-Options", "nosniff")` 自定义 ✗
-- `services/payment-service/internal/middleware/middleware.go:213-216` 自定义 ✗
+**现状（已修复）**：
+- `services/api-gateway/main.go:461` 已通过 `securityMiddleware.SecurityHeaders()` 接入 pkg ✓
+- `services/data-service/internal/middleware/middleware.go:221` 自定义 `Security()`（缺 Strict-Transport-Security）✗
+- `services/payment-service/internal/middleware/middleware.go:213` 自定义 `SecurityHeaders()` 但**main.go 从未调用**（dead code，且实际请求无安全头）✗
 
-**期望**：data-service / payment-service 也接 `pkg/middleware`。
+**修复内容**：
+1. `pkg/middleware/security.go` 新增包级 `SecurityHeaders()` 函数（不依赖 SecurityConfig），头列表合并所有服务历史最严集合：
+   - X-Content-Type-Options / X-Frame-Options / X-XSS-Protection
+   - Strict-Transport-Security / Content-Security-Policy
+   - **Referrer-Policy: strict-origin-when-cross-origin**（原 data-service 独有，统一后所有服务都设）
+2. `*SecurityMiddleware.SecurityHeaders()` method 改为委托给包级函数 + 保留 `sm.config.SecurityHeaders` 配置开关。api-gateway 用法不变。
+3. `data-service/main.go` import `pkgmw`，把 `middleware.Security()` 替换为 `pkgmw.SecurityHeaders()`；删除 `internal/middleware.Security()` 函数。
+4. `payment-service/main.go` 新增 `pkgmw.SecurityHeaders()` Use（之前完全没设安全头 —— 是 dead `SecurityHeaders()` 函数留下的设计缺陷）；删除 `internal/middleware.SecurityHeaders()` dead code。
+5. `services/api-gateway/main_test.go::TestSecurityHeaders_OnGET` 修复历史 bug：原断言 `Referrer-Policy != ""` 配文案"missing or wrong"，反映出测试逻辑写反。统一后改为正向断言三个新头都存在。
 
-**步骤**：与 C.1 类似，统一接入 pkg/middleware.SecurityHeaders。
-
-**工作量**：~1h。
+**验证**：
+- `go test ./services/api-gateway/... ./services/data-service/... ./services/payment-service/... ./pkg/middleware/...` 全绿。
+- 副产物：payment-service 现在终于设上了安全响应头（之前是 dead code 假冒覆盖）。
 
 ---
 

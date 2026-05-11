@@ -210,17 +210,8 @@ func GetRequestID(c *gin.Context) string {
 	return ""
 }
 
-// SecurityHeaders 安全头中间件
-func SecurityHeaders() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		c.Header("Content-Security-Policy", "default-src 'self'")
-		c.Next()
-	}
-}
+// SecurityHeaders 已废弃 —— payment-service main.go 现在直接用 pkg/middleware.SecurityHeaders。
+// 该函数从未被 main.go 接入（dead code），删除避免与 pkg 版本漂移。
 
 // Logging 日志中间件
 func Logging() gin.HandlerFunc {

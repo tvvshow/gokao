@@ -218,15 +218,5 @@ func Timeout(timeout time.Duration, logger *logrus.Logger) gin.HandlerFunc {
 	}
 }
 
-// Security 安全头中间件
-func Security() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-Frame-Options", "DENY")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Content-Security-Policy", "default-src 'self'")
-		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-
-		c.Next()
-	}
-}
+// Security 已废弃 —— 改用 pkg/middleware.SecurityHeaders（统一头列表 + Referrer-Policy 补全）。
+// 删除该函数避免漂移。如需配置驱动开关，用 pkg/middleware.NewSecurityMiddleware + method 形式。
