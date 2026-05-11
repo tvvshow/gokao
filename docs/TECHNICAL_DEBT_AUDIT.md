@@ -189,18 +189,18 @@
 | L-01 | **真实数据未注入** | `data/tasks.json` = 0 字节；DB 仅有 init.sql schema，无大学/专业/录取分数线数据 | 上线即"空壳"，推荐无法运作 |
 | L-02 | **ICP 备案** | 未见任何备案号字段或文档 | 中国境内法律强制，无备案不能开 |
 | L-03 | **支付商户号 + 证书** | adapter 代码完整（alipay/wechat/unionpay）；`config/.env.production` 中商户证书路径 `/run/secrets/rsa_*` 是空挂载点 | 无法收款 |
-| L-04 | **真实域名 + SSL** | `CORS_ALLOWED_ORIGINS=https://yourdomain.com` 占位；无 nginx / cert-manager / Let's Encrypt 配置 | 无法对外服务 |
+| L-04 | **真实域名 + SSL** | `CORS_ALLOWED_ORIGINS=https://yourdomain.com` 占位；无 nginx / certbot / Let's Encrypt 自动续期配置 | 无法对外服务 |
 
 ### 3.2 🟠 高 — 影响生产稳定性
 
 | ID | 缺口 | 现状证据 |
 |----|------|----------|
-| L-05 | **K8s / 编排 manifest** | `infrastructure/` 只有 `docker/`，没有 K8s yaml / Helm chart / Argo / Kustomize |
+| L-05 | **Production 编排 manifest** | `infrastructure/docker/` 只有 dev 用 `docker-compose.yml` + 6 个 Dockerfile，无 production compose（资源限制 / healthcheck / restart policy / log driver） |
 | L-06 | **监控栈** | 代码侧 prometheus 已埋点；**没有** Prometheus + Grafana + AlertManager 部署 yaml |
 | L-07 | **告警通道** | `alert_manager.go` 代码完整（dingtalk/wechat/email/webhook），但**接收方未配置** |
 | L-08 | **日志聚合** | logrus 写 stdout，无 Loki / ELK / Fluent Bit pipeline |
 | L-09 | **versioned DB migration** | 只有 `init.sql` + `data-service/cmd/migrator/main.go`；无 `goose` / `golang-migrate` 之类带 rollback 的迁移工具链 |
-| L-10 | **secrets 管理** | `config/.env.production` 本地明文（已 gitignore，未泄漏到 repo）；未走 Vault / k8s sealed-secrets / docker secrets |
+| L-10 | **secrets 管理** | `config/.env.production` 本地明文（已 gitignore，未泄漏到 repo）；未走 docker secrets / Vault / age-encrypted .env |
 | L-11 | **压力测试** | 项目目标"10 万并发 / 推荐 < 500ms / SLA > 99.9%"**全部未实测**；无 k6 / locust / wrk 脚本 |
 | L-12 | **灾备** | 无 DB 备份策略 / Redis 持久化策略 / 跨可用区方案 |
 
@@ -240,23 +240,19 @@
 
 ---
 
-### Sprint B — 生产基础设施（~3-5 工作日，技术自主可推）
+### Sprint B — 生产基础设施（~3-4 工作日，Docker 路径，自主推进）
+
+技术路线已定：**沿用项目现有 Docker 路径**——不引入 K8s（项目规模 6 微服务 + 单租户 + 流量峰值型，K8s 控制面开销与运维复杂度超过收益）。Compose v3.x 写法天然兼容单机和 swarm 模式，MVP 单机起、流量来了 `docker swarm init` 零改动扩展。
 
 | 任务 | 工时 | 产出 |
 |------|------|------|
-| **L-05** K8s manifest（Deployment + Service + Ingress + HPA） | ~1d | `infrastructure/k8s/*.yaml`（按目标集群定 ACK / TKE / 自建） |
-| **L-06** 监控栈部署 yaml（Prometheus + Grafana + AlertManager） | ~1d | `infrastructure/monitoring/*.yaml` + ServiceMonitor + 默认 dashboard |
-| **L-08** 日志聚合（Loki + Promtail） | ~0.5d | `infrastructure/logging/*.yaml` |
-| **L-09** versioned migration 工具链（建议 `golang-migrate`） | ~0.5d | `services/*/migrations/*.sql` 改造 + Makefile 集成 |
-| **L-11** 压测脚本（k6 起步） | ~1d | `tests/load/*.js`，覆盖推荐 / 搜索 / 鉴权三条核心路径 |
-
-**前置选择题（**需要你决定 1 个**）**：目标部署环境是
-- 自建 K8s
-- 阿里云 ACK
-- 腾讯云 TKE
-- 其他
-
-不同环境的 ingress / cert-manager / 存储类配置差异较大，定下来后我才能精确写 yaml。
+| **L-05** Production 编排 manifest | ~0.5d | `infrastructure/docker/docker-compose.production.yml`（资源限制 + healthcheck + restart: unless-stopped + log driver / 大小轮转） |
+| **L-04** nginx 反代 + Let's Encrypt | ~0.5d | `infrastructure/nginx/nginx.conf` + `certbot` 容器，SSL 自动续期 |
+| **L-06** 监控栈（docker 部署） | ~0.5d | `infrastructure/monitoring/docker-compose.monitoring.yml`（Prometheus + Grafana + AlertManager 容器化） |
+| **L-08** 日志聚合（docker 部署） | ~0.5d | Loki + Promtail 容器化 + 配置 docker log driver |
+| **L-09** versioned migration 工具链 | ~0.5d | `golang-migrate` + 各服务 `migrations/*.sql` + Makefile 集成 |
+| **L-11** 压测脚本 | ~1d | `tests/load/*.js` (k6)，覆盖推荐 / 搜索 / 鉴权三条核心路径 |
+| 新增 | ~0.5d | `infrastructure/scripts/backup-restore.sh`（PG pg_dump + Redis RDB → 异地） |
 
 ---
 
@@ -335,7 +331,7 @@ rg "MLEnhanced|ml_enhanced|MLEnhancedRecommendationEngine" services/
 rg "TODO|FIXME|XXX|HACK:" services/ pkg/                  # 结果：0 处
 rg "占位|stub|placeholder" services/recommendation-service/pkg/ml/
 git ls-files | grep -iE "\.env"                            # 确认无 .env.production 泄漏
-find infrastructure/ -maxdepth 3 -type f                   # 确认 K8s/monitoring 缺失
+find infrastructure/ -maxdepth 3 -type f                   # 确认 production compose / monitoring 缺失
 ```
 
 ---
@@ -348,3 +344,4 @@ find infrastructure/ -maxdepth 3 -type f                   # 确认 K8s/monitori
 | 2026-05-10 ~ 05-11 | 推进 C.3 / C.5 / B.8 等多项，FIXED 由 24 → 33 |
 | 2026-05-11 | 重写：精简已完成项详情、B.8 P-22 标记 false positive、P-23 标记 DEFERRED、新增第 3 章上线侧缺口（L-01 ~ L-16）、新增第 4 章 Sprint 计划 |
 | **2026-05-11** | **Sprint A 完成**：D.3 删 ML stub (6954874) + D.1 录取概率正态 CDF (1396d6e)，35/39 FIXED；代码层已无自主可推任务 |
+| **2026-05-11** | **修正 K8s 误导**：Sprint B 改回 Docker 路径（项目本就是 Docker，错把"生产 = K8s"当默认假设是审计者偏差） |
