@@ -321,38 +321,10 @@ func (b *EnhancedRuleRecommendationBridge) generateAllPossibleRecommendations(re
 	return recommendations
 }
 
-// calculateAdmissionProbability 计算录取概率（基于真实数据）
+// calculateAdmissionProbability 计算录取概率（正态 CDF）.
+// See probability.go for the model rationale and the σ estimation strategy.
 func (b *EnhancedRuleRecommendationBridge) calculateAdmissionProbability(studentScore int, record AdmissionRecord) float64 {
-	scoreDiff := float64(studentScore - record.AvgScore)
-
-	// 基于真实分数差计算概率
-	var probability float64
-
-	switch {
-	case scoreDiff >= 30:
-		probability = 0.95
-	case scoreDiff >= 20:
-		probability = 0.85
-	case scoreDiff >= 10:
-		probability = 0.70
-	case scoreDiff >= 0:
-		probability = 0.55
-	case scoreDiff >= -10:
-		probability = 0.35
-	case scoreDiff >= -20:
-		probability = 0.15
-	default:
-		probability = 0.05
-	}
-
-	// 根据录取人数微调
-	if record.StudentCount > 100 {
-		probability = math.Min(0.99, probability+0.05)
-	} else if record.StudentCount < 30 {
-		probability = math.Max(0.01, probability-0.03)
-	}
-
-	return math.Max(0.01, math.Min(0.99, probability))
+	return admissionProbability(studentScore, record)
 }
 
 // calculateMatchScore 计算匹配分数（使用动态权重）

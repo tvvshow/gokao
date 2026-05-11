@@ -225,38 +225,10 @@ func (b *SimpleRuleRecommendationBridge) generateAllPossibleRecommendations(requ
 	return recommendations
 }
 
-// calculateAdmissionProbability 计算录取概率
+// calculateAdmissionProbability 计算录取概率（正态 CDF）.
+// See probability.go for the model rationale and the σ estimation strategy.
 func (b *SimpleRuleRecommendationBridge) calculateAdmissionProbability(studentScore int, record AdmissionRecord) float64 {
-	scoreDiff := float64(studentScore - record.AvgScore)
-	
-	// 基于分数差计算概率
-	var probability float64
-	
-	switch {
-	case scoreDiff >= 30:
-		probability = 0.95 // 分数高30分以上，概率95%
-	case scoreDiff >= 20:
-		probability = 0.85 // 分数高20-29分，概率85%
-	case scoreDiff >= 10:
-		probability = 0.70 // 分数高10-19分，概率70%
-	case scoreDiff >= 0:
-		probability = 0.55 // 分数高0-9分，概率55%
-	case scoreDiff >= -10:
-		probability = 0.35 // 分数低0-9分，概率35%
-	case scoreDiff >= -20:
-		probability = 0.15 // 分数低10-19分，概率15%
-	default:
-		probability = 0.05 // 分数低20分以上，概率5%
-	}
-	
-	// 根据录取人数微调（录取人数越多，概率略高）
-	if record.StudentCount > 100 {
-		probability = math.Min(0.99, probability+0.05)
-	} else if record.StudentCount < 30 {
-		probability = math.Max(0.01, probability-0.03)
-	}
-	
-	return math.Max(0.01, math.Min(0.99, probability))
+	return admissionProbability(studentScore, record)
 }
 
 // calculateMatchScore 计算匹配分数（综合评分）
