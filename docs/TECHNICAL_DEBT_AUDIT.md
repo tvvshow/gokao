@@ -8,13 +8,13 @@
 
 ## 0. 状态总览
 
-| 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ✗ PENDING |
-|------|------|---------|-----------|-----------|
-| 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
-| 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | **9** | 0 | 0 |
-| 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **33** | **0** | **6** |
+| 类别 | 总数 | ✓ FIXED | ⚠ PARTIAL | ⏸ DEFERRED | ✗ PENDING |
+|------|------|---------|-----------|-----------|-----------|
+| 严重 (P-01~P-10) | 10 | **10** | 0 | 0 | 0 |
+| 中等 (P-11~P-25) | 15 | **14** | 0 | **1** | 0 |
+| 重复代码 (A~I) | 9 | **9** | 0 | 0 | 0 |
+| 算法 (Phase 4) | 5 | 0 | 0 | 0 | 5 |
+| **合计** | **39** | **33** | **0** | **1** | **5** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -291,23 +291,56 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### B.8 [✗ PENDING] P-22 / P-23 跨服务 debug log 求值 / JSON 序列化
+#### B.8 [✓ FIXED (P-22 NO-OP) / ⏸ DEFERRED (P-23)] P-22 / P-23 跨服务 debug log 求值 / JSON 序列化
 
-**现状**：跨服务多处 `logger.Debug(fmt.Sprintf(...))` 即使日志级别 < Debug 仍执行 sprintf；缓存路径每次 `json.Marshal/Unmarshal` 不复用 buffer。
+**P-22 真根因复审（2026-05-11）**：原审计断言"`logger.Debug(fmt.Sprintf(...))` 即使级别 < Debug 仍执行 sprintf"在本仓**不存在**。
 
-**期望**：
-- Debug 路径用 lazy logging：`logger.Debugf(...)` 或 `if logger.IsLevelEnabled(DebugLevel) { ... }` 守卫。
-- 缓存路径用 `sync.Pool[bytes.Buffer]` + `jsoniter`（替换标准 json）。
+复审 grep 凭证（全仓 services + pkg）：
+- `(logger|log|logrus|s\.logger|am\.logger|h\.logger)\.Debug\(.*Sprintf` → **0 处匹配**
+- `\.Debug\(fmt\.Sprintf` → **0 处匹配**
+- 实际调用形态全部是 `s.logger.Debugf("...", args...)` —— 这就是 logrus 标准 lazy 入口。
 
-**步骤**：
-1. grep 全仓 `logger.Debug.*Sprintf|logrus.Debug.*Sprintf` 列出所有点。
-2. 引入 `pkg/logger.LazyDebug(fn func() string)` 辅助函数。
-3. 缓存热路径替换 `encoding/json` → `github.com/json-iterator/go`。
+logrus v1.9.3 `entry.Debugf` 实现（项目所有模块 pin 在 v1.9.3）：
+```go
+func (entry *Entry) Debugf(format string, args ...interface{}) {
+    if entry.Logger.IsLevelEnabled(DebugLevel) {
+        entry.Logf(DebugLevel, format, args...)
+    }
+}
+```
 
-**验证**：
-- pprof CPU profile 对比，json/log allocs 降至原 30%。
+→ Debug 级别关闭时，`format` + `args` 不发生格式化、不进入 `Logf`。**P-22 是审计 false positive，无需修改任何代码**。
 
-**工作量**：~6h（跨服务，需谨慎）。
+---
+
+**P-23 决策（DEFERRED）**：缓存热路径切换 `encoding/json` → `jsoniter` + `sync.Pool[bytes.Buffer]`，**当前缺乏 pprof 证据支撑，不动**。
+
+**当前 json 调用点扫描**：缓存 Marshal/Unmarshal 主要集中在
+- `pkg/middleware/idempotency.go:82,124` —— 仅幂等场景，非高频
+- `services/user-service/internal/middleware/permission.go:114,126` —— 鉴权 cache hit/miss 路径
+- `services/data-service/internal/services/cache_service.go:59,115` —— 通用 cache helper
+- `services/data-service/internal/services/{major,university,admission,search}_service.go` —— per-cache-hit unmarshal
+- `services/api-gateway/main.go:164` —— gateway 缓存中间件
+
+**为何 DEFERRED**：
+1. **无 pprof 证据**：未做过 CPU profile 显示 json 在热路径占比 > 5%。按 §A.2.1 "改代码前必须能用一句话说清问题，证据弱就继续诊断不要凭直觉改代码" —— 当前是凭直觉的"可能有用"，不是有据可查的真瓶颈。
+2. **切换成本不小**：jsoniter 需要 8-10 个 go.mod 新增依赖 + replace；`encoding/json` 与 jsoniter 在 number/string boundary、tag option 解析存在细差，wire-compat 测试需逐路径回归。
+3. **sync.Pool[bytes.Buffer]** 需要切到 streaming encoder API（`encoder := json.NewEncoder(buf)`），重写所有 marshal 调用点 30+ 处，且对返回 `[]byte` 直送 Redis SET 的现有模式不能简单复用 pool（pool buffer 归还后被复用，传给 Redis 客户端的 byte slice 仍是 buffer 持有的内存，归还后会被下一次 Marshal 覆写）。
+4. **当前响应预算充裕**：项目目标推荐 < 500ms，标准 json marshal 一个 University 结构在 µs 量级，远未触瓶颈。
+5. **真出现瓶颈时再做**才符合工程价值。
+
+**何时取消 DEFERRED**：满足以下任一条件
+- 生产 pprof 显示 `encoding/json.*` 在 CPU profile 占比 ≥ 5%
+- benchmark 显示推荐 / data-service 路径 P95 接近 500ms 上限且 json marshal 是次大头
+- 引入 ClickHouse / Kafka 等高频序列化场景
+
+**OOB 备忘**：若未来执行，路径如下
+1. 拉 `pkg/jsonx`（封装 jsoniter `ConfigCompatibleWithStandardLibrary` 实例 + `MarshalToBuffer` / `UnmarshalFromBytes` 接口）。
+2. 缓存热路径 import 切换：`encoding/json` → `pkg/jsonx`，调用点零改动（接口对齐）。
+3. wire-compat 回归：取生产 Redis dump 一批样本，逐条 std-json Marshal vs jsonx Marshal 字节级比对。
+4. pprof 复测确认占比下降。
+
+**审计状态变更**：P-22 由 PENDING → ✓ FIXED (NO-OP, false positive)；P-23 由 PENDING → ⏸ DEFERRED（待证据）。整体 B.8 不再占用 P4 队列。
 
 ---
 
@@ -605,7 +638,7 @@ else { recType = "冲刺" }
 | **P1**（本周） | B.1 P-01 LIKE / B.3 P-14 rateLimiter / B.6 P-24 流式读 | 性能与稳定性瓶颈 |
 | **P2**（下周） | B.2 P-15 stats / B.4 P-17/P-25 ctx / B.7 P-13 logrus | 优化项 |
 | **P3**（第 3-4 周） | C.1 BeforeCreate / C.2 APIResponse / C.3 gin.H / C.4 JSONB / C.5 Redis init / C.6 SecurityHeaders | 重复代码治理（全部完成） |
-| **P4**（持续） | B.8 P-22/P-23 debug log/JSON 优化 | 长尾治理 |
+| **P4**（持续） | ~~B.8 P-22/P-23~~ → P-22 NO-OP / P-23 DEFERRED 待 pprof 证据 | 长尾治理（无主动工作） |
 | **P5**（产品决策后） | D.1 CDF / D.2 三分法 / D.4 Score 分离 | 算法升级，需产品同步 |
 | **P6**（评估后） | D.3 ML stub 删除 / D.5 真数据接入 | D.3 易；D.5 需基础设施投入 |
 
