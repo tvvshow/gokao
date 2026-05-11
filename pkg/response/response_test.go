@@ -105,3 +105,42 @@ func TestAbortWithError_AbortsChain(t *testing.T) {
 		t.Errorf("status = %d", rec.Code)
 	}
 }
+
+func TestCreatedWithMessage_KeepsCustomMessage(t *testing.T) {
+	status, body := performGet(func(c *gin.Context) {
+		CreatedWithMessage(c, gin.H{"user_id": "u-1"}, "User registered successfully")
+	}, nil)
+	if status != http.StatusCreated {
+		t.Fatalf("status = %d", status)
+	}
+	if body.Message != "User registered successfully" {
+		t.Errorf("message = %q", body.Message)
+	}
+	if !body.Success {
+		t.Fatal("expected success=true")
+	}
+}
+
+func TestTooManyRequests_PassesDetails(t *testing.T) {
+	status, body := performGet(func(c *gin.Context) {
+		TooManyRequests(c, "RATE_LIMITED", "slow down", map[string]any{"retry_after": 30})
+	}, nil)
+	if status != http.StatusTooManyRequests {
+		t.Fatalf("status = %d", status)
+	}
+	if body.Error == nil || body.Error.Code != "RATE_LIMITED" {
+		t.Fatalf("error = %+v", body.Error)
+	}
+}
+
+func TestWriteError_AcceptsArbitraryStatus(t *testing.T) {
+	status, body := performGet(func(c *gin.Context) {
+		WriteError(c, http.StatusTeapot, "TEAPOT", "I am a teapot", nil)
+	}, nil)
+	if status != http.StatusTeapot {
+		t.Fatalf("status = %d", status)
+	}
+	if body.Error == nil || body.Error.Code != "TEAPOT" {
+		t.Fatalf("error = %+v", body.Error)
+	}
+}

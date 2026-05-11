@@ -20,6 +20,7 @@ import (
 
 	pkghealth "github.com/tvvshow/gokao/pkg/health"
 	pkgmw "github.com/tvvshow/gokao/pkg/middleware"
+	"github.com/tvvshow/gokao/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -110,7 +111,7 @@ func main() {
 
 	// 基础路由
 	v1.GET("/status", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+		response.OK(c, gin.H{
 			"status":  "ok",
 			"service": "payment-service",
 			"version": "1.0.0",

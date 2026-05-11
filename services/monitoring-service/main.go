@@ -16,6 +16,7 @@ import (
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/monitoring-service/internal/alerts"
 	"github.com/tvvshow/gokao/services/monitoring-service/internal/metrics"
 )
@@ -62,26 +63,26 @@ func main() {
 	r.POST("/alerts", func(c *gin.Context) {
 		var alert alerts.Alert
 		if err := c.ShouldBindJSON(&alert); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.BadRequest(c, "invalid_request", err.Error(), nil)
 			return
 		}
 
 		if err := alertManager.TriggerAlert(ctx, &alert); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.InternalError(c, "alert_trigger_failed", err.Error(), nil)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Alert triggered successfully"})
+		response.OKWithMessage(c, nil, "Alert triggered successfully")
 	})
 
 	r.GET("/alerts", func(c *gin.Context) {
-		alerts, err := alertManager.GetAlerts(ctx, 10, 0)
+		alertList, err := alertManager.GetAlerts(ctx, 10, 0)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.InternalError(c, "alert_fetch_failed", err.Error(), nil)
 			return
 		}
 
-		c.JSON(http.StatusOK, alerts)
+		response.OK(c, alertList)
 	})
 
 	// 启动服务器

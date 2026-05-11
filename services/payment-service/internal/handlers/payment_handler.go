@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 )
@@ -61,15 +61,10 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 	var req CreatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.WithError(err).Warn("Invalid create payment request")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 创建支付请求
 	paymentReq := &models.CreatePaymentRequest{
 		UserID:        req.UserID,
 		Amount:        decimal.NewFromFloat(req.Amount),
@@ -79,18 +74,14 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 		Extra:         req.Extra,
 	}
 
-	// 调用支付服务
 	paymentResp, err := h.paymentService.CreatePayment(c.Request.Context(), paymentReq)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create payment")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "payment_creation_failed",
-			"message": "Failed to create payment",
-		})
+		response.InternalError(c, "payment_creation_failed", "Failed to create payment", nil)
 		return
 	}
 
-	response := CreatePaymentResponse{
+	resp := CreatePaymentResponse{
 		ID:         paymentResp.ID.String(),
 		OrderNo:    paymentResp.OrderNo,
 		Amount:     paymentResp.Amount.InexactFloat64(),
@@ -104,7 +95,7 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 		CreatedAt:  paymentResp.CreatedAt,
 	}
 
-	c.JSON(http.StatusCreated, response)
+	response.Created(c, resp)
 }
 
 // QueryPaymentRequest 查询支付请求
@@ -116,32 +107,23 @@ type QueryPaymentRequest struct {
 func (h *PaymentHandler) QueryPayment(c *gin.Context) {
 	paymentID := c.Param("payment_id")
 	if paymentID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_payment_id",
-			"message": "Payment ID is required",
-		})
+		response.BadRequest(c, "invalid_payment_id", "Payment ID is required", nil)
 		return
 	}
 
 	payment, err := h.paymentService.QueryPayment(c.Request.Context(), paymentID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to query payment")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "payment_query_failed",
-			"message": "Failed to query payment",
-		})
+		response.InternalError(c, "payment_query_failed", "Failed to query payment", nil)
 		return
 	}
 
 	if payment == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "payment_not_found",
-			"message": "Payment not found",
-		})
+		response.NotFound(c, "payment_not_found", "Payment not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, payment)
+	response.OK(c, payment)
 }
 
 // PaymentCallbackRequest 支付回调请求
@@ -160,26 +142,20 @@ type PaymentCallbackRequest struct {
 func (h *PaymentHandler) PaymentCallback(c *gin.Context) {
 	channel := c.Param("channel")
 	if channel == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_channel",
-			"message": "Payment channel is required",
-		})
+		response.BadRequest(c, "invalid_channel", "Payment channel is required", nil)
 		return
 	}
 
-	// 处理支付回调（HandleCallback 直接从 request.Body 读取原始字节做签名验证，
-	// 不能先用 ShouldBindJSON 消费 body，否则后续 ReadAll 读到空）
+	// HandleCallback 直接从 request.Body 读取原始字节做签名验证，
+	// 不能先用 ShouldBindJSON 消费 body，否则后续 ReadAll 读到空
 	result, err := h.paymentService.HandleCallback(c.Request.Context(), channel, c.Request)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to handle payment callback")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "callback_processing_failed",
-			"message": "Failed to process payment callback",
-		})
+		response.InternalError(c, "callback_processing_failed", "Failed to process payment callback", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.OK(c, result)
 }
 
 // RefundRequest 退款请求
@@ -195,14 +171,10 @@ func (h *PaymentHandler) Refund(c *gin.Context) {
 	var req RefundRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.WithError(err).Warn("Invalid refund request")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", nil)
 		return
 	}
 
-	// 创建退款请求
 	refundReq := &models.RefundRequest{
 		OrderNo:  req.PaymentID,
 		RefundID: fmt.Sprintf("RF%d", time.Now().UnixNano()),
@@ -210,22 +182,17 @@ func (h *PaymentHandler) Refund(c *gin.Context) {
 		Reason:   req.Reason,
 	}
 
-	// 调用退款服务
 	refundResp, err := h.paymentService.RefundPayment(c.Request.Context(), refundReq)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create refund")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "refund_creation_failed",
-			"message": "Failed to create refund",
-		})
+		response.InternalError(c, "refund_creation_failed", "Failed to create refund", nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.CreatedWithMessage(c, gin.H{
 		"refund_id": refundResp.RefundID,
 		"status":    refundResp.Status,
-		"message":   "Refund request submitted",
-	})
+	}, "Refund request submitted")
 }
 
 // QueryRefundRequest 查询退款请求
@@ -237,18 +204,12 @@ type QueryRefundRequest struct {
 func (h *PaymentHandler) QueryRefund(c *gin.Context) {
 	refundID := c.Param("refund_id")
 	if refundID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_refund_id",
-			"message": "Refund ID is required",
-		})
+		response.BadRequest(c, "invalid_refund_id", "Refund ID is required", nil)
 		return
 	}
 
 	// 退款查询功能需要在服务层实现
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error":   "not_implemented",
-		"message": "Refund query not implemented",
-	})
+	response.NotImplemented(c, "not_implemented", "Refund query not implemented")
 }
 
 // ListPaymentsRequest 列出支付记录请求
@@ -265,14 +226,10 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	var req ListPaymentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.WithError(err).Warn("Invalid list payments request")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", nil)
 		return
 	}
 
-	// 验证分页参数
 	if req.Page < 1 {
 		req.Page = 1
 	}
@@ -280,7 +237,7 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 		req.Limit = 20
 	}
 
-	// 构建查询条件：优先使用网关透传用户ID，其次兼容 query.user_id。
+	// 优先使用网关透传用户ID，其次兼容 query.user_id
 	userIDRaw := c.GetString("user_id")
 	if userIDRaw == "" {
 		userIDRaw = c.GetHeader("X-User-ID")
@@ -289,18 +246,12 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 		userIDRaw = req.UserID
 	}
 	if userIDRaw == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 	userID, err := uuid.Parse(userIDRaw)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_user_id",
-			"message": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
@@ -315,14 +266,11 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 	payments, total, err := h.paymentService.ListPayments(c.Request.Context(), filter)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list payments")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "payment_list_failed",
-			"message": "Failed to list payments",
-		})
+		response.InternalError(c, "payment_list_failed", "Failed to list payments", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"payments": payments,
 		"total":    total,
 		"page":     req.Page,
@@ -335,23 +283,16 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 func (h *PaymentHandler) ClosePayment(c *gin.Context) {
 	paymentID := c.Param("payment_id")
 	if paymentID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_payment_id",
-			"message": "Payment ID is required",
-		})
+		response.BadRequest(c, "invalid_payment_id", "Payment ID is required", nil)
 		return
 	}
 
 	// 关闭支付功能需要在服务层实现
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error":   "not_implemented",
-		"message": "Close payment not implemented",
-	})
+	response.NotImplemented(c, "not_implemented", "Close payment not implemented")
 }
 
 // GetPaymentStatistics 获取支付统计
 func (h *PaymentHandler) GetPaymentStatistics(c *gin.Context) {
-	// 获取查询参数
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 	channel := c.Query("channel")
@@ -362,55 +303,41 @@ func (h *PaymentHandler) GetPaymentStatistics(c *gin.Context) {
 	if startDateStr != "" {
 		startDate, err = time.Parse("2006-01-02", startDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "invalid_start_date",
-				"message": "Start date format should be YYYY-MM-DD",
-			})
+			response.BadRequest(c, "invalid_start_date", "Start date format should be YYYY-MM-DD", nil)
 			return
 		}
 	} else {
-		startDate = time.Now().AddDate(0, -1, 0) // 默认最近一个月
+		startDate = time.Now().AddDate(0, -1, 0)
 	}
 
 	if endDateStr != "" {
 		endDate, err = time.Parse("2006-01-02", endDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "invalid_end_date",
-				"message": "End date format should be YYYY-MM-DD",
-			})
+			response.BadRequest(c, "invalid_end_date", "End date format should be YYYY-MM-DD", nil)
 			return
 		}
 	} else {
 		endDate = time.Now()
 	}
 
-	// 获取统计信息
 	stats, err := h.paymentService.GetPaymentStatistics(c.Request.Context(), startDate, endDate, channel)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get payment statistics")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "statistics_failed",
-			"message": "Failed to get payment statistics",
-		})
+		response.InternalError(c, "statistics_failed", "Failed to get payment statistics", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	response.OK(c, stats)
 }
 
 // WebhookTest 支付webhook测试
 func (h *PaymentHandler) WebhookTest(c *gin.Context) {
 	channel := c.Param("channel")
 	if channel == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_channel",
-			"message": "Payment channel is required",
-		})
+		response.BadRequest(c, "invalid_channel", "Payment channel is required", nil)
 		return
 	}
 
-	// 模拟支付回调数据
 	testData := map[string]interface{}{
 		"payment_id": "test_" + strconv.FormatInt(time.Now().Unix(), 10),
 		"status":     "success",
@@ -424,18 +351,14 @@ func (h *PaymentHandler) WebhookTest(c *gin.Context) {
 	jsonData, err := json.Marshal(testData)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to marshal test data")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "test_data_failed",
-			"message": "Failed to create test data",
-		})
+		response.InternalError(c, "test_data_failed", "Failed to create test data", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.OKWithMessage(c, gin.H{
 		"channel":      channel,
 		"test_data":    string(jsonData),
 		"timestamp":    time.Now().Unix(),
-		"message":      "Webhook test data generated",
 		"instructions": "Use this data to test your payment callback endpoint",
-	})
+	}, "Webhook test data generated")
 }

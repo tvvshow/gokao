@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/consul/api"
+
+	"github.com/tvvshow/gokao/pkg/response"
 )
 
 // ServiceDiscovery 服务发现接口
@@ -43,11 +45,11 @@ type ServiceInstance struct {
 
 // ConsulDiscovery Consul服务发现实现
 type ConsulDiscovery struct {
-	client    *api.Client
-	config    *api.Config
-	services  map[string][]*ServiceInstance
-	mutex     sync.RWMutex
-	watchers  map[string][]func([]*ServiceInstance)
+	client   *api.Client
+	config   *api.Config
+	services map[string][]*ServiceInstance
+	mutex    sync.RWMutex
+	watchers map[string][]func([]*ServiceInstance)
 }
 
 // NewConsulDiscovery 创建Consul服务发现实例
@@ -250,11 +252,8 @@ func (cd *ConsulDiscovery) ServiceDiscoveryMiddleware(serviceName string) gin.Ha
 	return func(c *gin.Context) {
 		address, err := cd.GetServiceAddress(serviceName)
 		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error":   "service_unavailable",
-				"message": fmt.Sprintf("Service %s is unavailable", serviceName),
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusServiceUnavailable, "service_unavailable",
+				fmt.Sprintf("Service %s is unavailable", serviceName), nil)
 			return
 		}
 

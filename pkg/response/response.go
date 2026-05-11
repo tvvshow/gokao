@@ -99,9 +99,14 @@ func OKWithMessage(c *gin.Context, data interface{}, message string) {
 	c.JSON(http.StatusOK, Success(c, data, message))
 }
 
-// Created 写 201。
+// Created 写 201，默认 message "创建成功"。
 func Created(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusCreated, Success(c, data, "创建成功"))
+}
+
+// CreatedWithMessage 写 201 + 自定义 message。
+func CreatedWithMessage(c *gin.Context, data interface{}, message string) {
+	c.JSON(http.StatusCreated, Success(c, data, message))
 }
 
 // NoContent 写 204；body 通常被忽略，但保留 RequestID 便于追踪。
@@ -129,9 +134,24 @@ func NotFound(c *gin.Context, code, message string) {
 	c.JSON(http.StatusNotFound, Error(c, code, message, nil))
 }
 
+// RequestTimeout 写 408。
+func RequestTimeout(c *gin.Context, code, message string) {
+	c.JSON(http.StatusRequestTimeout, Error(c, code, message, nil))
+}
+
 // Conflict 写 409。
 func Conflict(c *gin.Context, code, message string, details interface{}) {
 	c.JSON(http.StatusConflict, Error(c, code, message, details))
+}
+
+// Gone 写 410。
+func Gone(c *gin.Context, code, message string) {
+	c.JSON(http.StatusGone, Error(c, code, message, nil))
+}
+
+// Locked 写 423，常用于账户/资源锁定。
+func Locked(c *gin.Context, code, message string) {
+	c.JSON(http.StatusLocked, Error(c, code, message, nil))
 }
 
 // UnprocessableEntity 写 422，常用于业务级别的参数失败。
@@ -139,9 +159,34 @@ func UnprocessableEntity(c *gin.Context, code, message string, details interface
 	c.JSON(http.StatusUnprocessableEntity, Error(c, code, message, details))
 }
 
+// TooManyRequests 写 429，常用于限流。
+func TooManyRequests(c *gin.Context, code, message string, details interface{}) {
+	c.JSON(http.StatusTooManyRequests, Error(c, code, message, details))
+}
+
 // InternalError 写 500，避免在生产暴露 details；details 仅在 dev/debug 路径塞错误对象。
 func InternalError(c *gin.Context, code, message string, details interface{}) {
 	c.JSON(http.StatusInternalServerError, Error(c, code, message, details))
+}
+
+// NotImplemented 写 501。
+func NotImplemented(c *gin.Context, code, message string) {
+	c.JSON(http.StatusNotImplemented, Error(c, code, message, nil))
+}
+
+// ServiceUnavailable 写 503，常用于熔断或依赖不可用。
+func ServiceUnavailable(c *gin.Context, code, message string, details interface{}) {
+	c.JSON(http.StatusServiceUnavailable, Error(c, code, message, details))
+}
+
+// GatewayTimeout 写 504。
+func GatewayTimeout(c *gin.Context, code, message string) {
+	c.JSON(http.StatusGatewayTimeout, Error(c, code, message, nil))
+}
+
+// WriteError 写任意 status code 的错误响应（用于不在常用集合内的状态码）。
+func WriteError(c *gin.Context, status int, code, message string, details interface{}) {
+	c.JSON(status, Error(c, code, message, details))
 }
 
 // AbortWithError 用 c.AbortWithStatusJSON，确保中间件链在错误时不再继续。

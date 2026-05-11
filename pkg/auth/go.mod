@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 )
 
 require (
@@ -40,3 +41,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/tvvshow/gokao/pkg/response => ../response

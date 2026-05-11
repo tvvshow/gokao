@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/payment-service/internal/config"
 	"golang.org/x/time/rate"
 
@@ -43,11 +44,7 @@ func RateLimit(cfg config.RateLimitConfig) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		if !limiter.Allow() {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded",
-				"code":  "RATE_LIMIT_EXCEEDED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "rate limit exceeded", nil)
 			return
 		}
 		c.Next()
@@ -59,21 +56,13 @@ func Auth(cfg config.JWTConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "missing or invalid authorization header",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing or invalid authorization header", nil)
 			return
 		}
 
 		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "empty bearer token",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "empty bearer token", nil)
 			return
 		}
 
@@ -81,21 +70,13 @@ func Auth(cfg config.JWTConfig) gin.HandlerFunc {
 			return []byte(cfg.Secret), nil
 		})
 		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "invalid token", nil)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token claims",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "invalid token claims", nil)
 			return
 		}
 
@@ -104,11 +85,7 @@ func Auth(cfg config.JWTConfig) gin.HandlerFunc {
 			userID = claimString(claims, "sub")
 		}
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "token missing user identity",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "token missing user identity", nil)
 			return
 		}
 
@@ -141,11 +118,7 @@ func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")
 		if !exists || role != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "admin access required",
-				"code":  "INSUFFICIENT_PRIVILEGES",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "INSUFFICIENT_PRIVILEGES", "admin access required", nil)
 			return
 		}
 		c.Next()
@@ -157,21 +130,13 @@ func VIPOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")
 		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "authentication required",
-				"code":  "AUTHENTICATION_REQUIRED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "AUTHENTICATION_REQUIRED", "authentication required", nil)
 			return
 		}
 
-		// 允许admin和vip用户访问
+		// 允许 admin 和 vip 用户访问
 		if role != "admin" && role != "vip" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "VIP membership required",
-				"code":  "VIP_REQUIRED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "VIP_REQUIRED", "VIP membership required", nil)
 			return
 		}
 		c.Next()

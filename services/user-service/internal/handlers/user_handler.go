@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/user-service/internal/services"
 )
 
@@ -40,190 +40,86 @@ type UpdateUserRequest struct {
 }
 
 // GetUser 获取用户信息
-// @Summary 获取用户信息
-// @Description 根据用户ID获取用户详细信息
-// @Tags 用户管理
-// @Produce json
-// @Param id path string true "用户ID"
-// @Success 200 {object} models.User "用户信息"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "用户不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id} [get]
 func (h *UserHandler) GetUser(c *gin.Context) {
-	// 解析用户ID
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
-	// 获取用户信息
 	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "User not found",
-			})
+			response.NotFound(c, "user_not_found", "User not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get user",
-		})
+		response.InternalError(c, "user_fetch_failed", "Failed to get user", nil)
 		return
 	}
 
-	// 清除敏感信息
 	user.Password = ""
-
-	c.JSON(http.StatusOK, user)
+	response.OK(c, user)
 }
 
 // UpdateUser 更新用户信息
-// @Summary 更新用户信息
-// @Description 更新指定用户的信息
-// @Tags 用户管理
-// @Accept json
-// @Produce json
-// @Param id path string true "用户ID"
-// @Param request body UpdateUserRequest true "更新信息"
-// @Success 200 {object} map[string]interface{} "更新成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "用户不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
-	// 解析用户ID
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
 	var req UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 构建更新数据
-	updates := make(map[string]interface{})
-	if req.Nickname != "" {
-		updates["nickname"] = req.Nickname
-	}
-	if req.Email != "" {
-		updates["email"] = req.Email
-	}
-	if req.Phone != "" {
-		updates["phone"] = req.Phone
-	}
-	if req.Province != "" {
-		updates["province"] = req.Province
-	}
-	if req.City != "" {
-		updates["city"] = req.City
-	}
-	if req.Gender != "" {
-		updates["gender"] = req.Gender
-	}
-	if req.Avatar != "" {
-		updates["avatar"] = req.Avatar
-	}
-	if req.Status != "" {
-		updates["status"] = req.Status
-	}
-	if req.Birthday != "" {
-		if birthday, err := time.Parse("2006-01-02", req.Birthday); err == nil {
-			updates["birthday"] = birthday
-		}
-	}
-
+	updates := buildUserUpdates(&req)
 	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "No valid fields to update",
-		})
+		response.BadRequest(c, "no_fields", "No valid fields to update", nil)
 		return
 	}
 
-	// 更新用户
 	if err := h.userService.UpdateUser(userID, updates); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "User not found",
-			})
+			response.NotFound(c, "user_not_found", "User not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update user",
-		})
+		response.InternalError(c, "user_update_failed", "Failed to update user", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User updated successfully",
-	})
+	response.OKWithMessage(c, nil, "User updated successfully")
 }
 
 // DeleteUser 删除用户
-// @Summary 删除用户
-// @Description 软删除指定用户
-// @Tags 用户管理
-// @Produce json
-// @Param id path string true "用户ID"
-// @Success 200 {object} map[string]interface{} "删除成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "用户不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	// 解析用户ID
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
-	// 检查是否尝试删除自己
 	currentUserID, exists := c.Get("user_id")
 	if exists && currentUserID.(uuid.UUID) == userID {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Cannot delete your own account",
-		})
+		response.BadRequest(c, "self_delete_forbidden", "Cannot delete your own account", nil)
 		return
 	}
 
-	// 删除用户
 	if err := h.userService.DeleteUser(userID); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "User not found",
-			})
+			response.NotFound(c, "user_not_found", "User not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete user",
-		})
+		response.InternalError(c, "user_delete_failed", "Failed to delete user", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User deleted successfully",
-	})
+	response.OKWithMessage(c, nil, "User deleted successfully")
 }
 
 // ListUsersQuery 用户列表查询参数
@@ -237,32 +133,13 @@ type ListUsersQuery struct {
 }
 
 // ListUsers 获取用户列表
-// @Summary 获取用户列表
-// @Description 分页获取用户列表，支持搜索和过滤
-// @Tags 用户管理
-// @Produce json
-// @Param page query int false "页码" default(1)
-// @Param page_size query int false "每页数量" default(20)
-// @Param search query string false "搜索关键词"
-// @Param status query string false "用户状态" Enums(active, inactive, suspended)
-// @Param province query string false "省份"
-// @Param city query string false "城市"
-// @Success 200 {object} map[string]interface{} "用户列表"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var query ListUsersQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid query parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_query", "Invalid query parameters", err.Error())
 		return
 	}
 
-	// 构建过滤条件
 	filters := make(map[string]interface{})
 	if query.Search != "" {
 		filters["search"] = query.Search
@@ -277,24 +154,18 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		filters["city"] = query.City
 	}
 
-	// 获取用户列表
 	users, total, err := h.userService.ListUsers(query.Page, query.PageSize, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get user list",
-		})
+		response.InternalError(c, "user_list_failed", "Failed to get user list", nil)
 		return
 	}
 
-	// 清除敏感信息
 	for i := range users {
 		users[i].Password = ""
 	}
 
-	// 计算分页信息
 	totalPages := (int(total) + query.PageSize - 1) / query.PageSize
-
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"users": users,
 		"pagination": gin.H{
 			"page":        query.Page,
@@ -311,184 +182,190 @@ type AssignRoleRequest struct {
 }
 
 // AssignRole 为用户分配角色
-// @Summary 为用户分配角色
-// @Description 为指定用户分配角色
-// @Tags 用户管理
-// @Accept json
-// @Produce json
-// @Param id path string true "用户ID"
-// @Param request body AssignRoleRequest true "角色信息"
-// @Success 200 {object} map[string]interface{} "分配成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "用户或角色不存在"
-// @Failure 409 {object} map[string]interface{} "角色已分配"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id}/roles [post]
 func (h *UserHandler) AssignRole(c *gin.Context) {
-	// 解析用户ID
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
 	var req AssignRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 分配角色
 	if err := h.userService.AssignRole(userID, req.RoleID); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
-			return
+		switch {
+		case strings.Contains(err.Error(), "not found"):
+			response.NotFound(c, "not_found", err.Error())
+		case strings.Contains(err.Error(), "already assigned"):
+			response.Conflict(c, "role_already_assigned", err.Error(), nil)
+		default:
+			response.InternalError(c, "role_assign_failed", "Failed to assign role", nil)
 		}
-		if strings.Contains(err.Error(), "already assigned") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to assign role",
-		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Role assigned successfully",
-	})
+	response.OKWithMessage(c, nil, "Role assigned successfully")
 }
 
 // RevokeRole 撤销用户角色
-// @Summary 撤销用户角色
-// @Description 撤销指定用户的角色
-// @Tags 用户管理
-// @Produce json
-// @Param id path string true "用户ID"
-// @Param role_id path int true "角色ID"
-// @Success 200 {object} map[string]interface{} "撤销成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "用户角色不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id}/roles/{role_id} [delete]
 func (h *UserHandler) RevokeRole(c *gin.Context) {
-	// 解析用户ID
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
 		return
 	}
 
-	// 解析角色ID
 	roleIDStr := c.Param("role_id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 撤销角色
 	if err := h.userService.RevokeRole(userID, uint(roleID)); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
+			response.NotFound(c, "not_found", err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to revoke role",
-		})
+		response.InternalError(c, "role_revoke_failed", "Failed to revoke role", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Role revoked successfully",
-	})
+	response.OKWithMessage(c, nil, "Role revoked successfully")
 }
 
 // GetProfile 获取当前用户资料
-// @Summary 获取当前用户资料
-// @Description 获取当前登录用户的详细资料
-// @Tags 用户管理
-// @Accept json
-// @Produce json
-// @Success 200 {object} models.User
-// @Failure 401 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Security BearerAuth
-// @Router /api/v1/users/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	// 从JWT中获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
+		response.Unauthorized(c, "unauthenticated", "User not authenticated")
 		return
 	}
 
-	// 获取用户信息
 	user, err := h.userService.GetUserByID(userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "User not found",
-		})
+		response.NotFound(c, "user_not_found", "User not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	response.OK(c, user)
 }
 
 // UpdateProfile 更新当前用户资料
-// @Summary 更新当前用户资料
-// @Description 更新当前登录用户的资料信息
-// @Tags 用户管理
-// @Accept json
-// @Produce json
-// @Param user body UpdateUserRequest true "用户信息"
-// @Success 200 {object} models.User
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Security BearerAuth
-// @Router /api/v1/users/profile [put]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	// 从JWT中获取用户ID
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
+		response.Unauthorized(c, "unauthenticated", "User not authenticated")
 		return
 	}
 
-	// 解析请求体
 	var req UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", err.Error(), nil)
 		return
 	}
 
-	// 构建更新数据
+	updates := buildUserUpdates(&req)
+	if len(updates) == 0 {
+		response.BadRequest(c, "no_fields", "No valid fields to update", nil)
+		return
+	}
+
+	if err := h.userService.UpdateUser(userID.(uuid.UUID), updates); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "user_not_found", "User not found")
+			return
+		}
+		response.InternalError(c, "user_update_failed", "Failed to update user", nil)
+		return
+	}
+
+	updatedUser, err := h.userService.GetUserByID(userID.(uuid.UUID))
+	if err != nil {
+		response.InternalError(c, "user_fetch_failed", "Failed to get updated user", nil)
+		return
+	}
+
+	response.OK(c, updatedUser)
+}
+
+// UserChangePasswordRequest 修改密码请求
+type UserChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6,max=100"`
+}
+
+// ChangePassword 修改密码
+func (h *UserHandler) ChangePassword(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "unauthenticated", "User not authenticated")
+		return
+	}
+
+	var req UserChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid_request", err.Error(), nil)
+		return
+	}
+
+	if err := h.userService.ChangePassword(userID.(uuid.UUID), req.OldPassword, req.NewPassword); err != nil {
+		response.BadRequest(c, "password_change_failed", err.Error(), nil)
+		return
+	}
+
+	response.OKWithMessage(c, nil, "Password changed successfully")
+}
+
+// GetUserRoles 获取用户角色
+func (h *UserHandler) GetUserRoles(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.BadRequest(c, "invalid_user_id", "Invalid user ID format", nil)
+		return
+	}
+
+	roles, err := h.roleService.GetUserRoles(userID)
+	if err != nil {
+		response.InternalError(c, "user_roles_failed", "Failed to get user roles", nil)
+		return
+	}
+
+	response.OK(c, gin.H{"roles": roles})
+}
+
+// GetMembership 获取当前用户会员信息
+func (h *UserHandler) GetMembership(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "unauthenticated", "User not authenticated")
+		return
+	}
+
+	user, err := h.userService.GetUserByID(userID.(uuid.UUID))
+	if err != nil {
+		response.NotFound(c, "user_not_found", "User not found")
+		return
+	}
+
+	response.OK(c, gin.H{
+		"membership_level":  user.MembershipLevel,
+		"membership_expiry": user.MembershipExpiry,
+		"max_devices":       user.MaxDevices,
+		"trial_used":        user.TrialUsed,
+		"trial_expiry":      user.TrialExpiry,
+	})
+}
+
+// buildUserUpdates 把 UpdateUserRequest 翻译成可直接喂给 service.UpdateUser 的 map。
+// 抽到一处避免 UpdateUser/UpdateProfile 两处重复。
+func buildUserUpdates(req *UpdateUserRequest) map[string]interface{} {
 	updates := make(map[string]interface{})
 	if req.Nickname != "" {
 		updates["nickname"] = req.Nickname
@@ -519,157 +396,5 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 			updates["birthday"] = birthday
 		}
 	}
-
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "No valid fields to update",
-		})
-		return
-	}
-
-	// 更新用户
-	if err := h.userService.UpdateUser(userID.(uuid.UUID), updates); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "User not found",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update user",
-		})
-		return
-	}
-
-	// 返回更新后的用户信息
-	updatedUser, err := h.userService.GetUserByID(userID.(uuid.UUID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get updated user",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, updatedUser)
-}
-
-// UserChangePasswordRequest 修改密码请求
-type UserChangePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6,max=100"`
-}
-
-// ChangePassword 修改密码
-// @Summary 修改密码
-// @Description 修改当前登录用户的密码
-// @Tags 用户管理
-// @Accept json
-// @Produce json
-// @Param request body ChangePasswordRequest true "修改密码请求"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Security BearerAuth
-// @Router /api/v1/users/change-password [post]
-func (h *UserHandler) ChangePassword(c *gin.Context) {
-	// 从JWT中获取用户ID
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	// 解析请求体
-	var req UserChangePasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// 验证旧密码并更新新密码
-	if err := h.userService.ChangePassword(userID.(uuid.UUID), req.OldPassword, req.NewPassword); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Password changed successfully",
-	})
-}
-
-// GetUserRoles 获取用户角色
-// @Summary 获取用户角色
-// @Description 获取指定用户的所有角色
-// @Tags 用户管理
-// @Produce json
-// @Param id path string true "用户ID"
-// @Success 200 {object} map[string]interface{} "用户角色列表"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/users/{id}/roles [get]
-func (h *UserHandler) GetUserRoles(c *gin.Context) {
-	// 解析用户ID
-	userIDStr := c.Param("id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid user ID format",
-		})
-		return
-	}
-
-	// 获取用户角色
-	roles, err := h.roleService.GetUserRoles(userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get user roles",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"roles": roles,
-	})
-}
-
-// GetMembership 获取当前用户会员信息
-// @Summary 获取会员信息
-// @Description 获取当前登录用户的会员状态、等级、到期时间等
-// @Tags 用户管理
-// @Produce json
-// @Success 200 {object} map[string]interface{} "会员信息"
-// @Failure 401 {object} map[string]interface{} "未认证"
-// @Security BearerAuth
-// @Router /api/v1/users/membership [get]
-func (h *UserHandler) GetMembership(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	user, err := h.userService.GetUserByID(userID.(uuid.UUID))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "User not found",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"membership_level":  user.MembershipLevel,
-		"membership_expiry": user.MembershipExpiry,
-		"max_devices":       user.MaxDevices,
-		"trial_used":        user.TrialUsed,
-		"trial_expiry":      user.TrialExpiry,
-	})
+	return updates
 }

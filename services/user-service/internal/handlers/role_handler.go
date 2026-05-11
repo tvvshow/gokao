@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/user-service/internal/models"
 	"github.com/tvvshow/gokao/services/user-service/internal/services"
 )
@@ -38,29 +38,13 @@ type UpdateRoleRequest struct {
 }
 
 // CreateRole 创建角色
-// @Summary 创建角色
-// @Description 创建新的角色
-// @Tags 角色管理
-// @Accept json
-// @Produce json
-// @Param request body CreateRoleRequest true "角色信息"
-// @Success 201 {object} models.Role "创建的角色"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 409 {object} map[string]interface{} "角色名已存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles [post]
 func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 创建角色
 	role := &models.Role{
 		Name:        req.Name,
 		Description: req.Description,
@@ -69,97 +53,53 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 
 	if err := h.roleService.CreateRole(role); err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "already exists") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Role name already exists",
-			})
+			response.Conflict(c, "role_name_exists", "Role name already exists", nil)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create role",
-		})
+		response.InternalError(c, "role_create_failed", "Failed to create role", nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, role)
+	response.Created(c, role)
 }
 
 // GetRole 获取角色信息
-// @Summary 获取角色信息
-// @Description 根据角色ID获取角色详细信息
-// @Tags 角色管理
-// @Produce json
-// @Param id path int true "角色ID"
-// @Success 200 {object} models.Role "角色信息"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id} [get]
 func (h *RoleHandler) GetRole(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 获取角色信息
 	role, err := h.roleService.GetRoleByID(uint(roleID))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Role not found",
-			})
+			response.NotFound(c, "role_not_found", "Role not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get role",
-		})
+		response.InternalError(c, "role_fetch_failed", "Failed to get role", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, role)
+	response.OK(c, role)
 }
 
 // UpdateRole 更新角色信息
-// @Summary 更新角色信息
-// @Description 更新指定角色的信息
-// @Tags 角色管理
-// @Accept json
-// @Produce json
-// @Param id path int true "角色ID"
-// @Param request body UpdateRoleRequest true "更新信息"
-// @Success 200 {object} map[string]interface{} "更新成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色不存在"
-// @Failure 409 {object} map[string]interface{} "角色名已存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id} [put]
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
 	var req UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 构建更新数据
 	updates := make(map[string]interface{})
 	if req.Name != "" {
 		updates["name"] = req.Name
@@ -172,84 +112,47 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	}
 
 	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "No valid fields to update",
-		})
+		response.BadRequest(c, "no_fields", "No valid fields to update", nil)
 		return
 	}
 
-	// 更新角色
 	if err := h.roleService.UpdateRole(uint(roleID), updates); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Role not found",
-			})
-			return
+		switch {
+		case strings.Contains(err.Error(), "not found"):
+			response.NotFound(c, "role_not_found", "Role not found")
+		case strings.Contains(err.Error(), "duplicate"), strings.Contains(err.Error(), "already exists"):
+			response.Conflict(c, "role_name_exists", "Role name already exists", nil)
+		default:
+			response.InternalError(c, "role_update_failed", "Failed to update role", nil)
 		}
-		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "already exists") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Role name already exists",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update role",
-		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Role updated successfully",
-	})
+	response.OKWithMessage(c, nil, "Role updated successfully")
 }
 
 // DeleteRole 删除角色
-// @Summary 删除角色
-// @Description 删除指定角色
-// @Tags 角色管理
-// @Produce json
-// @Param id path int true "角色ID"
-// @Success 200 {object} map[string]interface{} "删除成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色不存在"
-// @Failure 409 {object} map[string]interface{} "角色正在使用中"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id} [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 删除角色
 	if err := h.roleService.DeleteRole(uint(roleID)); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Role not found",
-			})
-			return
+		switch {
+		case strings.Contains(err.Error(), "not found"):
+			response.NotFound(c, "role_not_found", "Role not found")
+		case strings.Contains(err.Error(), "in use"), strings.Contains(err.Error(), "assigned"):
+			response.Conflict(c, "role_in_use", "Role is currently in use and cannot be deleted", nil)
+		default:
+			response.InternalError(c, "role_delete_failed", "Failed to delete role", nil)
 		}
-		if strings.Contains(err.Error(), "in use") || strings.Contains(err.Error(), "assigned") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Role is currently in use and cannot be deleted",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete role",
-		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Role deleted successfully",
-	})
+	response.OKWithMessage(c, nil, "Role deleted successfully")
 }
 
 // ListRolesQuery 角色列表查询参数
@@ -261,30 +164,13 @@ type ListRolesQuery struct {
 }
 
 // ListRoles 获取角色列表
-// @Summary 获取角色列表
-// @Description 分页获取角色列表，支持搜索和过滤
-// @Tags 角色管理
-// @Produce json
-// @Param page query int false "页码" default(1)
-// @Param page_size query int false "每页数量" default(20)
-// @Param search query string false "搜索关键词"
-// @Param is_system query bool false "是否系统角色"
-// @Success 200 {object} map[string]interface{} "角色列表"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
 	var query ListRolesQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid query parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_query", "Invalid query parameters", err.Error())
 		return
 	}
 
-	// 构建过滤条件
 	filters := make(map[string]interface{})
 	if query.Search != "" {
 		filters["search"] = query.Search
@@ -293,19 +179,14 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 		filters["is_system"] = *query.IsSystem
 	}
 
-	// 获取角色列表
 	roles, total, err := h.roleService.ListRoles(query.Page, query.PageSize, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get role list",
-		})
+		response.InternalError(c, "role_list_failed", "Failed to get role list", nil)
 		return
 	}
 
-	// 计算分页信息
 	totalPages := (int(total) + query.PageSize - 1) / query.PageSize
-
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"roles": roles,
 		"pagination": gin.H{
 			"page":        query.Page,
@@ -322,152 +203,79 @@ type AssignPermissionRequest struct {
 }
 
 // AssignPermission 为角色分配权限
-// @Summary 为角色分配权限
-// @Description 为指定角色分配权限
-// @Tags 角色管理
-// @Accept json
-// @Produce json
-// @Param id path int true "角色ID"
-// @Param request body AssignPermissionRequest true "权限信息"
-// @Success 200 {object} map[string]interface{} "分配成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色或权限不存在"
-// @Failure 409 {object} map[string]interface{} "权限已分配"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id}/permissions [post]
 func (h *RoleHandler) AssignPermission(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
 	var req AssignPermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 分配权限
 	if err := h.roleService.AssignPermission(uint(roleID), req.PermissionID); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
-			return
+		switch {
+		case strings.Contains(err.Error(), "not found"):
+			response.NotFound(c, "not_found", err.Error())
+		case strings.Contains(err.Error(), "already assigned"):
+			response.Conflict(c, "permission_already_assigned", err.Error(), nil)
+		default:
+			response.InternalError(c, "permission_assign_failed", "Failed to assign permission", nil)
 		}
-		if strings.Contains(err.Error(), "already assigned") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to assign permission",
-		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Permission assigned successfully",
-	})
+	response.OKWithMessage(c, nil, "Permission assigned successfully")
 }
 
 // RevokePermission 撤销角色权限
-// @Summary 撤销角色权限
-// @Description 撤销指定角色的权限
-// @Tags 角色管理
-// @Produce json
-// @Param id path int true "角色ID"
-// @Param permission_id path int true "权限ID"
-// @Success 200 {object} map[string]interface{} "撤销成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色权限不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id}/permissions/{permission_id} [delete]
 func (h *RoleHandler) RevokePermission(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 解析权限ID
 	permissionIDStr := c.Param("permission_id")
 	permissionID, err := strconv.ParseUint(permissionIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid permission ID format",
-		})
+		response.BadRequest(c, "invalid_permission_id", "Invalid permission ID format", nil)
 		return
 	}
 
-	// 撤销权限
 	if err := h.roleService.RevokePermission(uint(roleID), uint(permissionID)); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
+			response.NotFound(c, "not_found", err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to revoke permission",
-		})
+		response.InternalError(c, "permission_revoke_failed", "Failed to revoke permission", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Permission revoked successfully",
-	})
+	response.OKWithMessage(c, nil, "Permission revoked successfully")
 }
 
 // GetRolePermissions 获取角色权限
-// @Summary 获取角色权限
-// @Description 获取指定角色的所有权限
-// @Tags 角色管理
-// @Produce json
-// @Param id path int true "角色ID"
-// @Success 200 {object} map[string]interface{} "角色权限列表"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id}/permissions [get]
 func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 获取角色权限
 	permissions, err := h.roleService.GetRolePermissions(uint(roleID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get role permissions",
-		})
+		response.InternalError(c, "role_permissions_failed", "Failed to get role permissions", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"permissions": permissions,
-	})
+	response.OK(c, gin.H{"permissions": permissions})
 }
 
 // CreatePermissionRequest 创建权限请求
@@ -479,29 +287,13 @@ type CreatePermissionRequest struct {
 }
 
 // CreatePermission 创建权限
-// @Summary 创建权限
-// @Description 创建新的权限
-// @Tags 权限管理
-// @Accept json
-// @Produce json
-// @Param request body CreatePermissionRequest true "权限信息"
-// @Success 201 {object} models.Permission "创建的权限"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 409 {object} map[string]interface{} "权限已存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/permissions [post]
 func (h *RoleHandler) CreatePermission(c *gin.Context) {
 	var req CreatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
-	// 创建权限
 	permission := &models.Permission{
 		Name:        req.Name,
 		Resource:    req.Resource,
@@ -511,18 +303,14 @@ func (h *RoleHandler) CreatePermission(c *gin.Context) {
 
 	if err := h.roleService.CreatePermission(permission); err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "already exists") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Permission already exists",
-			})
+			response.Conflict(c, "permission_exists", "Permission already exists", nil)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create permission",
-		})
+		response.InternalError(c, "permission_create_failed", "Failed to create permission", nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, permission)
+	response.Created(c, permission)
 }
 
 // ListPermissionsQuery 权限列表查询参数
@@ -535,31 +323,13 @@ type ListPermissionsQuery struct {
 }
 
 // ListPermissions 获取权限列表
-// @Summary 获取权限列表
-// @Description 分页获取权限列表，支持搜索和过滤
-// @Tags 权限管理
-// @Produce json
-// @Param page query int false "页码" default(1)
-// @Param page_size query int false "每页数量" default(20)
-// @Param search query string false "搜索关键词"
-// @Param resource query string false "资源"
-// @Param action query string false "操作"
-// @Success 200 {object} map[string]interface{} "权限列表"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/permissions [get]
 func (h *RoleHandler) ListPermissions(c *gin.Context) {
 	var query ListPermissionsQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid query parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_query", "Invalid query parameters", err.Error())
 		return
 	}
 
-	// 构建过滤条件
 	filters := make(map[string]interface{})
 	if query.Search != "" {
 		filters["search"] = query.Search
@@ -571,19 +341,14 @@ func (h *RoleHandler) ListPermissions(c *gin.Context) {
 		filters["action"] = query.Action
 	}
 
-	// 获取权限列表
 	permissions, total, err := h.roleService.ListPermissions(query.Page, query.PageSize, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get permission list",
-		})
+		response.InternalError(c, "permission_list_failed", "Failed to get permission list", nil)
 		return
 	}
 
-	// 计算分页信息
 	totalPages := (int(total) + query.PageSize - 1) / query.PageSize
-
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"permissions": permissions,
 		"pagination": gin.H{
 			"page":        query.Page,
@@ -600,50 +365,26 @@ type AssignPermissionsRequest struct {
 }
 
 // AssignPermissions 批量分配角色权限
-// @Summary 批量分配角色权限
-// @Description 为指定角色批量分配权限
-// @Tags 角色管理
-// @Accept json
-// @Produce json
-// @Param id path int true "角色ID"
-// @Param request body AssignPermissionsRequest true "权限ID列表"
-// @Success 200 {object} map[string]interface{} "分配成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "角色不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Security BearerAuth
-// @Router /api/v1/roles/{id}/permissions [post]
 func (h *RoleHandler) AssignPermissions(c *gin.Context) {
-	// 解析角色ID
 	roleIDStr := c.Param("id")
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid role ID format",
-		})
+		response.BadRequest(c, "invalid_role_id", "Invalid role ID format", nil)
 		return
 	}
 
-	// 解析请求体
 	var req AssignPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", err.Error(), nil)
 		return
 	}
 
-	// 批量分配权限
 	for _, permissionID := range req.PermissionIDs {
 		if err := h.roleService.AssignPermission(uint(roleID), permissionID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to assign permission",
-			})
+			response.InternalError(c, "permission_assign_failed", "Failed to assign permission", nil)
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Permissions assigned successfully",
-	})
+	response.OKWithMessage(c, nil, "Permissions assigned successfully")
 }

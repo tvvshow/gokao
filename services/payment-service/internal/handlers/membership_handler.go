@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/payment-service/internal/models"
 )
 
@@ -56,37 +56,24 @@ type subscribeRequest struct {
 func (h *MembershipHandler) GetPlans(c *gin.Context) {
 	plans, err := h.service.GetPlans(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_plans_failed",
-			"message": "Failed to get membership plans",
-		})
+		response.InternalError(c, "membership_plans_failed", "Failed to get membership plans", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    plans,
-	})
+	response.OK(c, plans)
 }
 
 func (h *MembershipHandler) Subscribe(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	var req subscribeRequest
 	if c.Request.ContentLength > 0 {
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "invalid_request",
-				"message": "Invalid request parameters",
-				"details": err.Error(),
-			})
+			response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 			return
 		}
 	}
@@ -94,173 +81,106 @@ func (h *MembershipHandler) Subscribe(c *gin.Context) {
 		req.OrderNo = c.Query("order_no")
 	}
 	if req.OrderNo == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "missing_order_no",
-			"message": "order_no is required",
-		})
+		response.BadRequest(c, "missing_order_no", "order_no is required", nil)
 		return
 	}
 
 	if err := h.service.Subscribe(c.Request.Context(), userID, req.OrderNo); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_subscribe_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_subscribe_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "会员订阅成功",
-	})
+	response.OKWithMessage(c, nil, "会员订阅成功")
 }
 
 func (h *MembershipHandler) GetMembershipStatus(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	status, err := h.service.GetMembershipStatus(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_status_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_status_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    status,
-	})
+	response.OK(c, status)
 }
 
 func (h *MembershipHandler) RenewMembership(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	var req renewMembershipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
 	orderNo, err := h.service.RenewMembership(c.Request.Context(), userID, req.PlanCode)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_renew_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_renew_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"order_no": orderNo,
-		},
-	})
+	response.OK(c, gin.H{"order_no": orderNo})
 }
 
 func (h *MembershipHandler) CancelMembership(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	if err := h.service.CancelMembership(c.Request.Context(), userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_cancel_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_cancel_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "会员已取消自动续费",
-	})
+	response.OKWithMessage(c, nil, "会员已取消自动续费")
 }
 
 func (h *MembershipHandler) GetMemberBenefits(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	benefits, err := h.service.GetMemberBenefits(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_benefits_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_benefits_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    benefits,
-	})
+	response.OK(c, benefits)
 }
 
 func (h *MembershipHandler) UpdateAutoRenew(c *gin.Context) {
 	userID, ok := membershipUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "User ID is required",
-		})
+		response.Unauthorized(c, "unauthorized", "User ID is required")
 		return
 	}
 
 	var req updateAutoRenewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "Invalid request parameters",
-			"details": err.Error(),
-		})
+		response.BadRequest(c, "invalid_request", "Invalid request parameters", err.Error())
 		return
 	}
 
 	if err := h.service.UpdateAutoRenew(c.Request.Context(), userID, req.AutoRenew); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "membership_auto_renew_failed",
-			"message": err.Error(),
-		})
+		response.InternalError(c, "membership_auto_renew_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "自动续费设置已更新",
-		"data": gin.H{
-			"auto_renew": req.AutoRenew,
-		},
-	})
+	response.OKWithMessage(c, gin.H{"auto_renew": req.AutoRenew}, "自动续费设置已更新")
 }
 
 func membershipUserID(c *gin.Context) (string, bool) {

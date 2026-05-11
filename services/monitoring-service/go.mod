@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/lib/pq v1.10.9
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 	github.com/tvvshow/gokao/services/monitoring-service/internal/alerts v0.0.0-00010101000000-000000000000
 	github.com/tvvshow/gokao/services/monitoring-service/internal/metrics v0.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.27.0
@@ -46,6 +47,7 @@ require (
 )
 
 replace (
+	github.com/tvvshow/gokao/pkg/response => ../../pkg/response
 	github.com/tvvshow/gokao/services/monitoring-service/internal/alerts => ./internal/alerts
 	github.com/tvvshow/gokao/services/monitoring-service/internal/metrics => ./internal/metrics
 )

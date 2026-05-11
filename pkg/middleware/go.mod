@@ -6,7 +6,10 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/sirupsen/logrus v1.9.3
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 )
+
+replace github.com/tvvshow/gokao/pkg/response => ../response
 
 require (
 	github.com/bytedance/sonic v1.9.1 // indirect

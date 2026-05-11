@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tvvshow/gokao/services/recommendation-service/internal/services"
 	"github.com/sirupsen/logrus"
+
+	"github.com/tvvshow/gokao/pkg/response"
+	"github.com/tvvshow/gokao/services/recommendation-service/internal/services"
 )
 
 // WeightHandler 权重配置处理器
@@ -40,130 +42,68 @@ func (h *WeightHandler) RegisterRoutes(router *gin.RouterGroup) {
 }
 
 // GetWeights 获取所有权重配置
-// @Summary 获取所有权重配置
-// @Description 获取系统默认和所有自定义权重配置
-// @Tags weights
-// @Produce json
-// @Success 200 {object} map[string]services.WeightConfig
-// @Router /weights [get]
 func (h *WeightHandler) GetWeights(c *gin.Context) {
 	configs := h.weightService.ListWeights()
-	c.JSON(http.StatusOK, configs)
+	response.OK(c, configs)
 }
 
 // GetWeightConfig 获取特定权重配置
-// @Summary 获取特定权重配置
-// @Description 根据key获取权重配置，如果不存在则返回默认配置
-// @Tags weights
-// @Produce json
-// @Param key path string true "配置键名"
-// @Success 200 {object} services.WeightConfig
-// @Router /weights/{key} [get]
 func (h *WeightHandler) GetWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 	config := h.weightService.GetWeights(key)
-	c.JSON(http.StatusOK, config)
+	response.OK(c, config)
 }
 
 // SetWeightConfig 设置权重配置
-// @Summary 设置权重配置
-// @Description 创建或更新权重配置
-// @Tags weights
-// @Accept json
-// @Produce json
-// @Param key path string true "配置键名"
-// @Param config body services.WeightConfig true "权重配置"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Router /weights/{key} [post]
 func (h *WeightHandler) SetWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 
 	var config services.WeightConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
 		h.logger.Warnf("解析权重配置失败: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "无效的权重配置格式",
-		})
+		response.BadRequest(c, "invalid_request", "无效的权重配置格式", nil)
 		return
 	}
 
 	if err := h.weightService.SetWeights(key, &config); err != nil {
 		h.logger.Warnf("设置权重配置失败: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_weights",
-			"message": err.Error(),
-		})
+		response.BadRequest(c, "invalid_weights", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "权重配置已更新",
-		"key":     key,
-		"config":  config,
-	})
+	response.OKWithMessage(c, gin.H{
+		"key":    key,
+		"config": config,
+	}, "权重配置已更新")
 }
 
 // DeleteWeightConfig 删除权重配置
-// @Summary 删除权重配置
-// @Description 删除特定的权重配置
-// @Tags weights
-// @Produce json
-// @Param key path string true "配置键名"
-// @Success 200 {object} map[string]interface{}
-// @Router /weights/{key} [delete]
 func (h *WeightHandler) DeleteWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 
 	h.weightService.DeleteWeights(key)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "权重配置已删除",
-		"key":     key,
-	})
+	response.OKWithMessage(c, gin.H{"key": key}, "权重配置已删除")
 }
 
 // ResetWeightConfig 重置权重配置
-// @Summary 重置权重配置
-// @Description 重置为默认权重配置
-// @Tags weights
-// @Produce json
-// @Param key path string true "配置键名"
-// @Success 200 {object} map[string]interface{}
-// @Router /weights/{key}/reset [post]
 func (h *WeightHandler) ResetWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 
 	h.weightService.ResetToDefault(key)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "权重配置已重置为默认",
-		"key":     key,
-	})
+	response.OKWithMessage(c, gin.H{"key": key}, "权重配置已重置为默认")
 }
 
 // ExportWeightConfig 导出权重配置
-// @Summary 导出权重配置
-// @Description 导出权重配置为JSON格式
-// @Tags weights
-// @Produce application/json
-// @Param key path string true "配置键名"
-// @Success 200 {string} string "权重配置JSON"
-// @Router /weights/{key}/export [get]
+// 该路由强制返回原始 JSON 字节（作为可下载附件），不进入 pkg/response 包装。
 func (h *WeightHandler) ExportWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 
 	data, err := h.weightService.ExportWeights(key)
 	if err != nil {
 		h.logger.Warnf("导出权重配置失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "export_failed",
-			"message": "导出权重配置失败",
-		})
+		response.InternalError(c, "export_failed", "导出权重配置失败", nil)
 		return
 	}
 
@@ -173,105 +113,58 @@ func (h *WeightHandler) ExportWeightConfig(c *gin.Context) {
 }
 
 // ImportWeightConfig 导入权重配置
-// @Summary 导入权重配置
-// @Description 从JSON文件导入权重配置
-// @Tags weights
-// @Accept multipart/form-data
-// @Produce json
-// @Param key path string true "配置键名"
-// @Param file formData file true "权重配置JSON文件"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Router /weights/{key}/import [post]
 func (h *WeightHandler) ImportWeightConfig(c *gin.Context) {
 	key := c.Param("key")
 
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.logger.Warnf("获取上传文件失败: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "no_file",
-			"message": "请选择要上传的文件",
-		})
+		response.BadRequest(c, "no_file", "请选择要上传的文件", nil)
 		return
 	}
 
-	// 检查文件类型
 	if !strings.HasSuffix(file.Filename, ".json") {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_file_type",
-			"message": "只支持JSON格式文件",
-		})
+		response.BadRequest(c, "invalid_file_type", "只支持JSON格式文件", nil)
 		return
 	}
 
-	// 读取文件内容
 	f, err := file.Open()
 	if err != nil {
 		h.logger.Warnf("打开文件失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "file_open_error",
-			"message": "无法打开文件",
-		})
+		response.InternalError(c, "file_open_error", "无法打开文件", nil)
 		return
 	}
 	defer f.Close()
 
 	data := make([]byte, file.Size)
-	_, err = f.Read(data)
-	if err != nil {
+	if _, err := f.Read(data); err != nil {
 		h.logger.Warnf("读取文件失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "file_read_error",
-			"message": "无法读取文件",
-		})
+		response.InternalError(c, "file_read_error", "无法读取文件", nil)
 		return
 	}
 
-	// 导入配置
 	if err := h.weightService.ImportWeights(key, data); err != nil {
 		h.logger.Warnf("导入权重配置失败: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "import_failed",
-			"message": err.Error(),
-		})
+		response.BadRequest(c, "import_failed", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "权重配置导入成功",
-		"key":     key,
-	})
+	response.OKWithMessage(c, gin.H{"key": key}, "权重配置导入成功")
 }
 
 // GetWeightStats 获取权重统计信息
-// @Summary 获取权重统计信息
-// @Description 获取权重配置的统计信息
-// @Tags weights
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Router /weights/stats [get]
 func (h *WeightHandler) GetWeightStats(c *gin.Context) {
 	stats := h.weightService.GetWeightStats()
-	c.JSON(http.StatusOK, stats)
+	response.OK(c, stats)
 }
 
 // CreatePresetWeights 创建预设权重配置
-// @Summary 创建预设权重配置
-// @Description 创建系统预设的权重配置
-// @Tags weights
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Router /weights/presets [post]
 func (h *WeightHandler) CreatePresetWeights(c *gin.Context) {
 	h.weightService.CreatePresetWeights()
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "预设权重配置已创建",
+	response.OKWithMessage(c, gin.H{
 		"presets": []string{"score_focused", "location_focused", "employment_focused"},
-	})
+	}, "预设权重配置已创建")
 }
 
 // WeightConfigRequest 权重配置请求（用于文档）

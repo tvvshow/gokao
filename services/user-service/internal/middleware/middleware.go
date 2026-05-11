@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tvvshow/gokao/pkg/auth"
 	"github.com/sirupsen/logrus"
+	"github.com/tvvshow/gokao/pkg/auth"
+	"github.com/tvvshow/gokao/pkg/response"
 )
 
 // JWTAuth JWT认证中间件 (已废弃 - 请使用 pkg/auth)
@@ -22,31 +23,21 @@ func JWTAuth(jwtSecret string) gin.HandlerFunc {
 // RequireRole 角色权限验证中间件
 func RequireRole(requiredRole string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 获取用户角色
 		rolesInterface, exists := c.Get("roles")
 		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "No roles found in token",
-				"code":  "NO_ROLES",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "NO_ROLES", "No roles found in token", nil)
 			return
 		}
 
 		roles, ok := rolesInterface.([]string)
 		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Invalid roles format",
-				"code":  "INVALID_ROLES",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "INVALID_ROLES", "Invalid roles format", nil)
 			return
 		}
 
-		// 检查是否有所需角色
 		hasRole := false
 		for _, role := range roles {
-			if role == requiredRole || role == "admin" { // admin角色拥有所有权限
+			if role == requiredRole || role == "admin" { // admin 拥有所有权限
 				hasRole = true
 				break
 			}
@@ -62,11 +53,7 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 				"method":        c.Request.Method,
 			}).Warn("Access denied: insufficient permissions")
 
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient permissions",
-				"code":  "INSUFFICIENT_PERMISSIONS",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "INSUFFICIENT_PERMISSIONS", "Insufficient permissions", nil)
 			return
 		}
 

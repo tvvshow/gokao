@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 )
 
@@ -25,31 +27,18 @@ func (m *MembershipMiddleware) RequireVIP() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "用户未认证",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "用户未认证", nil)
 			return
 		}
 
 		status, err := m.membershipService.GetMembershipStatus(c.Request.Context(), userID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "获取会员状态失败",
-				"code":  "MEMBERSHIP_CHECK_FAILED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusInternalServerError, "MEMBERSHIP_CHECK_FAILED", "获取会员状态失败", nil)
 			return
 		}
 
 		if !status.IsVIP {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "需要VIP会员权限",
-				"code":    "VIP_REQUIRED",
-				"upgrade": true,
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "VIP_REQUIRED", "需要VIP会员权限", gin.H{"upgrade": true})
 			return
 		}
 
@@ -64,32 +53,21 @@ func (m *MembershipMiddleware) RequireFeature(feature string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "用户未认证",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "用户未认证", nil)
 			return
 		}
 
 		hasPermission, err := m.membershipService.CheckMembershipPermission(c.Request.Context(), userID, feature)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "权限检查失败",
-				"code":  "PERMISSION_CHECK_FAILED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusInternalServerError, "PERMISSION_CHECK_FAILED", "权限检查失败", nil)
 			return
 		}
 
 		if !hasPermission {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "功能权限不足",
-				"code":    "FEATURE_PERMISSION_DENIED",
+			response.AbortWithError(c, http.StatusForbidden, "FEATURE_PERMISSION_DENIED", "功能权限不足", gin.H{
 				"feature": feature,
 				"upgrade": true,
 			})
-			c.Abort()
 			return
 		}
 
@@ -102,11 +80,7 @@ func (m *MembershipMiddleware) ConsumeQuery() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "用户未认证",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "用户未认证", nil)
 			return
 		}
 
@@ -119,25 +93,14 @@ func (m *MembershipMiddleware) ConsumeQuery() gin.HandlerFunc {
 
 		err := m.membershipService.ConsumeQuery(c.Request.Context(), userID)
 		if err != nil {
-			if strings.Contains(err.Error(), "limit exceeded") {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error":   "查询次数已用完",
-					"code":    "QUERY_LIMIT_EXCEEDED",
-					"upgrade": true,
-				})
-			} else if strings.Contains(err.Error(), "VIP membership required") {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error":   "需要VIP会员权限",
-					"code":    "VIP_REQUIRED",
-					"upgrade": true,
-				})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "消费查询次数失败",
-					"code":  "CONSUME_QUERY_FAILED",
-				})
+			switch {
+			case strings.Contains(err.Error(), "limit exceeded"):
+				response.AbortWithError(c, http.StatusForbidden, "QUERY_LIMIT_EXCEEDED", "查询次数已用完", gin.H{"upgrade": true})
+			case strings.Contains(err.Error(), "VIP membership required"):
+				response.AbortWithError(c, http.StatusForbidden, "VIP_REQUIRED", "需要VIP会员权限", gin.H{"upgrade": true})
+			default:
+				response.AbortWithError(c, http.StatusInternalServerError, "CONSUME_QUERY_FAILED", "消费查询次数失败", nil)
 			}
-			c.Abort()
 			return
 		}
 
@@ -150,35 +113,20 @@ func (m *MembershipMiddleware) ConsumeDownload() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "用户未认证",
-				"code":  "UNAUTHORIZED",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "UNAUTHORIZED", "用户未认证", nil)
 			return
 		}
 
 		err := m.membershipService.ConsumeDownload(c.Request.Context(), userID)
 		if err != nil {
-			if strings.Contains(err.Error(), "limit exceeded") {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error":   "下载次数已用完",
-					"code":    "DOWNLOAD_LIMIT_EXCEEDED",
-					"upgrade": true,
-				})
-			} else if strings.Contains(err.Error(), "VIP membership required") {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error":   "需要VIP会员权限",
-					"code":    "VIP_REQUIRED",
-					"upgrade": true,
-				})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "消费下载次数失败",
-					"code":  "CONSUME_DOWNLOAD_FAILED",
-				})
+			switch {
+			case strings.Contains(err.Error(), "limit exceeded"):
+				response.AbortWithError(c, http.StatusForbidden, "DOWNLOAD_LIMIT_EXCEEDED", "下载次数已用完", gin.H{"upgrade": true})
+			case strings.Contains(err.Error(), "VIP membership required"):
+				response.AbortWithError(c, http.StatusForbidden, "VIP_REQUIRED", "需要VIP会员权限", gin.H{"upgrade": true})
+			default:
+				response.AbortWithError(c, http.StatusInternalServerError, "CONSUME_DOWNLOAD_FAILED", "消费下载次数失败", nil)
 			}
-			c.Abort()
 			return
 		}
 

@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
+
+	"github.com/tvvshow/gokao/pkg/response"
 )
 
 // SecurityConfig 安全配置
@@ -31,7 +33,7 @@ type SecurityMiddleware struct {
 func NewSecurityMiddleware(config *SecurityConfig) *SecurityMiddleware {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
-	
+
 	return &SecurityMiddleware{
 		config: config,
 		logger: logger,
@@ -126,7 +128,7 @@ func (sm *SecurityMiddleware) SecurityHeaders() gin.HandlerFunc {
 func (sm *SecurityMiddleware) CORS(allowedOrigins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		
+
 		// 检查是否在允许的源列表中
 		allowed := false
 		for _, allowedOrigin := range allowedOrigins {
@@ -135,7 +137,7 @@ func (sm *SecurityMiddleware) CORS(allowedOrigins []string) gin.HandlerFunc {
 				break
 			}
 		}
-		
+
 		if allowed {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -143,13 +145,13 @@ func (sm *SecurityMiddleware) CORS(allowedOrigins []string) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Credentials", "true")
 			c.Header("Access-Control-Max-Age", "3600")
 		}
-		
+
 		// 处理预检请求
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -161,22 +163,14 @@ func (sm *SecurityMiddleware) EnhancedJWTAuth(blacklist TokenBlacklist) gin.Hand
 		tokenString, err := sm.extractToken(c)
 		if err != nil {
 			sm.logger.WithError(err).Warn("Token extraction failed")
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "unauthorized",
-				"message": "认证信息缺失或格式错误",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "unauthorized", "认证信息缺失或格式错误", nil)
 			return
 		}
 
 		// 2. Token黑名单检查
 		if blacklist != nil && blacklist.IsBlacklisted(tokenString) {
 			sm.logger.Warn("Token is blacklisted")
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "token_revoked",
-				"message": "认证令牌已失效",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "token_revoked", "认证令牌已失效", nil)
 			return
 		}
 
@@ -184,22 +178,14 @@ func (sm *SecurityMiddleware) EnhancedJWTAuth(blacklist TokenBlacklist) gin.Hand
 		claims, err := sm.validateToken(tokenString)
 		if err != nil {
 			sm.logger.WithError(err).Warn("Token validation failed")
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "invalid_token",
-				"message": "无效的认证令牌",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "invalid_token", "无效的认证令牌", nil)
 			return
 		}
 
 		// 4. 权限检查
 		if !sm.checkPermissions(claims, c.Request) {
 			sm.logger.Warn("Permission denied")
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "permission_denied",
-				"message": "权限不足",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusForbidden, "permission_denied", "权限不足", nil)
 			return
 		}
 
@@ -329,32 +315,25 @@ func (sm *SecurityMiddleware) GenerateToken(userID, username, role string, expir
 // JWTAuth JWT认证中间件（保持向后兼容）
 func (sm *SecurityMiddleware) JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 获取Authorization头
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少认证信息"})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "missing_auth", "缺少认证信息", nil)
 			return
 		}
-		
-		// 检查Bearer前缀
+
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "认证格式错误"})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "invalid_auth_format", "认证格式错误", nil)
 			return
 		}
-		
-		// 提取token
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		
-		// 验证token（这里简化处理，实际应该验证JWT）
+
+		// 简化处理；生产环境应该走 EnhancedJWTAuth
 		if tokenString != sm.config.JWTSecret {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的认证令牌"})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnauthorized, "invalid_token", "无效的认证令牌", nil)
 			return
 		}
-		
-		// 将用户信息存储到上下文中
+
 		c.Set("user_id", "test_user")
 		c.Next()
 	}
@@ -362,28 +341,28 @@ func (sm *SecurityMiddleware) JWTAuth() gin.HandlerFunc {
 
 // InputValidationMiddleware 输入验证中间件
 type InputValidationMiddleware struct {
-	maxBodySize        int64
-	logger             *logrus.Logger
-	sqlInjectionRegex  *regexp.Regexp
-	xssRegex          *regexp.Regexp
+	maxBodySize         int64
+	logger              *logrus.Logger
+	sqlInjectionRegex   *regexp.Regexp
+	xssRegex            *regexp.Regexp
 	allowedContentTypes []string
 }
 
 // InputValidationConfig 输入验证配置
 type InputValidationConfig struct {
-	MaxBodySize        int64
-	Logger             *logrus.Logger
+	MaxBodySize         int64
+	Logger              *logrus.Logger
 	AllowedContentTypes []string
 }
 
 // NewInputValidationMiddleware 创建输入验证中间件
 func NewInputValidationMiddleware(config *InputValidationConfig) *InputValidationMiddleware {
 	return &InputValidationMiddleware{
-		maxBodySize:        config.MaxBodySize,
-		logger:             config.Logger,
+		maxBodySize:         config.MaxBodySize,
+		logger:              config.Logger,
 		allowedContentTypes: config.AllowedContentTypes,
-		sqlInjectionRegex:  regexp.MustCompile(`(?i)(?:\b(?:select|insert|update|delete|drop|alter|union|exec|execute|truncate|declare|xp_cmdshell|;\s*--|/\*.*\*/)\b)`),
-		xssRegex:          regexp.MustCompile(`(?i)(?:<script|javascript:|on\w+\s*=|eval\(|alert\(|document\.cookie|window\.location)`),
+		sqlInjectionRegex:   regexp.MustCompile(`(?i)(?:\b(?:select|insert|update|delete|drop|alter|union|exec|execute|truncate|declare|xp_cmdshell|;\s*--|/\*.*\*/)\b)`),
+		xssRegex:            regexp.MustCompile(`(?i)(?:<script|javascript:|on\w+\s*=|eval\(|alert\(|document\.cookie|window\.location)`),
 	}
 }
 
@@ -393,44 +372,28 @@ func (m *InputValidationMiddleware) Middleware() gin.HandlerFunc {
 		// 1. 请求体大小限制
 		if !m.checkBodySize(c) {
 			m.logger.Warn("Request body too large")
-			c.JSON(http.StatusRequestEntityTooLarge, gin.H{
-				"error":   "request_too_large",
-				"message": "请求体过大",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusRequestEntityTooLarge, "request_too_large", "请求体过大", nil)
 			return
 		}
 
 		// 2. 内容类型验证
 		if !m.validateContentType(c) {
 			m.logger.Warn("Invalid content type")
-			c.JSON(http.StatusUnsupportedMediaType, gin.H{
-				"error":   "unsupported_media_type",
-				"message": "不支持的内容类型",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusUnsupportedMediaType, "unsupported_media_type", "不支持的内容类型", nil)
 			return
 		}
 
 		// 3. SQL注入检测
 		if m.detectSQLInjection(c) {
 			m.logger.Warn("SQL injection attempt detected")
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "invalid_input",
-				"message": "输入包含非法字符",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusBadRequest, "invalid_input", "输入包含非法字符", nil)
 			return
 		}
 
 		// 4. XSS攻击检测
 		if m.detectXSS(c) {
 			m.logger.Warn("XSS attempt detected")
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "invalid_input",
-				"message": "输入包含非法字符",
-			})
-			c.Abort()
+			response.AbortWithError(c, http.StatusBadRequest, "invalid_input", "输入包含非法字符", nil)
 			return
 		}
 
@@ -526,11 +489,11 @@ func (m *InputValidationMiddleware) detectXSS(c *gin.Context) bool {
 // DefaultInputValidationMiddleware 默认输入验证中间件
 func DefaultInputValidationMiddleware(logger *logrus.Logger) gin.HandlerFunc {
 	config := &InputValidationConfig{
-		MaxBodySize:        10 * 1024 * 1024, // 10MB
-		Logger:             logger,
+		MaxBodySize:         10 * 1024 * 1024, // 10MB
+		Logger:              logger,
 		AllowedContentTypes: []string{"application/json", "application/x-www-form-urlencoded", "multipart/form-data"},
 	}
-	
+
 	middleware := NewInputValidationMiddleware(config)
 	return middleware.Middleware()
 }
