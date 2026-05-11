@@ -1,46 +1,12 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
-
-// PaymentJSONB 支付服务专用JSONB类型
-type PaymentJSONB map[string]interface{}
-
-// Value 实现driver.Valuer接口
-func (j PaymentJSONB) Value() (driver.Value, error) {
-	if j == nil {
-		return nil, nil
-	}
-	return json.Marshal(j)
-}
-
-// Scan 实现sql.Scanner接口
-func (j *PaymentJSONB) Scan(value interface{}) error {
-	if value == nil {
-		*j = nil
-		return nil
-	}
-
-	bytes, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("cannot scan %T into PaymentJSONB", value)
-	}
-
-	if len(bytes) == 0 {
-		*j = nil
-		return nil
-	}
-
-	return json.Unmarshal(bytes, j)
-}
 
 // PaymentOrder 支付订单模型
 type PaymentOrder struct {
@@ -59,7 +25,7 @@ type PaymentOrder struct {
 	NotifyURL      string          `json:"notify_url"`
 	ReturnURL      string          `json:"return_url"`
 	ClientIP       string          `json:"client_ip"`
-	Metadata       PaymentJSONB    `json:"metadata" gorm:"type:jsonb"`
+	Metadata       JSONB           `json:"metadata" gorm:"type:jsonb"`
 	PaymentURL     string          `json:"payment_url"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
@@ -249,7 +215,7 @@ type PaymentStatus struct {
 	PaidAt        *time.Time      `json:"paid_at"`
 	Amount        decimal.Decimal `json:"amount"`
 	Currency      string          `json:"currency"`
-	Extra         PaymentJSONB    `json:"extra"`
+	Extra         JSONB           `json:"extra"`
 }
 
 // RefundRequest 退款请求
@@ -269,7 +235,7 @@ type RefundResponse struct {
 	Currency      string          `json:"currency"`
 	RefundedAt    time.Time       `json:"refunded_at"`
 	PaymentMethod string          `json:"payment_method"`
-	Extra         PaymentJSONB    `json:"extra"`
+	Extra         JSONB           `json:"extra"`
 }
 
 // CallbackResult 回调处理结果
@@ -281,7 +247,7 @@ type CallbackResult struct {
 	Amount        decimal.Decimal `json:"amount"`
 	Currency      string          `json:"currency"`
 	PaidAt        *time.Time      `json:"paid_at"`
-	Extra         PaymentJSONB    `json:"extra"`
+	Extra         JSONB           `json:"extra"`
 }
 
 // CreatePaymentRequest 创建支付请求

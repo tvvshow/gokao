@@ -169,7 +169,7 @@ func (a *AlipayAdapter) QueryOrder(ctx context.Context, orderID string) (*models
 		PaidAt:        paidAt,
 		Amount:        decimal.NewFromFloat(amount),
 		Currency:      "CNY",
-		Extra: models.PaymentJSONB{
+		Extra: models.JSONB{
 			"trade_status":   string(resp.TradeStatus),
 			"trade_no":       resp.TradeNo,
 			"buyer_logon_id": resp.BuyerLogonId,
@@ -208,7 +208,7 @@ func (a *AlipayAdapter) RefundOrder(ctx context.Context, refund *models.RefundRe
 		Currency:      "CNY",
 		RefundedAt:    time.Now(),
 		PaymentMethod: "alipay",
-		Extra: models.PaymentJSONB{
+		Extra: models.JSONB{
 			"trade_no":   resp.TradeNo,
 			"refund_fee": resp.RefundFee,
 			// 注意: GmtRefundPay字段在新版SDK中可能已移除或重命名
@@ -259,7 +259,7 @@ func (a *AlipayAdapter) HandleCallback(ctx context.Context, request *http.Reques
 		Amount:        decimal.NewFromFloat(amount),
 		Currency:      "CNY",
 		PaidAt:        paidAt,
-		Extra: models.PaymentJSONB{
+		Extra: models.JSONB{
 			"trade_status":   tradeStatus,
 			"trade_no":       tradeNo,
 			"buyer_id":       request.Form.Get("buyer_id"),

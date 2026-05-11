@@ -1,13 +1,15 @@
 package models
 
 import (
-	"time"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
-// JSONB 自定义JSONB类型
+// JSONB payment-service 统一 JSONB 自定义类型，覆盖 payment + membership
+// 全套 jsonb 列。原来 payment_models.go 重复定义过一个 PaymentJSONB（带
+// 空字节边界保护），本实现已合并该保护后删除 PaymentJSONB。
 type JSONB map[string]interface{}
 
 // Value 实现driver.Valuer接口
@@ -24,12 +26,19 @@ func (j *JSONB) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	
+
 	bytes, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("cannot scan %T into JSONB", value)
 	}
-	
+
+	// 显式处理空字节：某些驱动会把 NULL 物化为 []byte{}，直接 Unmarshal 会
+	// 报 "unexpected end of JSON input"。视为 nil 更安全。
+	if len(bytes) == 0 {
+		*j = nil
+		return nil
+	}
+
 	return json.Unmarshal(bytes, j)
 }
 
@@ -51,19 +60,19 @@ type MembershipPlan struct {
 
 // UserMembership 用户会员模型
 type UserMembership struct {
-	ID            int              `json:"id" db:"id"`
-	UserID        string           `json:"user_id" db:"user_id"`
-	PlanCode      string           `json:"plan_code" db:"plan_code"`
-	OrderNo       string           `json:"order_no" db:"order_no"`
-	StartTime     time.Time        `json:"start_time" db:"start_time"`
-	EndTime       time.Time        `json:"end_time" db:"end_time"`
-	Status        string           `json:"status" db:"status"`
-	AutoRenew     bool             `json:"auto_renew" db:"auto_renew"`
-	UsedQueries   int              `json:"used_queries" db:"used_queries"`
-	UsedDownloads int              `json:"used_downloads" db:"used_downloads"`
-	CreatedAt     time.Time        `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time        `json:"updated_at" db:"updated_at"`
-	Plan          *MembershipPlan  `json:"plan,omitempty"`
+	ID            int             `json:"id" db:"id"`
+	UserID        string          `json:"user_id" db:"user_id"`
+	PlanCode      string          `json:"plan_code" db:"plan_code"`
+	OrderNo       string          `json:"order_no" db:"order_no"`
+	StartTime     time.Time       `json:"start_time" db:"start_time"`
+	EndTime       time.Time       `json:"end_time" db:"end_time"`
+	Status        string          `json:"status" db:"status"`
+	AutoRenew     bool            `json:"auto_renew" db:"auto_renew"`
+	UsedQueries   int             `json:"used_queries" db:"used_queries"`
+	UsedDownloads int             `json:"used_downloads" db:"used_downloads"`
+	CreatedAt     time.Time       `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at" db:"updated_at"`
+	Plan          *MembershipPlan `json:"plan,omitempty"`
 }
 
 // IsActive 检查会员是否有效
@@ -76,7 +85,7 @@ func (um *UserMembership) RemainingDays() int {
 	if !um.IsActive() {
 		return 0
 	}
-	
+
 	remaining := um.EndTime.Sub(time.Now())
 	days := int(remaining.Hours() / 24)
 	if days < 0 {
@@ -127,10 +136,10 @@ const (
 
 // 会员套餐代码常量
 const (
-	PlanCodeBasic       = "basic"
-	PlanCodeStandard    = "standard"
-	PlanCodePremium     = "premium"
-	PlanCodeEnterprise  = "enterprise"
+	PlanCodeBasic      = "basic"
+	PlanCodeStandard   = "standard"
+	PlanCodePremium    = "premium"
+	PlanCodeEnterprise = "enterprise"
 )
 
 // 功能权限常量
@@ -160,11 +169,11 @@ func GetDefaultFeatures(planCode string) map[string]interface{} {
 		}
 	case PlanCodePremium:
 		return map[string]interface{}{
-			FeatureBasicQuery:      true,
-			FeatureAdvancedQuery:   true,
-			FeatureAIRecommend:     true,
-			FeatureDataExport:      true,
-			FeatureCustomReport:    true,
+			FeatureBasicQuery:    true,
+			FeatureAdvancedQuery: true,
+			FeatureAIRecommend:   true,
+			FeatureDataExport:    true,
+			FeatureCustomReport:  true,
 		}
 	case PlanCodeEnterprise:
 		return map[string]interface{}{
@@ -208,7 +217,7 @@ func ValidatePlanCode(planCode string) bool {
 		PlanCodePremium,
 		PlanCodeEnterprise,
 	}
-	
+
 	for _, valid := range validPlans {
 		if planCode == valid {
 			return true
@@ -219,10 +228,10 @@ func ValidatePlanCode(planCode string) bool {
 
 // MembershipBenefits 会员权益信息
 type MembershipBenefits struct {
-	Features     map[string]interface{} `json:"features"`
-	QueryLimit   LimitInfo              `json:"query_limit"`
-	DownloadLimit LimitInfo             `json:"download_limit"`
-	ExpireInfo   *ExpireInfo            `json:"expire_info,omitempty"`
+	Features      map[string]interface{} `json:"features"`
+	QueryLimit    LimitInfo              `json:"query_limit"`
+	DownloadLimit LimitInfo              `json:"download_limit"`
+	ExpireInfo    *ExpireInfo            `json:"expire_info,omitempty"`
 }
 
 // LimitInfo 限制信息

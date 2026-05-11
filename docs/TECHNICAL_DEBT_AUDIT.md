@@ -12,9 +12,9 @@
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | 3 | 3 | 3 |
+| 重复代码 (A~I) | 9 | **4** | 3 | 2 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **27** | **3** | **9** |
+| **合计** | **39** | **28** | **3** | **8** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -387,23 +387,24 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### C.4 [✗ PENDING] H. payment-service JSONB 双类型
+#### C.4 [✓ FIXED] H. payment-service JSONB 双类型
 
-**现状**：`services/payment-service/internal/models/`：
-- `membership_models.go:11` → `type JSONB map[string]interface{}`
-- `payment_models.go:15` → `type PaymentJSONB map[string]interface{}`
+**现状（已修复）**：原有两个 JSONB 类型并存：
+- `payment_models.go:14` 定义 `PaymentJSONB`（Scan 含空字节边界保护）
+- `membership_models.go:11` 定义 `JSONB`（Scan 直接 Unmarshal，空字节会 panic "unexpected end of JSON input"）
 
-**期望**：合并为 `pkg/models.JSONB`（或 payment-service 内部 `JSONB`），删除 `PaymentJSONB`。
-
-**步骤**：
-1. 决定是否泛化到 `pkg/models`（其他服务也可能需要）。当前其他服务没用，先内部统一即可。
-2. 把所有 `PaymentJSONB` 改名为 `JSONB`，删除 `payment_models.go:14-34` 的 `PaymentJSONB` 定义。
-3. 测试。
+**修复内容**：
+1. 合并到单一 `JSONB`（位于 `membership_models.go`），保留更鲁棒的实现（含空字节 → nil 边界保护）。
+2. 删除 `payment_models.go` 的 `PaymentJSONB` 定义（含 Value/Scan 方法）。
+3. 全仓 sed 重命名 22 处 `PaymentJSONB` → `JSONB`：
+   - `models/payment_models.go`（4 个字段：PaymentOrder.Metadata / PaymentRefund.Metadata / + 2 处）
+   - `adapters/alipay.go`（4 处 Extra）
+   - `adapters/wechat_pay.go`（1 处 Extra）
+   - `service/payment_service.go`（13 处构造 + 转换）
 
 **验证**：
-- `go build ./...` + 测试。
-
-**工作量**：~1h。
+- `go test ./services/payment-service/...` 全绿（config + handlers）。
+- `go build ./...`（workspace）干净。
 
 ---
 

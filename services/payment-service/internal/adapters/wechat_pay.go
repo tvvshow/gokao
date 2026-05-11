@@ -187,7 +187,7 @@ func (w *WechatPayAdapter) RefundOrder(ctx context.Context, refund *models.Refun
 		Currency:      "CNY",
 		RefundedAt:    time.Now(),
 		PaymentMethod: "wechat_pay",
-		Extra: models.PaymentJSONB{
+		Extra: models.JSONB{
 			"refund_id":     getStringValue(resp.RefundId),
 			"out_refund_no": getStringValue(resp.OutRefundNo),
 			"status":        string(*resp.Status),

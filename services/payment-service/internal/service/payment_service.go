@@ -60,7 +60,7 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *models.CreatePa
 		Status:      "pending",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
-		Metadata:    models.PaymentJSONB(req.Extra),
+		Metadata:    models.JSONB(req.Extra),
 	}
 
 	// 保存到数据库
@@ -310,7 +310,7 @@ func (s *PaymentService) RefundPayment(ctx context.Context, req *models.RefundRe
 		Currency:      "CNY",
 		RefundedAt:    refundResp.RefundedAt,
 		PaymentMethod: order.Channel,
-		Extra:         models.PaymentJSONB{},
+		Extra:         models.JSONB{},
 	}
 
 	// 创建退款记录
@@ -393,7 +393,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 			Amount:        callback.Amount,
 			Currency:      "CNY",
 			PaidAt:        &callback.PaidAt,
-			Extra:         models.PaymentJSONB{},
+			Extra:         models.JSONB{},
 		}, nil
 	}
 	defer tx.Rollback()
@@ -410,7 +410,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 			Amount:        callback.Amount,
 			Currency:      "CNY",
 			PaidAt:        &callback.PaidAt,
-			Extra:         models.PaymentJSONB{},
+			Extra:         models.JSONB{},
 		}, nil
 	}
 
@@ -429,7 +429,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 			Amount:        callback.Amount,
 			Currency:      "CNY",
 			PaidAt:        &callback.PaidAt,
-			Extra:         models.PaymentJSONB{},
+			Extra:         models.JSONB{},
 		}, nil
 	}
 
@@ -452,7 +452,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 			Amount:        callback.Amount,
 			Currency:      "CNY",
 			PaidAt:        &callback.PaidAt,
-			Extra:         models.PaymentJSONB{},
+			Extra:         models.JSONB{},
 		}, nil
 	}
 
@@ -467,7 +467,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 			Amount:        callback.Amount,
 			Currency:      "CNY",
 			PaidAt:        &callback.PaidAt,
-			Extra:         models.PaymentJSONB{},
+			Extra:         models.JSONB{},
 		}, nil
 	}
 
@@ -479,7 +479,7 @@ func (s *PaymentService) HandleCallback(ctx context.Context, paymentMethod strin
 		Amount:        callback.Amount,
 		Currency:      "CNY",
 		PaidAt:        &callback.PaidAt,
-		Extra:         models.PaymentJSONB{},
+		Extra:         models.JSONB{},
 	}
 
 	s.logger.WithFields(logrus.Fields{
