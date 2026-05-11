@@ -7,6 +7,8 @@ WORKDIR /app/services/monitoring-service
 COPY services/monitoring-service/go.mod services/monitoring-service/go.sum ./
 COPY services/monitoring-service/internal/alerts/go.mod services/monitoring-service/internal/alerts/go.sum ./internal/alerts/
 COPY services/monitoring-service/internal/metrics/go.mod ./internal/metrics/
+COPY pkg/config /app/pkg/config
+COPY pkg/database /app/pkg/database
 COPY pkg/response /app/pkg/response
 RUN go mod download
 

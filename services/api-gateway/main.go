@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	// NEW: Redis for caching
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 
 	// NEW: Swagger/OpenAPI integration
 	swaggerFiles "github.com/swaggo/files"
@@ -34,6 +34,10 @@ import (
 
 	// Security middleware
 	"github.com/tvvshow/gokao/pkg/middleware"
+
+	// Shared Redis init (pkg/database.OpenRedis + pkg/config.LoadRedis)
+	sharedcfg "github.com/tvvshow/gokao/pkg/config"
+	shareddb "github.com/tvvshow/gokao/pkg/database"
 
 	// Unified error handling
 	"github.com/tvvshow/gokao/pkg/errors"
@@ -449,27 +453,10 @@ func setupRouter() *gin.Engine { // NEW: expose router for tests
 
 // NEW: initialize Redis cache
 func initRedisCache() (*cacheManager, error) {
-	redisURL := getEnv("REDIS_URL", "localhost:6379")
-	redisPassword := getEnv("REDIS_PASSWORD", "")
-	redisDB := 0
-
-	if dbStr := getEnv("REDIS_DB", ""); dbStr != "" {
-		if db, err := strconv.Atoi(dbStr); err == nil {
-			redisDB = db
-		}
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     redisURL,
-		Password: redisPassword,
-		DB:       redisDB,
-	})
-
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := client.Ping(ctx).Err(); err != nil {
+	// 通过 pkg/config.LoadRedis + pkg/database.OpenRedis 收敛 Redis 初始化（含 ping 校验、统一池参数）。
+	redisCfg := sharedcfg.LoadRedis("localhost:6379", 0)
+	client, err := shareddb.OpenRedis(redisCfg, 5*time.Second)
+	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 

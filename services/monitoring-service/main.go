@@ -12,10 +12,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 
+	sharedcfg "github.com/tvvshow/gokao/pkg/config"
+	shareddb "github.com/tvvshow/gokao/pkg/database"
 	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/monitoring-service/internal/alerts"
 	"github.com/tvvshow/gokao/services/monitoring-service/internal/metrics"
@@ -26,14 +27,22 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	// 初始化Redis客户端
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "redis:6379"
+	// 通过 pkg/config + pkg/database 收敛 Redis 初始化（含 ping 校验、统一池参数）。
+	// docker-compose 历来用 REDIS_ADDR，保留作为 REDIS_URL 之后的回退。
+	redisURL := sharedcfg.FirstNonEmpty("REDIS_URL", "REDIS_ADDR")
+	if redisURL == "" {
+		redisURL = "redis:6379"
 	}
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
-	})
+	redisCfg := sharedcfg.RedisConfig{
+		RedisURL:      redisURL,
+		RedisPassword: sharedcfg.GetEnv("REDIS_PASSWORD", ""),
+		RedisDB:       sharedcfg.GetEnvAsInt("REDIS_DB", 0),
+	}
+	redisClient, err := shareddb.OpenRedis(redisCfg, 5*time.Second)
+	if err != nil {
+		log.Fatalf("failed to init Redis: %v", err)
+	}
+	defer redisClient.Close()
 
 	// 初始化指标收集器
 	metricsCollector := metrics.NewMetricsCollector()

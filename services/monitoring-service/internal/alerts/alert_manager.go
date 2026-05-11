@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-	"go.uber.org/zap"
+	"github.com/redis/go-redis/v9"
 	"github.com/tvvshow/gokao/services/monitoring-service/internal/metrics"
+	"go.uber.org/zap"
 )
 
 // AlertLevel 告警级别
@@ -61,12 +61,12 @@ type AlertRule struct {
 
 // NotificationChannel 通知渠道
 type NotificationChannel struct {
-	ID       string                 `json:"id"`
-	Type     string                 `json:"type"` // email, webhook, dingtalk, wechat
-	Name     string                 `json:"name"`
-	Config   map[string]interface{} `json:"config"`
-	Enabled  bool                   `json:"enabled"`
-	Filters  []AlertLevel           `json:"filters"` // 只接收特定级别的告警
+	ID      string                 `json:"id"`
+	Type    string                 `json:"type"` // email, webhook, dingtalk, wechat
+	Name    string                 `json:"name"`
+	Config  map[string]interface{} `json:"config"`
+	Enabled bool                   `json:"enabled"`
+	Filters []AlertLevel           `json:"filters"` // 只接收特定级别的告警
 }
 
 // AlertManager 告警管理器

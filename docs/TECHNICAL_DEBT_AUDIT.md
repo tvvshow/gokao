@@ -12,9 +12,9 @@
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | **7** | 1 | 1 |
+| 重复代码 (A~I) | 9 | **9** | 0 | 0 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **31** | **1** | **7** |
+| **合计** | **39** | **33** | **0** | **6** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -417,15 +417,37 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### C.5 [✗ PENDING] E. monitoring/api-gateway Redis 未走 shareddb
+#### C.5 [✓ FIXED] E. monitoring/api-gateway Redis 未走 shareddb
 
-**现状**：未审具体。需先 grep 确认 monitoring-service 与 api-gateway 各自如何初始化 Redis。
+**现状（已修复）**：审计指出 monitoring-service / api-gateway 各自手写 `redis.NewClient(...)`，与 `pkg/database.OpenRedis` 已存在的统一工厂脱节。复审实际发现两层债务：
+1. **配置漂移**：8 处独立 `redis.NewClient` 各自设超时/池/ping，参数不一致（monitoring 完全没 ping 校验，启动假成功也不报错）。
+2. **版本割裂**：`pkg/database.OpenRedis` 走 `github.com/redis/go-redis/v9` 但 monitoring/api-gateway 仍用已停止维护的 `github.com/go-redis/redis/v8 v8.11.5`（v8 最后一版 2022 年归档），导致即使引入 helper 也只能 v8 单独包装一份。
 
-**步骤**：
-1. 先做 spike：grep `redis.NewClient` in services/。如果有 `pkg/database.OpenRedis()` 或类似 helper，迁移。
-2. 如 helper 不存在，先在 `pkg/database` 抽出 `OpenRedis(cfg) (*redis.Client, error)`，然后迁移。
+**修复内容**：
+1. **alerts 子 module 升 v9**：`services/monitoring-service/internal/alerts/{go.mod,alert_manager.go}` 将 `go-redis/v8` 切到 `redis/go-redis/v9 v9.13.0`。`alert_manager.go` 实际只用 `Set/Get/Keys/Result/Err`，v9 全兼容，零业务代码改动。
+2. **monitoring-service main.go**：删 `redis.NewClient(&redis.Options{Addr: ...})`，改用 `sharedcfg.RedisConfig{...}` + `shareddb.OpenRedis(redisCfg, 5*time.Second)`。**附带补回历史缺陷**：原代码无 ping 校验，Redis 实例不可达时 alert manager 启动后首条写入才报错；新实现在启动期就 fail-fast，省一轮 production 排障。环境变量兼容：`REDIS_URL` 优先，docker-compose 历史用的 `REDIS_ADDR` 作为回退。
+3. **api-gateway main.go**：同款替换 `initRedisCache` 内部的 6 行手写初始化为 `LoadRedis + OpenRedis`，v8 import 切 v9。
+4. **go.mod/Dockerfile 同步**：
+   - `services/monitoring-service/go.mod` 删 v8 require，加 `pkg/config` + `pkg/database` require + replace 指向 `../../pkg/{config,database}`。
+   - `services/api-gateway/go.mod` 同上。
+   - `Dockerfile` 同步 COPY `pkg/config` + `pkg/database` 让 docker 构建可解析。
 
-**工作量**：先做调研 1h，看具体差异决定。
+**OOB（不在本次范围）**：
+- `services/payment-service/internal/database/database.go:47` 仍用 v8 — payment-service 不在 C.5 审计范围。等下次 payment 专项治理（含 sql.DB → gorm 切换等）一并升 v9。
+- `services/recommendation-service/internal/cache/redis.go:18` 已用 v9 但未走 `OpenRedis`（手写参数集与 OpenRedis 一致）— 不阻塞，下次可一并收敛。
+
+**验证**：
+- alerts module: `go build ./...` + `go mod tidy` 干净。
+- monitoring-service: `go build ./...` + `go test ./...` 全绿（0.721s）。
+- api-gateway: `go build ./...` + `go test ./...` 全绿（28.161s，22+4 测试覆盖 cache/rate limit/security headers）。
+- workspace 级 `go build ./...` 干净。
+- 其他服务 sanity（user-service middleware / recommendation handlers / data-service / payment-service）全绿。
+- `gofmt -l` 检查改动文件无残留。
+
+**净效果**：
+- 4 处生产 `redis.NewClient(...)`（monitoring main + api-gateway main + alerts 内部 + 三方依赖）→ 2 处统一调 `OpenRedis`。
+- monitoring + api-gateway 完成 `go-redis/v8` → `redis/go-redis/v9` 升级，消除版本碎片。
+- monitoring 端首次具备 Redis 启动期 ping 校验。
 
 ---
 
@@ -582,8 +604,8 @@ else { recType = "冲刺" }
 | **P0**（立即） | A.1 P-08 幂等性 / A.2 P-19 事务 / A.3 P-05 双 Service 整合 | 安全/正确性，触线生产即事故 |
 | **P1**（本周） | B.1 P-01 LIKE / B.3 P-14 rateLimiter / B.6 P-24 流式读 | 性能与稳定性瓶颈 |
 | **P2**（下周） | B.2 P-15 stats / B.4 P-17/P-25 ctx / B.7 P-13 logrus | 优化项 |
-| **P3**（第 3-4 周） | C.1 BeforeCreate / C.2 APIResponse / C.4 JSONB / C.6 SecurityHeaders | 重复代码治理 |
-| **P4**（持续） | C.5 Redis init | 长尾治理 |
+| **P3**（第 3-4 周） | C.1 BeforeCreate / C.2 APIResponse / C.3 gin.H / C.4 JSONB / C.5 Redis init / C.6 SecurityHeaders | 重复代码治理（全部完成） |
+| **P4**（持续） | B.8 P-22/P-23 debug log/JSON 优化 | 长尾治理 |
 | **P5**（产品决策后） | D.1 CDF / D.2 三分法 / D.4 Score 分离 | 算法升级，需产品同步 |
 | **P6**（评估后） | D.3 ML stub 删除 / D.5 真数据接入 | D.3 易；D.5 需基础设施投入 |
 

@@ -7,6 +7,8 @@ WORKDIR /app/services/api-gateway
 # Enable Go modules and download deps first (better layer caching)
 COPY services/api-gateway/go.mod services/api-gateway/go.sum ./
 COPY pkg/auth /app/pkg/auth
+COPY pkg/config /app/pkg/config
+COPY pkg/database /app/pkg/database
 COPY pkg/errors /app/pkg/errors
 COPY pkg/middleware /app/pkg/middleware
 COPY pkg/response /app/pkg/response
