@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tvvshow/gokao/pkg/response"
 	"github.com/tvvshow/gokao/services/recommendation-service/internal/cache"
 	"github.com/tvvshow/gokao/services/recommendation-service/internal/llm"
 	"github.com/tvvshow/gokao/services/recommendation-service/pkg/cppbridge"
@@ -187,12 +188,9 @@ type StudentPreferences struct {
 	SpecialRequirements string   `json:"specialRequirements"`
 }
 
-// APIResponse 统一API响应格式
-type APIResponse struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data"`
-	Message string      `json:"message,omitempty"`
-}
+// APIResponse 统一API响应格式（alias 到 pkg/response.APIResponse）。
+// 原 handler-local struct 已迁移到共享包，调用方零改动。
+type APIResponse = response.APIResponse
 
 // RecommendationData 推荐数据格式
 type RecommendationData struct {

@@ -6,6 +6,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/tvvshow/gokao/pkg/response"
 )
 
 // User 用户模型
@@ -50,13 +52,12 @@ type User struct {
 	UserSessions       []UserSession       `gorm:"foreignKey:UserID" json:"user_sessions,omitempty"`
 }
 
-// APIResponse 通用API响应
-type APIResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
+// APIResponse 通用API响应（alias 到 pkg/response.APIResponse，统一字段集）。
+// 旧本地 struct 已迁移到共享包 —— 调用方无需改动（type alias 透明）。
+// 字段 schema 唯一差异：Error 从 string 升级为 *response.ErrorInfo，
+// 但全 user-service 中无调用方构造 Error 字段（仅 Success/Message/Data），
+// 是 wire 上的 dead 字段，alias 切换零行为影响。
+type APIResponse = response.APIResponse
 
 // JWTClaims JWT声明
 type JWTClaims struct {

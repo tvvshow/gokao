@@ -14,6 +14,7 @@ require (
 	github.com/tvvshow/gokao/pkg/config v0.0.0
 	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/tvvshow/gokao/pkg/middleware v0.0.0
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 	gorgonia.org/gorgonia v0.9.18
 	gorgonia.org/tensor v0.9.24
 )
@@ -90,3 +91,5 @@ replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 replace github.com/tvvshow/gokao/pkg/config => ../../pkg/config
 
 replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware
+
+replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response

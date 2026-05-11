@@ -12,9 +12,9 @@
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | **5** | 2 | 2 |
+| 重复代码 (A~I) | 9 | **6** | 1 | 2 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **29** | **2** | **8** |
+| **合计** | **39** | **30** | **1** | **8** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -345,27 +345,29 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ---
 
-#### C.2 [⚠ PARTIAL] G. APIResponse 重复（仍 3 处）
+#### C.2 [✓ FIXED] G. APIResponse 重复（已收敛）
 
-**现状**：3 处独立定义：
-- `services/user-service/internal/models/models.go:54`
-- `services/payment-service/internal/models/payment_models.go:298`
-- `services/recommendation-service/internal/handlers/simple_recommendation_handler.go:191`
+**现状（已修复）**：原 3 处独立定义已全部用 type alias 收敛到 `pkg/response.APIResponse`：
+- `services/user-service/internal/models/models.go:54` → `type APIResponse = response.APIResponse`
+- `services/payment-service/internal/models/payment_models.go:264` → `type APIResponse = response.APIResponse`
+- `services/recommendation-service/internal/handlers/simple_recommendation_handler.go:191` → `type APIResponse = response.APIResponse`
 
-`pkg/response` 已存在，data-service 已通过类型别名接入。
+**真根因审计纠正**：原审计描述"字段名/JSON 结构相同"实际不准确。3 处旧 schema 字段是 `Error string`，pkg/response.APIResponse 是 `Error *ErrorInfo + Timestamp + RequestID`。直接 alias 会改变 wire schema。
 
-**期望**：3 处全部替换为 `pkg/response.Response`。
+**风险评估**：
+- 后端：grep 全仓 `APIResponse{` 共 17 处构造点，**零处**构造 Error 字段 —— 大家只用 Success/Message/Data。所以 Error 字段 schema 变化属"dead spec 差异"，无生产行为影响。
+- 前端：`frontend/src/types/api.ts::ApiResponse<T>` 字段集为 `success/code?/data/message?/total?/timestamp?/request_id?`，**不含 error 字段**。grep 前端零依赖 response.error。
+- 结论：alias 切换零 wire 契约破坏。
 
-**步骤**：
-1. 各服务 go.mod 加 `pkg/response` 依赖。
-2. 用 type alias `type APIResponse = response.Response` 平滑迁移（避免 100+ 处 call site 改动）。
-3. 后续逐步把 call site 改为直接引用 `response.Response`。
+**修复内容**：
+1. user-service / payment-service / recommendation-service 的 `go.mod` 新增 `pkg/response v0.0.0` 依赖 + `replace ... => ../../pkg/response`。
+2. 三处独立 struct 替换为 `type APIResponse = response.APIResponse`。
+3. import "github.com/tvvshow/gokao/pkg/response"。
+4. 调用点全部零改动（type alias 透明）。
 
 **验证**：
-- 编译 + 测试。
-- 跨服务接口契约不变（字段名/JSON 结构相同）。
-
-**工作量**：~2h（type alias 阶段）+ 后续逐步。
+- `go build ./...` workspace 干净。
+- `go test ./services/user-service/... ./services/payment-service/... ./services/recommendation-service/...` 全绿。
 
 ---
 

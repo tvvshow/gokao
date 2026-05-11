@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+
+	"github.com/tvvshow/gokao/pkg/response"
 )
 
 // PaymentOrder 支付订单模型
@@ -260,13 +262,11 @@ type CreatePaymentRequest struct {
 	Extra         map[string]interface{} `json:"extra"`
 }
 
-// APIResponse 通用API响应
-type APIResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
+// APIResponse 通用API响应（alias 到 pkg/response.APIResponse）。
+// 三处独立定义已统一到共享包：调用方零改动（type alias 透明）。
+// 字段 schema 唯一差异：Error 从 string 升级为 *response.ErrorInfo，
+// 但全 payment-service 无构造 Error 字段，是 wire 上的 dead 字段。
+type APIResponse = response.APIResponse
 
 // ValidateChannel 验证支付渠道
 func ValidateChannel(channel string) bool {

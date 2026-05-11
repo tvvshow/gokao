@@ -7,15 +7,16 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.4.0
 	github.com/joho/godotenv v1.4.0
-	github.com/tvvshow/gokao/pkg/auth v0.0.0
-	github.com/tvvshow/gokao/pkg/config v0.0.0
-	github.com/tvvshow/gokao/pkg/database v0.0.0
-	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
+	github.com/tvvshow/gokao/pkg/auth v0.0.0
+	github.com/tvvshow/gokao/pkg/config v0.0.0
+	github.com/tvvshow/gokao/pkg/database v0.0.0
+	github.com/tvvshow/gokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 	golang.org/x/crypto v0.45.0
 	gorm.io/gorm v1.30.2
 )
@@ -81,3 +82,5 @@ replace github.com/tvvshow/gokao/pkg/database => ../../pkg/database
 replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 
 replace github.com/tvvshow/gokao/pkg/logger => ../../pkg/logger
+
+replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response

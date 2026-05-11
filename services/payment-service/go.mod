@@ -17,6 +17,7 @@ require (
 	github.com/tvvshow/gokao/pkg/config v0.0.0
 	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/tvvshow/gokao/pkg/middleware v0.0.0
+	github.com/tvvshow/gokao/pkg/response v0.0.0
 	github.com/wechatpay-apiv3/wechatpay-go v0.2.21
 	golang.org/x/time v0.15.0
 	gorm.io/gorm v1.31.1
@@ -69,3 +70,5 @@ replace github.com/tvvshow/gokao/pkg/config => ../../pkg/config
 replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 
 replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware
+
+replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response
