@@ -13,6 +13,8 @@ COPY pkg/auth /app/pkg/auth
 COPY pkg/config /app/pkg/config
 COPY pkg/health /app/pkg/health
 COPY pkg/middleware /app/pkg/middleware
+COPY pkg/models /app/pkg/models
+COPY pkg/response /app/pkg/response
 
 # 下载依赖
 RUN go mod download

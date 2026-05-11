@@ -13,6 +13,7 @@ COPY services/recommendation-service/go.mod services/recommendation-service/go.s
 COPY pkg/config /app/pkg/config
 COPY pkg/health /app/pkg/health
 COPY pkg/middleware /app/pkg/middleware
+COPY pkg/response /app/pkg/response
 RUN go mod download
 
 # 构建 C++ 共享库

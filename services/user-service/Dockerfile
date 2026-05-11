@@ -16,6 +16,8 @@ COPY pkg/database /app/pkg/database
 COPY pkg/errors /app/pkg/errors
 COPY pkg/health /app/pkg/health
 COPY pkg/logger /app/pkg/logger
+COPY pkg/models /app/pkg/models
+COPY pkg/response /app/pkg/response
 
 # 下载依赖
 RUN go mod download
