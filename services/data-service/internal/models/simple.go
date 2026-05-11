@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	pkgmodels "github.com/tvvshow/gokao/pkg/models"
 )
 
 // SimpleTest 简单测试模型
@@ -15,10 +17,8 @@ type SimpleTest struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// BeforeCreate GORM钩子：创建前生成UUID
+// BeforeCreate GORM钩子：创建前生成UUID（走 pkg/models helper）
 func (st *SimpleTest) BeforeCreate(tx *gorm.DB) error {
-	if st.ID == uuid.Nil {
-		st.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&st.ID)
 	return nil
 }

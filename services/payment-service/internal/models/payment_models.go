@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	pkgmodels "github.com/tvvshow/gokao/pkg/models"
 	"github.com/tvvshow/gokao/pkg/response"
 )
 
@@ -34,11 +35,9 @@ type PaymentOrder struct {
 	DeletedAt      gorm.DeletedAt  `json:"deleted_at" gorm:"index"`
 }
 
-// BeforeCreate GORM钩子
+// BeforeCreate GORM钩子（走 pkg/models helper 统一 UUID 默认值生成）
 func (po *PaymentOrder) BeforeCreate(tx *gorm.DB) error {
-	if po.ID == uuid.Nil {
-		po.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&po.ID)
 	return nil
 }
 
@@ -64,9 +63,7 @@ type PaymentRefund struct {
 
 // BeforeCreate GORM钩子
 func (pr *PaymentRefund) BeforeCreate(tx *gorm.DB) error {
-	if pr.ID == uuid.Nil {
-		pr.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&pr.ID)
 	return nil
 }
 
@@ -88,9 +85,7 @@ type PaymentNotify struct {
 
 // BeforeCreate GORM钩子
 func (pn *PaymentNotify) BeforeCreate(tx *gorm.DB) error {
-	if pn.ID == uuid.Nil {
-		pn.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&pn.ID)
 	return nil
 }
 

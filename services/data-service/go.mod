@@ -17,6 +17,7 @@ require (
 	github.com/tvvshow/gokao/pkg/database v0.0.0
 	github.com/tvvshow/gokao/pkg/health v0.0.0
 	github.com/tvvshow/gokao/pkg/middleware v0.0.0
+	github.com/tvvshow/gokao/pkg/models v0.0.0
 	github.com/tvvshow/gokao/pkg/response v0.0.0
 	golang.org/x/sync v0.18.0
 	gorm.io/driver/postgres v1.6.0
@@ -92,3 +93,5 @@ replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 replace github.com/tvvshow/gokao/pkg/logger => ../../pkg/logger
 
 replace github.com/tvvshow/gokao/pkg/middleware => ../../pkg/middleware
+
+replace github.com/tvvshow/gokao/pkg/models => ../../pkg/models

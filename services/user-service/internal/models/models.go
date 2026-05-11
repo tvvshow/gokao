@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	pkgmodels "github.com/tvvshow/gokao/pkg/models"
 	"github.com/tvvshow/gokao/pkg/response"
 )
 
@@ -322,39 +323,30 @@ func (DeviceLicense) TableName() string {
 	return "device_licenses"
 }
 
-// BeforeCreate GORM钩子：创建前
+// BeforeCreate GORM钩子：创建前。所有 model 的 ID 自动填充复用 pkg/models helper
+// （消除重复模板：16 处独立 BeforeCreate 全部收敛到一行调用）。
 func (u *User) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == uuid.Nil {
-		u.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&u.ID)
 	return nil
 }
 
 func (rt *RefreshToken) BeforeCreate(tx *gorm.DB) error {
-	if rt.ID == uuid.Nil {
-		rt.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&rt.ID)
 	return nil
 }
 
 func (al *AuditLog) BeforeCreate(tx *gorm.DB) error {
-	if al.ID == uuid.Nil {
-		al.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&al.ID)
 	return nil
 }
 
 func (df *DeviceFingerprint) BeforeCreate(tx *gorm.DB) error {
-	if df.ID == uuid.Nil {
-		df.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&df.ID)
 	return nil
 }
 
 func (mo *MembershipOrder) BeforeCreate(tx *gorm.DB) error {
-	if mo.ID == uuid.Nil {
-		mo.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&mo.ID)
 	return nil
 }
 
@@ -375,15 +367,11 @@ const (
 )
 
 func (us *UserSession) BeforeCreate(tx *gorm.DB) error {
-	if us.ID == uuid.Nil {
-		us.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&us.ID)
 	return nil
 }
 
 func (dl *DeviceLicense) BeforeCreate(tx *gorm.DB) error {
-	if dl.ID == uuid.Nil {
-		dl.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&dl.ID)
 	return nil
 }

@@ -16,6 +16,7 @@ require (
 	github.com/tvvshow/gokao/pkg/config v0.0.0
 	github.com/tvvshow/gokao/pkg/database v0.0.0
 	github.com/tvvshow/gokao/pkg/health v0.0.0
+	github.com/tvvshow/gokao/pkg/models v0.0.0
 	github.com/tvvshow/gokao/pkg/response v0.0.0
 	golang.org/x/crypto v0.45.0
 	gorm.io/gorm v1.30.2
@@ -84,3 +85,5 @@ replace github.com/tvvshow/gokao/pkg/health => ../../pkg/health
 replace github.com/tvvshow/gokao/pkg/logger => ../../pkg/logger
 
 replace github.com/tvvshow/gokao/pkg/response => ../../pkg/response
+
+replace github.com/tvvshow/gokao/pkg/models => ../../pkg/models

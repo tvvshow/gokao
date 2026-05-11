@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	pkgmodels "github.com/tvvshow/gokao/pkg/models"
 )
 
 // University 院校模型
@@ -270,38 +272,28 @@ func (DataStatistics) TableName() string {
 	return "data_statistics"
 }
 
-// BeforeCreate GORM钩子：创建前
+// BeforeCreate GORM钩子：创建前。所有 model 的 ID 自动填充走 pkg/models helper。
 func (u *University) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == uuid.Nil {
-		u.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&u.ID)
 	return nil
 }
 
 func (m *Major) BeforeCreate(tx *gorm.DB) error {
-	if m.ID == uuid.Nil {
-		m.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&m.ID)
 	return nil
 }
 
 func (ad *AdmissionData) BeforeCreate(tx *gorm.DB) error {
-	if ad.ID == uuid.Nil {
-		ad.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&ad.ID)
 	return nil
 }
 
 func (si *SearchIndex) BeforeCreate(tx *gorm.DB) error {
-	if si.ID == uuid.Nil {
-		si.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&si.ID)
 	return nil
 }
 
 func (ar *AnalysisResult) BeforeCreate(tx *gorm.DB) error {
-	if ar.ID == uuid.Nil {
-		ar.ID = uuid.New()
-	}
+	pkgmodels.AssignNewUUIDIfZero(&ar.ID)
 	return nil
 }

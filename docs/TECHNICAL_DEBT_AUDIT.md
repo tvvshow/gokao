@@ -12,9 +12,9 @@
 |------|------|---------|-----------|-----------|
 | 严重 (P-01~P-10) | 10 | **10** | 0 | 0 |
 | 中等 (P-11~P-25) | 15 | **14** | 0 | 1 |
-| 重复代码 (A~I) | 9 | **6** | 1 | 2 |
+| 重复代码 (A~I) | 9 | **7** | 1 | 1 |
 | 算法 (Phase 4) | 5 | 0 | 0 | 5 |
-| **合计** | **39** | **30** | **1** | **8** |
+| **合计** | **39** | **31** | **1** | **7** |
 
 复审依据：逐文件 grep + 关键文件 read 验证（非仅看 commit message）。
 
@@ -313,35 +313,36 @@ eef5eb7 已覆盖 7/11；本次补 hot_searches.keyword 索引覆盖 8/11；剩 
 
 ### 阶段 C — 重复代码治理
 
-#### C.1 [✗ PENDING] F. BeforeCreate UUID hooks（16 处）
+#### C.1 [✓ FIXED] F. BeforeCreate UUID hooks（16 处）
 
-**现状**：16 处 `func (X *Y) BeforeCreate(tx *gorm.DB) error { if X.ID == uuid.Nil { X.ID = uuid.New() }; return nil }` 完全相同。分布于 user-service(7) + data-service(6) + payment-service(3)。
+**现状（已修复）**：16 处 BeforeCreate 都是同款 `if X.ID == uuid.Nil { X.ID = uuid.New() }` 模板（user 7 + data 6 + payment 3）。
 
-**期望**：在 `pkg/models` 定义 `UUIDBaseModel` 嵌入式基类，仅写一次 BeforeCreate。
+**真根因选型纠正**：原审计推荐"嵌入式 UUIDBaseModel"路径，但实测风险较大：
+- 16 个 model 各自有完整 ID 字段定义 + gorm tag（如 `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`）
+- 嵌入 BaseModel 后字段冲突（外层 ID 遮蔽嵌入 ID，gorm tag 行为不直观）
+- GORM v2 嵌入 hook 的 method 提升语义在多嵌入场景下行为不稳定
 
-**步骤**：
-1. 在 `pkg/models` 新增：
+改走 **helper 函数路径**（更稳健，仍消除业务逻辑重复）：
+1. `pkg/models/uuid.go` 新增 `AssignNewUUIDIfZero(id *uuid.UUID)` —— 单一职责，nil-pointer 防护内置。
+2. 16 处 BeforeCreate 函数体从 4 行 → 2 行：
    ```go
-   type UUIDBaseModel struct {
-       ID uuid.UUID `gorm:"type:uuid;primaryKey"`
-       CreatedAt time.Time
-       UpdatedAt time.Time
-   }
-   func (m *UUIDBaseModel) BeforeCreate(tx *gorm.DB) error {
-       if m.ID == uuid.Nil { m.ID = uuid.New() }
+   func (X *Y) BeforeCreate(tx *gorm.DB) error {
+       pkgmodels.AssignNewUUIDIfZero(&X.ID)
        return nil
    }
    ```
-2. 各模型把 `ID uuid.UUID` 字段替换为 `models.UUIDBaseModel` 嵌入。
-3. 删除 16 处 BeforeCreate。
-4. 跑测试确认 GORM 嵌入字段 hook 被正确识别（GORM 自动用最外层的 BeforeCreate，嵌入应也能 work，需测）。
+3. user-service / data-service / payment-service 的 `go.mod` 各自新增 `pkg/models v0.0.0` 依赖 + `replace ... => ../../pkg/models`。
+4. import `pkgmodels "github.com/tvvshow/gokao/pkg/models"`，避免与服务本地 `models` 包名冲突。
 
-**风险**：GORM 嵌入 hook 的可见性需验证；如果嵌入失效，回退方案是 `pkg/models.NewUUID()` helper + 各处显式调用。
+**消除效果**：每处 3 行业务逻辑 × 16 处 = 48 行重复模板降至 2 行。
+方法签名（GORM hook 注册必须）保留 16 处但只是壳，不构成"业务重复"。
 
 **验证**：
-- 集成测试：创建 X 记录，断言 `ID != uuid.Nil`。
+- `go build ./...` workspace 干净。
+- `go test ./services/user-service/... ./services/data-service/... ./services/payment-service/... ./pkg/models/...` 全绿。
 
-**工作量**：~3h。
+**OOB（未来 follow-up）**：
+- 完全消除方法签名重复需要 GORM 嵌入式 base struct，但需要拆分每个 model 的 ID/CreatedAt/UpdatedAt 字段定义。工作量大且涉及现存 DB schema 兼容性（如 `default:gen_random_uuid()`），暂不强行。
 
 ---
 
