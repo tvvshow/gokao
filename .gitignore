@@ -187,6 +187,9 @@ data/**/*.json
 
 # Backup files
 *.sql
+# 例外：版本化迁移脚本必须入仓
+!**/migrations/**/*.sql
+!**/migrations/*.sql
 backup_*
 
 # Local configuration

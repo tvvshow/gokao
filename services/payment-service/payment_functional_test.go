@@ -13,7 +13,7 @@ import (
 	"github.com/tvvshow/gokao/services/payment-service/internal/adapters"
 	"github.com/tvvshow/gokao/services/payment-service/internal/config"
 	"github.com/tvvshow/gokao/services/payment-service/internal/models"
-	"github.com/tvvshow/gokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

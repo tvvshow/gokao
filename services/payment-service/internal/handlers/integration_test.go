@@ -13,7 +13,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/tvvshow/gokao/services/payment-service/internal/models"
-	"github.com/tvvshow/gokao/services/payment-service/internal/services"
+	"github.com/tvvshow/gokao/services/payment-service/internal/service"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"
