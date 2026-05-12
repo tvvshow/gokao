@@ -1,10 +1,32 @@
 name: CI/CD Pipeline
 
+# CI-PERF-01 (2026-05-12):
+#   - paths-ignore: 纯文档/Markdown 改动不触发 CI（docs/、*.md、LICENSE、.gitignore）。
+#   - concurrency: 同分支连续 push 自动取消旧 run，避免 6.5min × N 浪费。
+#   - 解耦 needs 链：code-quality / unit-tests / cpp-build / build-frontend 全部并行起跑。
+#     原链 code-quality → unit-tests → cpp-build → build → security 串行 5 层；
+#     现 build 仍 gate 在 [unit-tests, cpp-build] 之后，保证镜像必须过 Go test。
 on:
   push:
     branches: [ main, master, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
   pull_request:
     branches: [ main, master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -135,7 +157,7 @@ jobs:
   # 单元测试
   unit-tests:
     runs-on: ubuntu-latest
-    needs: code-quality
+    # CI-PERF-01: 删 `needs: code-quality` —— 单测不依赖 lint 通过，两者并行启动
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
@@ -199,7 +221,7 @@ jobs:
   # C++模块构建
   cpp-build:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    # CI-PERF-01: 删 `needs: unit-tests` —— C++ 编译完全独立，并行起跑
     if: github.event_name == 'push'
     
     strategy:
@@ -220,7 +242,9 @@ jobs:
         path: |
           cpp-modules/${{ matrix.module }}/build
           ~/.cache/cmake
-        key: ${{ runner.os }}-cmake-${{ matrix.module }}-${{ hashFiles('cpp-modules/${{ matrix.module }}/CMakeLists.txt', 'cpp-modules/${{ matrix.module }}/src/**') }}
+        # CI-PERF-01: hashFiles 字符串参数里的 ${{ matrix.module }} 不会展开（单引号锁死），
+        # 三个模块共享同一 key 互相覆盖。改用 format() 在表达式层拼接，让 matrix 真正参与 key。
+        key: ${{ runner.os }}-cmake-${{ matrix.module }}-${{ hashFiles(format('cpp-modules/{0}/CMakeLists.txt', matrix.module), format('cpp-modules/{0}/src/**', matrix.module), format('cpp-modules/{0}/include/**', matrix.module)) }}
         restore-keys: |
           ${{ runner.os }}-cmake-${{ matrix.module }}-
     
@@ -306,7 +330,7 @@ jobs:
   # 构建前端
   build-frontend:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    # CI-PERF-01: 删 `needs: unit-tests` —— 前端构建独立于 Go 测试，并行起跑
     if: github.event_name == 'push'
     
     steps:
