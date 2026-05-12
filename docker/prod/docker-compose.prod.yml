@@ -1,317 +1,472 @@
+# Production Docker Compose for 高考志愿填报系统
+#
+# Run from repo root:
+#   docker compose -f docker/prod/docker-compose.prod.yml --env-file docker/prod/.env up -d
+#
+# Prerequisites: docker/prod/SECRETS.md (TLS cert / passwords / JWT / AES keys)
+#
+# Service topology:
+#   - gaokao-prod-frontend (external): nginx
+#   - gaokao-prod-backend (internal): all microservices + postgres + redis + monitoring
+#   - frontend container is reverse-proxied by nginx, not exposed directly.
+#
+# Path convention: this file lives at docker/prod/, so relative paths point one or two levels up.
+
 version: "3.9"
 
-# 生产环境 Docker Compose 配置
-# 优化性能、安全性和监控
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default-restart unless-stopped
+
+x-service-healthcheck: &service-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
 
 services:
-  # PostgreSQL 数据库 - 生产配置
+  # ── Data plane ──────────────────────────────────────────────
   postgres:
-    image: postgres:14-alpine
+    image: postgres:15-alpine
     container_name: gaokao-postgres-prod
     environment:
-      POSTGRES_DB: gaokao_prod
-      POSTGRES_USER: gaokao_user
+      POSTGRES_DB: ${POSTGRES_DB:-gaokao_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-gaokao_user}
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=zh_CN.UTF-8"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
     ports:
-      - "127.0.0.1:5432:5432"  # 只绑定本地访问
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
-      - ./prod/sql/init:/docker-entrypoint-initdb.d:ro
+      - ../../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - gaokao-prod-backend
     secrets:
       - postgres_password
     deploy:
       resources:
-        limits:
-          memory: 2G
-          cpus: "1.0"
-        reservations:
-          memory: 1G
-          cpus: "0.5"
+        limits: { memory: 2G, cpus: "1.0" }
+        reservations: { memory: 1G, cpus: "0.5" }
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gaokao_user -d gaokao_prod"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gaokao_user} -d ${POSTGRES_DB:-gaokao_prod}"]
       start_period: 60s
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    restart: *default-restart
+    logging: *default-logging
 
-  # Redis 缓存 - 生产配置
   redis:
-    image: redis:7.0-alpine
+    image: redis:7-alpine
     container_name: gaokao-redis-prod
     command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
+      sh -c 'redis-server
+      --requirepass "$$(cat /run/secrets/redis_password)"
       --appendonly yes
       --appendfsync everysec
       --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy allkeys-lru'
     ports:
-      - "127.0.0.1:6379:6379"  # 只绑定本地访问
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_prod_data:/data
-      - ./prod/redis/redis.conf:/etc/redis/redis.conf:ro
     networks:
       - gaokao-prod-backend
+    secrets:
+      - redis_password
     deploy:
       resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-        reservations:
-          memory: 256M
-          cpus: "0.25"
+        limits: { memory: 512M, cpus: "0.5" }
+        reservations: { memory: 256M, cpus: "0.25" }
     healthcheck:
-      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "redis-cli --pass \"$$(cat /run/secrets/redis_password)\" ping | grep -q PONG"]
+    restart: *default-restart
+    logging: *default-logging
 
-  # C++ 模块服务 - 生产配置
-  cpp-modules:
+  # ── Microservices ───────────────────────────────────────────
+  # cpp-modules is intentionally NOT a separate container: recommendation-service
+  # links libvolunteer_matcher.so via CGO at build time (see services/recommendation-service/Dockerfile).
+  data-service:
     build:
       context: ../../
-      dockerfile: docker/prod/Dockerfile.cpp-modules
-    image: gaokao/cpp-modules:${VERSION:-latest}
-    container_name: gaokao-cpp-modules-prod
-    ports:
-      - "127.0.0.1:8082:8082"  # 只绑定本地访问
+      dockerfile: services/data-service/Dockerfile
+    image: gaokao/data-service:${VERSION:-latest}
+    container_name: gaokao-data-service-prod
     environment:
-      - DEBUG=false
-      - LOG_LEVEL=info
-      - CPP_MODULE_PATH=/app
-    networks:
-      - gaokao-prod-backend
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-        reservations:
-          memory: 256M
-          cpus: "0.25"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # User Service - 生产配置
-  user-service:
-    build:
-      context: ../../services/user-service
-      dockerfile: ../../docker/prod/Dockerfile.user-service
-    image: gaokao/user-service:${VERSION:-latest}
-    container_name: gaokao-user-service-prod
-    ports:
-      - "127.0.0.1:8081:8081"  # 只绑定本地访问
-    environment:
-      - PORT=8081
+      - PORT=8082
       - GIN_MODE=release
-      - DEBUG=false
-      - LOG_LEVEL=info
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=gaokao_user
-      - DB_PASSWORD_FILE=/run/secrets/postgres_password
-      - DB_NAME=gaokao_prod
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - CPP_MODULE_HOST=cpp-modules
-      - CPP_MODULE_PORT=8082
-      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - ENABLE_SWAGGER=0
+      - DATABASE_URL=postgres://${POSTGRES_USER:-gaokao_user}:$$(cat /run/secrets/postgres_password)@postgres:5432/${POSTGRES_DB:-gaokao_prod}?sslmode=disable
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - REDIS_DB=0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATA_IMPORT_ENABLED=${DATA_IMPORT_ENABLED:-false}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      cpp-modules:
-        condition: service_started
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
     networks:
       - gaokao-prod-backend
     secrets:
       - postgres_password
-      - jwt_secret
+      - redis_password
     deploy:
       resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-        reservations:
-          memory: 256M
-          cpus: "0.25"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+        limits: { memory: 1G, cpus: "1.0" }
+        reservations: { memory: 512M, cpus: "0.5" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8082/health"]
+    restart: *default-restart
+    logging: *default-logging
 
-  # API Gateway - 生产配置
+  user-service:
+    build:
+      context: ../../
+      dockerfile: services/user-service/Dockerfile
+    image: gaokao/user-service:${VERSION:-latest}
+    container_name: gaokao-user-service-prod
+    environment:
+      - PORT=8083
+      - GIN_MODE=release
+      - DEBUG=false
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-gaokao_user}:$$(cat /run/secrets/postgres_password)@postgres:5432/${POSTGRES_DB:-gaokao_prod}?sslmode=disable
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - REDIS_DB=1
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - AES_ENCRYPTION_KEY_FILE=/run/secrets/aes_key
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    networks:
+      - gaokao-prod-backend
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret
+      - aes_key
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "0.5" }
+        reservations: { memory: 256M, cpus: "0.25" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8083/health"]
+    restart: *default-restart
+    logging: *default-logging
+
+  recommendation-service:
+    build:
+      context: ../../
+      dockerfile: services/recommendation-service/Dockerfile
+    image: gaokao/recommendation-service:${VERSION:-latest}
+    container_name: gaokao-recommendation-service-prod
+    environment:
+      - SERVER_PORT=8084
+      - SERVER_MODE=release
+      - DATA_SERVICE_URL=http://data-service:8082
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ALGORITHM_TYPE=${ALGORITHM_TYPE:-hybrid}
+      - LD_LIBRARY_PATH=/usr/local/lib
+      - CPP_LIBRARY_PATH=/usr/local/lib/libvolunteer_matcher.so
+      - LLM_ENABLED=${RECOMMENDATION_LLM_ENABLED:-false}
+      - LLM_PROVIDER=${RECOMMENDATION_LLM_PROVIDER:-openai-compatible}
+      - LLM_BASE_URL=${RECOMMENDATION_LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_API_KEY_FILE=/run/secrets/llm_api_key
+      - LLM_MODEL=${RECOMMENDATION_LLM_MODEL:-gpt-4o-mini}
+      - LLM_TIMEOUT=${RECOMMENDATION_LLM_TIMEOUT:-20s}
+      - LLM_MAX_TOKENS=${RECOMMENDATION_LLM_MAX_TOKENS:-800}
+      - LLM_TEMPERATURE=${RECOMMENDATION_LLM_TEMPERATURE:-0.3}
+      - LLM_FALLBACK_ENABLED=${RECOMMENDATION_LLM_FALLBACK_ENABLED:-true}
+    depends_on:
+      data-service: { condition: service_healthy }
+    networks:
+      - gaokao-prod-backend
+    secrets:
+      - llm_api_key
+    deploy:
+      resources:
+        limits: { memory: 1G, cpus: "1.0" }
+        reservations: { memory: 512M, cpus: "0.5" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8084/health"]
+    restart: *default-restart
+    logging: *default-logging
+
+  payment-service:
+    build:
+      context: ../../
+      dockerfile: services/payment-service/Dockerfile
+    image: gaokao/payment-service:${VERSION:-latest}
+    container_name: gaokao-payment-service-prod
+    environment:
+      - PORT=8085
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-gaokao_user}
+      - DB_PASSWORD_FILE=/run/secrets/postgres_password
+      - DB_NAME=${POSTGRES_DB:-gaokao_prod}
+      - DB_SSL_MODE=disable
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - REDIS_DB=2
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Payment adapter material is provided via mounted file paths.
+      # See SECRETS.md; absence is tolerated by adapter factory until merchant onboarding.
+      - ALIPAY_APP_ID=${ALIPAY_APP_ID:-}
+      - ALIPAY_PRIVATE_KEY_FILE=/run/secrets/alipay_private_key
+      - ALIPAY_PUBLIC_KEY_FILE=/run/secrets/alipay_public_key
+      - WECHAT_MCH_ID=${WECHAT_MCH_ID:-}
+      - WECHAT_API_KEY_FILE=/run/secrets/wechat_api_key
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    networks:
+      - gaokao-prod-backend
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret
+      - alipay_private_key
+      - alipay_public_key
+      - wechat_api_key
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "0.5" }
+        reservations: { memory: 256M, cpus: "0.25" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8085/health"]
+    restart: *default-restart
+    logging: *default-logging
+
+  monitoring-service:
+    build:
+      context: ../../
+      dockerfile: services/monitoring-service/Dockerfile
+    image: gaokao/monitoring-service:${VERSION:-latest}
+    container_name: gaokao-monitoring-service-prod
+    environment:
+      - PORT=8086
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis: { condition: service_healthy }
+    networks:
+      - gaokao-prod-backend
+    secrets:
+      - redis_password
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.25" }
+        reservations: { memory: 128M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8086/metrics"]
+    restart: *default-restart
+    logging: *default-logging
+
   api-gateway:
     build:
-      context: ../../services/api-gateway
-      dockerfile: ../../docker/prod/Dockerfile.api-gateway
+      context: ../../
+      dockerfile: services/api-gateway/Dockerfile
     image: gaokao/api-gateway:${VERSION:-latest}
     container_name: gaokao-api-gateway-prod
-    ports:
-      - "80:8080"
-      - "443:8443"
     environment:
       - PORT=8080
       - GIN_MODE=release
       - ENABLE_SWAGGER=0
       - DEBUG=false
-      - LOG_LEVEL=info
-      - USER_SERVICE_URL=http://user-service:8081
-      - CPP_MODULE_URL=http://cpp-modules:8082
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATA_SERVICE_URL=http://data-service:8082
+      - USER_SERVICE_URL=http://user-service:8083
+      - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8084
+      - PAYMENT_SERVICE_URL=http://payment-service:8085
+      - MONITORING_SERVICE_URL=http://monitoring-service:8086
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
-      - TLS_CERT_FILE=/run/secrets/tls_cert
-      - TLS_KEY_FILE=/run/secrets/tls_key
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_DURATION=${RATE_LIMIT_DURATION:-60}
     depends_on:
-      - user-service
-      - redis
+      data-service:           { condition: service_healthy }
+      user-service:           { condition: service_healthy }
+      recommendation-service: { condition: service_healthy }
+      payment-service:        { condition: service_healthy }
+      monitoring-service:     { condition: service_healthy }
     networks:
-      - gaokao-prod-frontend
       - gaokao-prod-backend
     secrets:
+      - redis_password
       - jwt_secret
-      - tls_cert
-      - tls_key
     deploy:
       resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-        reservations:
-          memory: 256M
-          cpus: "0.25"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+        limits: { memory: 512M, cpus: "1.0" }
+        reservations: { memory: 256M, cpus: "0.5" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
+    restart: *default-restart
+    logging: *default-logging
 
-  # Nginx 反向代理 - 生产负载均衡
+  # ── Edge / frontend ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    image: gaokao/frontend:${VERSION:-latest}
+    container_name: gaokao-frontend-prod
+    networks:
+      - gaokao-prod-frontend
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.25" }
+        reservations: { memory: 128M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+    restart: *default-restart
+    logging: *default-logging
+
   nginx:
-    image: nginx:1.24-alpine
+    image: nginx:1.27-alpine
     container_name: gaokao-nginx-prod
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./prod/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./prod/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_logs:/var/log/nginx
     depends_on:
-      - api-gateway
+      api-gateway: { condition: service_healthy }
+      frontend:    { condition: service_healthy }
     networks:
       - gaokao-prod-frontend
+      - gaokao-prod-backend
     secrets:
       - tls_cert
       - tls_key
     deploy:
       resources:
-        limits:
-          memory: 256M
-          cpus: "0.25"
-        reservations:
-          memory: 128M
-          cpus: "0.1"
-    restart: unless-stopped
+        limits: { memory: 256M, cpus: "0.25" }
+        reservations: { memory: 128M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
+    restart: *default-restart
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "5"
 
-  # 监控服务 - Prometheus
+  # ── Observability ───────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.0
     container_name: gaokao-prometheus-prod
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_DAYS:-30}d'
       - '--web.enable-lifecycle'
-      - '--storage.tsdb.retention.time=30d'
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
-      - ./prod/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../monitoring/alerts:/etc/prometheus/alerts:ro
       - prometheus_prod_data:/prometheus
+    networks:
+      - gaokao-prod-backend
+    depends_on:
+      - api-gateway
+      - monitoring-service
+    deploy:
+      resources:
+        limits: { memory: 1G, cpus: "0.5" }
+        reservations: { memory: 512M, cpus: "0.25" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+    restart: *default-restart
+    logging: *default-logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: gaokao-alertmanager-prod
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ../../monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_prod_data:/alertmanager
     networks:
       - gaokao-prod-backend
     deploy:
       resources:
-        limits:
-          memory: 1G
-          cpus: "0.5"
-        reservations:
-          memory: 512M
-          cpus: "0.25"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+        limits: { memory: 256M, cpus: "0.25" }
+        reservations: { memory: 128M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9093/-/healthy"]
+    restart: *default-restart
+    logging: *default-logging
 
-  # 监控服务 - Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: gaokao-grafana-prod
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_admin_password
-      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
-    ports:
-      - "127.0.0.1:3000:3000"
-    volumes:
-      - grafana_prod_data:/var/lib/grafana
-      - ./prod/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      - prometheus
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: gaokao-blackbox-exporter-prod
     networks:
       - gaokao-prod-backend
+    deploy:
+      resources:
+        limits: { memory: 128M, cpus: "0.1" }
+        reservations: { memory: 64M, cpus: "0.05" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9115/-/healthy"]
+    restart: *default-restart
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: gaokao-grafana-prod
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - grafana_prod_data:/var/lib/grafana
+    networks:
+      - gaokao-prod-backend
+    depends_on:
+      - prometheus
     secrets:
       - grafana_admin_password
     deploy:
       resources:
-        limits:
-          memory: 512M
-          cpus: "0.25"
-        reservations:
-          memory: 256M
-          cpus: "0.1"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+        limits: { memory: 512M, cpus: "0.25" }
+        reservations: { memory: 256M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
+    restart: *default-restart
+    logging: *default-logging
 
-# 网络配置
 networks:
   gaokao-prod-frontend:
     driver: bridge
@@ -319,32 +474,25 @@ networks:
   gaokao-prod-backend:
     driver: bridge
     name: gaokao-prod-backend
-    internal: true  # 后端网络不允许外部访问
+    internal: true   # no egress to public internet; only via nginx in frontend network
 
-# 数据卷
 volumes:
-  postgres_prod_data:
-    name: gaokao-postgres-prod-data
-  redis_prod_data:
-    name: gaokao-redis-prod-data
-  prometheus_prod_data:
-    name: gaokao-prometheus-prod-data
-  grafana_prod_data:
-    name: gaokao-grafana-prod-data
-  nginx_logs:
-    name: gaokao-nginx-logs
+  postgres_prod_data:     { name: gaokao-postgres-prod-data }
+  redis_prod_data:        { name: gaokao-redis-prod-data }
+  prometheus_prod_data:   { name: gaokao-prometheus-prod-data }
+  alertmanager_prod_data: { name: gaokao-alertmanager-prod-data }
+  grafana_prod_data:      { name: gaokao-grafana-prod-data }
+  nginx_logs:             { name: gaokao-nginx-prod-logs }
 
-# 敏感信息管理
 secrets:
-  postgres_password:
-    file: ./prod/secrets/postgres_password.txt
-  redis_password:
-    file: ./prod/secrets/redis_password.txt
-  jwt_secret:
-    file: ./prod/secrets/jwt_secret.txt
-  grafana_admin_password:
-    file: ./prod/secrets/grafana_admin_password.txt
-  tls_cert:
-    file: ./prod/secrets/tls.crt
-  tls_key:
-    file: ./prod/secrets/tls.key
+  postgres_password:      { file: ./secrets/postgres_password.txt }
+  redis_password:         { file: ./secrets/redis_password.txt }
+  jwt_secret:             { file: ./secrets/jwt_secret.txt }
+  aes_key:                { file: ./secrets/aes_key.txt }
+  grafana_admin_password: { file: ./secrets/grafana_admin_password.txt }
+  tls_cert:               { file: ./secrets/tls.crt }
+  tls_key:                { file: ./secrets/tls.key }
+  llm_api_key:            { file: ./secrets/llm_api_key.txt }
+  alipay_private_key:     { file: ./secrets/alipay_private_key.pem }
+  alipay_public_key:      { file: ./secrets/alipay_public_key.pem }
+  wechat_api_key:         { file: ./secrets/wechat_api_key.txt }

@@ -1,7 +1,7 @@
 # 技术债务审计与上线路线
 
 **初版**：2026-05-10（全量审计）
-**最近更新**：2026-05-11（Sprint A 完成：D.3 dead code 删除 + D.1 正态 CDF；35/39 FIXED）
+**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**）
 **审计范围**：6 微服务 + 14 pkg 模块 + C++ 算法模块 + 前端 + 部署侧
 
 > 本文档定位为**当前活动工作清单**：已完成项目仅保留索引（commit hash + 一句话），便于历史追溯；未完成项目保留完整诊断与计划。上线侧（代码之外）缺口纳入第 3 章。
@@ -16,15 +16,17 @@
 | 中等 (P-11~P-25) | 15 | **14** | **1** | 0 |
 | 重复代码 (A~I) | 9 | **9** | 0 | 0 |
 | 算法 (Phase 4) | 5 | **2** | 0 | **3** |
-| **代码层合计** | **39** | **35** | **1** | **3** |
+| CI / 安全遗留 | 2 | **2** | 0 | 0 |
+| 前端 UI 体验 | 5 | 0 | 0 | **5** |
+| **代码层合计** | **41** | **37** | **1** | **3** |
 
-代码层债务清完率 **90%**。剩余 3 项 PENDING 全部需要外部输入（D.2 / D.4 需产品 sign-off，D.5 需数据团队 schema 决策），无可继续自主推进的代码层任务。
+代码层债务清完率 **90%+**。剩余 3 项 PENDING 全部需要外部输入（D.2 / D.4 需产品 sign-off，D.5 需数据团队 schema 决策）。当前可自主推进重点转为：Sprint B 生产基础设施 + Sprint UI 前端视觉系统改造。
 
 代码层完成 ≠ 可上线 — 见第 3 章上线缺口。
 
 ---
 
-## 1. 已完成项目索引（35 项）
+## 1. 已完成项目索引（37 项）
 
 > 每项保留主要 commit + 核心收益一句话。详细修复记录见 git log / commit message。
 
@@ -81,9 +83,17 @@
 | ID | 项目 | 主要 commit | 核心收益 |
 |----|------|-------------|---------|
 | (CI) | Node 20 deprecation | 5358b99 + 8989b9d | annotations 13 → 1（剩 golangci-lint-action 等上游升级） |
+| (CI) | Codecov tokenless upload annotation | 291e841 + e86bacc | 无 `CODECOV_TOKEN` 时跳过 Codecov 上传，CI 25705022000 全绿且无 tokenless error |
 | (workspace) | go.work 17 模块整理 | 多次 | replace 直链 + transitive 修复 |
 
-### 1.5 算法（Phase 4，2/5 已修复）
+### 1.5 安全遗留处理（2026-05-12）
+
+| ID | 项目 | 主要 commit / 状态 | 核心收益 |
+|----|------|-------------------|---------|
+| S-01 | git remote 明文 PAT | 本地配置修复 | `origin` 已改为 `https://github.com/tvvshow/gokao.git`，避免后续 `git remote -v` 泄露凭据 |
+| S-02 | PAT 形态示例清理 | 291e841 | `docs/archive/misc/PUSH_GUIDE.md` 移除 `ghp_` 形态示例，`git grep "ghp_\|github_pat_\|tv286:"` 零命中 |
+
+### 1.6 算法（Phase 4，2/5 已修复）
 
 | ID | 项目 | 主要 commit | 核心收益 |
 |----|------|-------------|---------|
@@ -189,13 +199,13 @@
 | L-01 | **真实数据未注入** | `data/tasks.json` = 0 字节；DB 仅有 init.sql schema，无大学/专业/录取分数线数据 | 上线即"空壳"，推荐无法运作 |
 | L-02 | **ICP 备案** | 未见任何备案号字段或文档 | 中国境内法律强制，无备案不能开 |
 | L-03 | **支付商户号 + 证书** | adapter 代码完整（alipay/wechat/unionpay）；`config/.env.production` 中商户证书路径 `/run/secrets/rsa_*` 是空挂载点 | 无法收款 |
-| L-04 | **真实域名 + SSL** | `CORS_ALLOWED_ORIGINS=https://yourdomain.com` 占位；无 nginx / certbot / Let's Encrypt 自动续期配置 | 无法对外服务 |
+| L-04 | **真实域名 + SSL** | nginx server_name 仍为 `_` 通配，TLS secret 文件需运维准备（见 `docker/prod/SECRETS.md`）；certbot 自动续期未集成 | 域名拿到前无法对外服务 |
 
 ### 3.2 🟠 高 — 影响生产稳定性
 
 | ID | 缺口 | 现状证据 |
 |----|------|----------|
-| L-05 | **Production 编排 manifest** | `infrastructure/docker/` 只有 dev 用 `docker-compose.yml` + 6 个 Dockerfile，无 production compose（资源限制 / healthcheck / restart policy / log driver） |
+| L-05 | ~~**Production 编排 manifest**~~ ✅ **本轮完成** | `docker/prod/docker-compose.prod.yml` 重写为 14 服务统一编排：postgres/redis/data/user/recommendation/payment/monitoring/api-gateway/frontend/nginx/prometheus/alertmanager/blackbox-exporter/grafana；双网络隔离（backend internal:true）+ 11 secrets 走 docker secrets + 全服务 healthcheck + resource limits + log driver 轮转；本次顺手修复审计前 compose 三处隐性 bug：user-service 端口写错 8081→8083、cpp-modules 独立容器与 CGO 静态链接架构冲突已删除、`./prod/{sql,monitoring,redis,secrets}` 死链全部锚定到真实路径 |
 | L-06 | **监控栈** | 代码侧 prometheus 已埋点；**没有** Prometheus + Grafana + AlertManager 部署 yaml |
 | L-07 | **告警通道** | `alert_manager.go` 代码完整（dingtalk/wechat/email/webhook），但**接收方未配置** |
 | L-08 | **日志聚合** | logrus 写 stdout，无 Loki / ELK / Fluent Bit pipeline |
@@ -215,7 +225,7 @@
 
 ### 3.4 🟢 已就绪 — 不构成阻塞
 
-- ✓ 代码质量：33/39 审计项 FIXED，CI 全绿
+- ✓ 代码质量：37/41 审计项 FIXED，CI 全绿
 - ✓ Docker 镜像：6 微服务 Dockerfile 完整 + 多阶段构建
 - ✓ 健康检查：`/healthz` `/readyz` `/health` 齐全
 - ✓ API 文档：Swagger（docs.go + swagger.json/yaml）完整
@@ -225,9 +235,50 @@
 
 ---
 
-## 4. 后续推进计划
+## 4. 前端 UI 体验缺口（2026-05-12 新增）
 
-按"是否需外部输入"分 Sprint。**Sprint B 可立即开干**（需 1 个目标集群选择题），其余卡外部输入。
+当前前端功能骨架可用，但视觉成熟度不足。现有深蓝主视觉显得沉重、常见、缺少教育决策产品的可信质感；后续 UI 改造必须与 Sprint B 并行推进，不能等生产基础设施完成后再补。
+
+### 4.1 目标视觉方向
+
+**定位**：高考志愿决策工作台，而不是普通后台管理系统或营销页。
+
+**核心风格**：
+- 主色从大面积深蓝切换为 **暖灰纸感背景 + 墨绿/石墨主色 + 琥珀风险色 + 朱砂警示色**。
+- 避免“深蓝整页 + 默认 Element Plus 蓝按钮”的模板感。
+- 页面层次采用“报告感 + 决策卡片 + 风险分层”，突出可信、稳重、可解释。
+- 保留足够留白，但提高信息组织密度，避免空洞大卡片。
+
+**设计语言**：
+- 背景：浅暖灰、细纹理或轻微渐变，避免纯白空板。
+- 卡片：低阴影、细边框、轻分隔线，重点卡使用左侧色带或顶部状态条。
+- 字体：标题可引入更稳重的中文衬线或准衬线风格；正文保持高可读无衬线。
+- 图表：用低饱和色系表达分数、位次、概率、冲稳保分布，不堆彩色仪表盘。
+- 动效：只用于页面进入、推荐结果生成、卡片分组展开，禁止无意义 hover 花活。
+
+### 4.2 UI-PENDING 清单
+
+| ID | 缺口 | 当前问题 | 期望产出 |
+|----|------|----------|----------|
+| UI-01 | 视觉系统缺失 | 颜色、间距、卡片、按钮依赖默认 Element Plus 风格 | `frontend/src/styles/theme.css` / token 化 CSS 变量，统一色彩、半径、阴影、间距 |
+| UI-02 | 首页质感不足 | 功能入口堆叠，缺少可信产品门面 | `HomePageModern.vue` 改为“决策流程 + 数据可信 + 冲稳保解释 + 行动入口” |
+| UI-03 | 推荐页不像工作台 | 表单、结果、解释割裂，决策路径不清晰 | `RecommendationPage.vue` 改为“输入区 / 风险分布 / 推荐结果 / 解释面板”四区布局 |
+| UI-04 | 推荐结果表达弱 | 冲稳保、概率、分差、Score/Confidence 缺少可视化层级 | `RecommendationResults.vue` 增加风险标签、概率条、位次/分差摘要、解释折叠 |
+| UI-05 | 院校/专业列表普通 | 列表像通用后台，筛选与结果优先级不清晰 | 院校/专业页改为搜索决策界面：筛选栏、排序、风险/层次标签、关键指标卡 |
+
+### 4.3 UI 改造执行顺序
+
+1. **UI-01 先行**：先建立设计 token 和基础样式，不直接逐页堆 CSS。
+2. **首页 + 推荐页优先**：这两页决定第一印象和核心产品可信度。
+3. **结果组件优先于列表页**：推荐结果是商业价值核心，应优先做“可解释且好看”。
+4. **保守接入 Element Plus**：不替换组件库，只覆盖主题变量与页面结构，控制回归风险。
+5. **每页改造必须跑 `npm run type-check` + `npm run build`**，涉及交互时补 Vitest。
+
+---
+
+## 5. 后续推进计划
+
+按"是否需外部输入"分 Sprint。**Sprint B 与 Sprint UI 可并行开干**；Sprint C / D 仍卡外部输入。
 
 ### Sprint A — ✅ 已完成（2026-05-11）
 
@@ -246,13 +297,33 @@
 
 | 任务 | 工时 | 产出 |
 |------|------|------|
-| **L-05** Production 编排 manifest | ~0.5d | `infrastructure/docker/docker-compose.production.yml`（资源限制 + healthcheck + restart: unless-stopped + log driver / 大小轮转） |
-| **L-04** nginx 反代 + Let's Encrypt | ~0.5d | `infrastructure/nginx/nginx.conf` + `certbot` 容器，SSL 自动续期 |
+| ~~**L-05** Production 编排 manifest~~ ✅ **2026-05-12 完成** | ~0.5d | `docker/prod/docker-compose.prod.yml` 重写：14 服务（postgres/redis/data/user/recommendation/payment/monitoring/api-gateway/frontend/nginx/prometheus/alertmanager/blackbox-exporter/grafana）+ 双网络（backend internal:true）+ 11 secrets + 全服务 healthcheck + resource limits + log driver；配套 `docker/prod/SECRETS.md` 运维指引、`.env.example` 精简版、nginx.conf 接入 frontend upstream + recommend zone 限流。**顺带修了 3 处审计前 bug**：user-service 端口 8081→8083、cpp-modules 独立容器（与 CGO 静态链接架构冲突）删除、`./prod/{sql,monitoring,redis,secrets}` 死链全部锚定到真实路径 |
+| **L-04** nginx 反代 + Let's Encrypt | ~0.5d（L-05 内已完成 nginx 反代；剩 certbot 自动续期容器） | nginx.conf 已配 TLSv1.2/1.3 + HSTS + 三档 limit_req zone + frontend/api 反代；certbot 容器 + DNS-01 challenge 待补 |
 | **L-06** 监控栈（docker 部署） | ~0.5d | `infrastructure/monitoring/docker-compose.monitoring.yml`（Prometheus + Grafana + AlertManager 容器化） |
 | **L-08** 日志聚合（docker 部署） | ~0.5d | Loki + Promtail 容器化 + 配置 docker log driver |
 | **L-09** versioned migration 工具链 | ~0.5d | `golang-migrate` + 各服务 `migrations/*.sql` + Makefile 集成 |
 | **L-11** 压测脚本 | ~1d | `tests/load/*.js` (k6)，覆盖推荐 / 搜索 / 鉴权三条核心路径 |
 | 新增 | ~0.5d | `infrastructure/scripts/backup-restore.sh`（PG pg_dump + Redis RDB → 异地） |
+
+---
+
+### Sprint UI — 前端视觉系统与核心页面改造（~3-5 工作日，自主推进）
+
+技术路线：沿用 Vue 3 + Vite + TypeScript + Element Plus，不重写框架；通过设计 token、页面结构重组、核心组件升级完成第一阶段视觉跃迁。
+
+| 任务 | 工时 | 产出 |
+|------|------|------|
+| **UI-01** 设计 token 与主题基础 | ~0.5d | `frontend/src/styles/theme.css`，替换深蓝主视觉为暖灰/墨绿/琥珀体系 |
+| **UI-02** 首页重构 | ~1d | `HomePageModern.vue` 形成成熟产品门面：流程、可信数据、核心入口 |
+| **UI-03** 推荐页工作台化 | ~1d | `RecommendationPage.vue` 四区布局：输入、风险分布、推荐结果、解释 |
+| **UI-04** 推荐结果卡升级 | ~1d | `RecommendationResults.vue` 概率条、风险标签、分差/位次摘要、解释折叠 |
+| **UI-05** 院校/专业列表体验统一 | ~1d | `UniversitiesPageModern.vue` / `MajorsPage.vue` 搜索决策界面 |
+
+**验收标准**：
+- 首页和推荐页不能再呈现“默认 Element Plus 后台”质感。
+- 移动端首屏不横向溢出，核心 CTA 可见。
+- `cd frontend && npm run type-check && npm run build` 通过。
+- UI 改动不改变 API 契约；若涉及 D.2/D.4 字段，则进入 Sprint C 一并处理。
 
 ---
 
@@ -282,7 +353,7 @@
 
 ---
 
-## 5. 验证基线
+## 6. 验证基线
 
 每个改动 PR 必须满足：
 - `go test ./...` 全绿
@@ -294,6 +365,11 @@
 
 跨服务改动（如涉及前端 wire 契约的 D.2 / D.4）需要前端 e2e 配合：
 - `cd frontend && npm run test:unit && npm run test:e2e`
+
+前端 UI 改造改动必须满足：
+- `cd frontend && npm run type-check && npm run build`
+- 核心页面无移动端横向溢出
+- 不引入新的默认深蓝大面积主题
 
 每次 commit 后立即 `gh run list --branch <branch> --limit 1` → `gh run view <id>` 跟到终态，红立刻当场修。
 
@@ -345,3 +421,6 @@ find infrastructure/ -maxdepth 3 -type f                   # 确认 production c
 | 2026-05-11 | 重写：精简已完成项详情、B.8 P-22 标记 false positive、P-23 标记 DEFERRED、新增第 3 章上线侧缺口（L-01 ~ L-16）、新增第 4 章 Sprint 计划 |
 | **2026-05-11** | **Sprint A 完成**：D.3 删 ML stub (6954874) + D.1 录取概率正态 CDF (1396d6e)，35/39 FIXED；代码层已无自主可推任务 |
 | **2026-05-11** | **修正 K8s 误导**：Sprint B 改回 Docker 路径（项目本就是 Docker，错把"生产 = K8s"当默认假设是审计者偏差） |
+| **2026-05-12** | **CI/PAT 遗留处理**：Codecov tokenless annotation 已通过 env gate 修复，CI 25705022000 全绿；本地 remote 明文 PAT 清除，仓库 PAT 形态 grep 零命中 |
+| **2026-05-12** | **新增 Sprint UI**：前端视觉改造纳入正式路线，目标从深蓝后台感切换为暖灰/墨绿/琥珀的成熟决策工作台 |
+| **2026-05-12** | **Sprint B / L-05 落地**：`docker/prod/docker-compose.prod.yml` 重写为 14 服务统一编排（双网络隔离 + 11 docker secrets + 全服务 healthcheck/limits/log driver）；纠正审计前 3 处隐性 bug（user-service 端口、cpp-modules 容器架构、death link path）；配套 SECRETS.md / 精简版 .env.example / nginx.conf 引入 frontend upstream 与 recommend 限流 zone |

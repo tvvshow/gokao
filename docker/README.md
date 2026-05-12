@@ -14,13 +14,14 @@ docker/
 │   ├── .env.example             # 开发环境变量模板
 │   └── monitoring/              # 监控配置
 ├── prod/                       # 生产环境
-│   ├── Dockerfile.api-gateway   # API Gateway生产镜像
+│   ├── Dockerfile.api-gateway   # API Gateway生产镜像（与 services/api-gateway/Dockerfile 并存，按需选用）
 │   ├── Dockerfile.user-service  # User Service生产镜像
-│   ├── Dockerfile.cpp-modules   # C++模块生产镜像
-│   ├── docker-compose.prod.yml  # 生产环境编排
-│   ├── .env.example             # 生产环境变量模板
-│   ├── nginx/                   # Nginx配置
-│   └── secrets/                 # 密钥文件
+│   ├── Dockerfile.cpp-modules   # C++模块开发镜像（保留供独立构建实验，主线推荐走 services/recommendation-service/Dockerfile 内的 CGO 静态链接）
+│   ├── docker-compose.prod.yml  # 生产环境编排（14 服务：postgres/redis/data/user/recommendation/payment/monitoring/api-gateway/frontend/nginx/prometheus/alertmanager/blackbox-exporter/grafana）
+│   ├── .env.example             # 生产环境变量模板（精简版，密钥全部走 SECRETS.md）
+│   ├── SECRETS.md               # Docker secrets 准备指引（postgres/redis/jwt/aes/grafana/tls + payment adapter）
+│   ├── nginx/                   # Nginx 反代配置（终结 SSL + 三档限流 zone + frontend/api 反代）
+│   └── secrets/                 # 密钥文件（.gitignore，本地准备，运维侧轮换）
 ├── test/                       # 测试环境
 │   ├── Dockerfile.test-runner   # 测试运行器镜像
 │   ├── docker-compose.test.yml  # 测试环境编排
@@ -123,16 +124,29 @@ docker-compose -f docker/dev/docker-compose.dev.yml --profile monitoring up -d
 ```bash
 # 1. 复制并配置环境变量
 cp docker/prod/.env.example docker/prod/.env
-# 编辑 docker/prod/.env，修改所有密码和密钥
+# 编辑 docker/prod/.env：DOMAIN_NAME / VERSION / LLM 等非敏感变量。
+# 注意：密码 / JWT / AES key / TLS 不在 .env 内，全部走 secrets。
 
-# 2. 准备密钥文件
-mkdir -p docker/prod/secrets
-# 将证书、密钥等文件放入 secrets 目录
+# 2. 按 docker/prod/SECRETS.md 准备 secrets（强依赖）
+#    7 个必备 + 4 个可选；首次部署可用一键占位脚本（见 SECRETS.md §4）
+cat docker/prod/SECRETS.md
 
-# 3. 构建生产镜像
+# 3. 验证 compose 配置
+docker compose -f docker/prod/docker-compose.prod.yml \
+  --env-file docker/prod/.env config > /dev/null && echo "compose ok"
+
+# 4. 构建 + 启动
+docker compose -f docker/prod/docker-compose.prod.yml \
+  --env-file docker/prod/.env up -d --build
+
+# 5. 查看健康状态
+docker compose -f docker/prod/docker-compose.prod.yml ps
+```
+
+或使用项目封装脚本（仍可用，路径模板 `docker/${env}/docker-compose.${env}.yml`）：
+
+```bash
 ./docker/scripts/build.sh prod
-
-# 4. 部署生产环境
 ./docker/scripts/deploy.sh prod
 ```
 
