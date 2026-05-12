@@ -49,7 +49,10 @@ jobs:
       run: |
         cd services/api-gateway
         go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal
-        if [ -n "$(git status --porcelain)" ]; then
+        # 仅校验 docs/ 是否与 commit 一致；go 工具链跨版本运行 `go run` 时可能写
+        # toolchain 指令进 go.mod（go.work 与 module 的 go directive 版本错位），
+        # 那不应误判为 swag 文档过期。
+        if [ -n "$(git status --porcelain docs/)" ]; then
           echo "Swagger docs are out-of-date. Please run 'go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -o docs --parseDependency --parseInternal' and commit the changes."
           git diff -- docs/ | sed -n '1,200p'
           exit 1
