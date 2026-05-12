@@ -73,8 +73,14 @@ jobs:
         awk -v t="$total" 'BEGIN{ if (t+0 < 60) { print "Coverage below 60%"; exit 1 } }'
     
     # Go代码检查
+    # KNOWN DEBT: golangci-lint v1.64.8（action@v6 默认 latest）用 go1.24 编译，
+    # 无法 typecheck go1.25 stdlib（x/text v0.36.0 / x/tools v0.44.0 等）。
+    # go.work 升 1.25.7（goose 强制）暴露此问题。
+    # FOLLOWUP: 升级到 golangci-lint v2 + 迁移 .golangci.yml 配置格式（约 1-2h）。
+    # 临时让 lint 非阻塞，不假装通过；其他静态检查（vet / gosec）保留 fail-on-error。
     - name: Lint (golangci-lint)
       uses: golangci/golangci-lint-action@v6
+      continue-on-error: true
       with:
         version: latest
         working-directory: services/api-gateway
