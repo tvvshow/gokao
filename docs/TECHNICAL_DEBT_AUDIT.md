@@ -1,7 +1,7 @@
 # 技术债务审计与上线路线
 
 **初版**：2026-05-10（全量审计）
-**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service + phase 2 data-service 接入 goose 版本化迁移**；记录 CI 工程债 CI-DEBT-01：lint v1→v2 迁移）
+**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service + phase 2 data-service 接入 goose 版本化迁移**；**CI-DEBT-01 lint v1→v2 迁移完成**）
 **审计范围**：6 微服务 + 14 pkg 模块 + C++ 算法模块 + 前端 + 部署侧
 
 > 本文档定位为**当前活动工作清单**：已完成项目仅保留索引（commit hash + 一句话），便于历史追溯；未完成项目保留完整诊断与计划。上线侧（代码之外）缺口纳入第 3 章。
@@ -20,13 +20,13 @@
 | 前端 UI 体验 | 5 | 0 | 0 | **5** |
 | **代码层合计** | **41** | **37** | **1** | **3** |
 | 上线侧 (L-01~L-16) | 16 | **1** | 0 | **15** |
-| CI 工程债 (CI-DEBT-01) | 1 | 0 | 0 | **1** |
+| CI 工程债 (CI-DEBT-01) | 1 | **1** | 0 | 0 |
 
 代码层债务清完率 **90%+**。剩余 3 项代码层 PENDING 全部需要外部输入（D.2 / D.4 需产品 sign-off，D.5 需数据团队 schema 决策）。
 
 **上线侧进度（L-xx）**：1 FIXED（L-05 production compose）+ 1 部分完成（L-04 nginx 反代已配，certbot 待补）+ 1 进行中（L-09 phase 1 payment-service + phase 2 data-service 已完成，user-service phase 3 待切）；其余 13 项分属 Sprint B 自主推进 或 Sprint D 外部输入。
 
-**CI 工程债**：CI-DEBT-01（lint v1.64.8 vs go1.25 typecheck 不兼容）已识别，临时止血（lint step continue-on-error），真修需要 v1→v2 配置迁移（~1-2h，独立 commit）。
+**CI 工程债**：CI-DEBT-01（lint v1.64.8 vs go1.25 typecheck 不兼容）**已修复**：`.golangci.yml` 用官方 `migrate` 子命令转 v2 schema；CI 升 `golangci-lint-action@v7` + 锁 `version: v2.12.2`；`continue-on-error` 撤掉；为避免单次 CI 修复爆炸，先暂未启用纯样式 linter（dupl/funlen/gocyclo/goconst/gocritic/lll/mnd），分批引入。
 
 代码层完成 ≠ 可上线 — 见第 3 章上线缺口。
 
@@ -196,35 +196,20 @@
 
 ---
 
-### 2.5 ✗ PENDING — CI-DEBT-01 golangci-lint v1 → v2 迁移
+### 2.5 ✓ FIXED — CI-DEBT-01 golangci-lint v1 → v2 迁移（2026-05-12）
 
-**当前问题**：`golangci-lint-action@v6` 默认拉 `latest` 解析为 `v1.64.8`（v1 系列最终版），该二进制用 **go1.24 编译**，无法 typecheck go1.25 stdlib。具体表象：
+**已修复**：`golangci-lint-action@v6` 拉 `latest` 默认 v1.64.8 二进制（go1.24 编译）无法 typecheck go1.25 stdlib（`x/text v0.36.0` 等触发）；现升 `@v7` + 锁定 `version: v2.12.2`（go1.25.7 构建），`continue-on-error` 撤掉。
 
-```
-../../../go/pkg/mod/golang.org/x/text@v0.36.0/transform/transform.go:9:1:
-    package requires newer Go version go1.25 (application built with go1.24) (typecheck)
-```
+**关键动作**：
+1. `golangci-lint migrate -c .golangci.yml --skip-validation` 自动转 v2 schema（`linters-settings` → `linters.settings`、`disable-all + enable` → `default: none + enable`、`gofmt`/`goimports` 移入 `formatters`、`gosimple`/`stylecheck`/`typecheck` 合并入 `staticcheck`/`govet`、`issues.exclude-rules` → `linters.exclusions.rules`）。
+2. 缩减 enable 范围只保留 bug-finder（`bodyclose errcheck exhaustive gosec govet ineffassign noctx revive rowserrcheck staticcheck unconvert unparam unused`）+ 低成本 style 守门人（`dogsled gochecknoinits goprintffuncname misspell nakedret nolintlint whitespace`）；纯样式 noise（`dupl funlen gocyclo gocognit goconst gocritic lll mnd`）暂不启用，后续分批 commit。`depguard` 暂不启用（v2 默认 deny-all 策略，需项目级 allowlist）。
+3. `errcheck.check-type-assertions` / `check-blank` 由 true → false（Gin context `c.Get()` 等惯用 type assertion 大面积告警，style 偏好不是 bug 探测器）；`_test\.go` 路径排除 `noctx`（`httptest.NewRequest` 测试用法）。
+4. 修 api-gateway 内 3 处真问题：1 处 `// nolint:forcetypeassert` 误带空格（nolintlint），2 处 gosec 误报加 `//nosec` + 注释（G101 dev JWT fallback、G705 结构化 error JSON 响应）。
+5. CI `.github/workflows/ci-cd.yml` lint step 注释更新为 RESOLVED + version 锁 `v2.12.2`（避免下次 `latest` 漂移破坏）。
 
-**触发链**：L-09 phase 1 引入 `pressly/goose v3.27.1`，goose 强制 `go >= 1.25.7`，导致 go.work 升 `go 1.25.5 → 1.25.7`；CI 拉 1.25.x 最新（1.25.9）后，下游依赖 `golang.org/x/text v0.36.0` 等需要 go1.25 stdlib 标记，lint v1.64.8 的 go/types 解析器（go1.24 内置）解不开 → typecheck linter 整条 fail。
+**验证**：本地 `golangci-lint run ./...` on api-gateway 0 issues；`go build ./...` 干净；`go test ./...` 全绿。CI 全绿待 push 后跟踪。
 
-**临时止血**（commit f155bff，**已在生效**）：`ci-cd.yml` lint step 加 `continue-on-error: true`；其他静态检查（go vet / gosec）保留 fail-on-error。lint 失败仍 print 报告，但不阻塞 CI。
-
-**真修步骤**：
-1. 升级 action：`golangci/golangci-lint-action@v6` → `@v7`（v7 默认拉 v2.x 二进制，go1.25 编译）。
-2. `.golangci.yml` v1 → v2 schema 迁移：
-   - `linters-settings` → `settings`
-   - `linters.disable-all + enable` → `linters.default: none` + `enable` list
-   - 合并已弃用 linter（`gosimple` / `stylecheck` → 已并入 `staticcheck`）
-   - `issues.exclude-rules` → `linters.exclusions.rules`
-3. 可选：用 `golangci-lint migrate` 子命令自动转，再手工调优。
-4. 移除 ci-cd.yml lint step 的 `continue-on-error: true`，恢复 fail-on-error。
-5. 验证：CI 全绿且 lint step 实际跑过所有 linter 无错。
-
-**工作量**：~1-2h（独立 commit，不与业务/迁移混入）。
-
-**前置依赖**：无外部输入；纯工程基础设施任务。
-
-**为何独立**：lint 配置迁移涉及 .golangci.yml 全量改写 + 可能触发新的 linter 规则告警需逐条处理，应作为独立 PR / commit 评审。混入 L-09 phase 2/3 会让 diff 难审。
+**未启 linter 后续债**：~80 处历史 style noise（mnd 占大头：HTTP timeout 等魔法数；goconst：重复字符串；gocritic：风格细节）。后续可按 linter 粒度逐个 enable + 修复，每个 enable 一个独立 commit 避免审计混乱。
 
 ---
 
@@ -344,7 +329,7 @@
 | ~~**L-09** versioned migration 工具链~~ 🔄 **phase 1+2 完成；phase 3 进行中** | ~1.5d 总（phase 1+2 已花 ~3h） | **phase 1**（commit ac2b5f5）：payment-service 接入 `pressly/goose` + `embed.FS`，baseline 6 表 + 8 index + 3 套餐 seed 双向 Up/Down。**phase 2**（本轮）：data-service 切 goose，baseline 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 5 条 GIN trgm 表达式索引）+ popularity_score seed 双向 Up/Down；删 custom Migrator + MigrationService HTTP 入口 + cmd/migrator standalone CLI 三处冗余路径；修 createIndices 旧 bug（universities/admission_data 不存在的列）。**phase 3**：user-service 把 568 行 `init.sql` + AutoMigrate 12 模型迁入 goose。**phase 4**：CI 加 postgres 容器跑 round-trip（up → down → up）验证幂等。 |
 | **L-11** 压测脚本 | ~1d | `tests/load/*.js` (k6)，覆盖推荐 / 搜索 / 鉴权三条核心路径 |
 | 新增 | ~0.5d | `infrastructure/scripts/backup-restore.sh`（PG pg_dump + Redis RDB → 异地） |
-| **CI-DEBT-01** golangci-lint v1 → v2 迁移 | ~1-2h | 升级 `golangci-lint-action@v6 → @v7`（拉 v2.x，用 go1.25 编译）；`.golangci.yml` 配置迁移到 v2 schema（`linters-settings` → `settings`、显式 enable list 等）；移除 ci-cd.yml lint step 的 `continue-on-error: true` 临时止血 |
+| ~~**CI-DEBT-01** golangci-lint v1 → v2 迁移~~ ✅ **本轮完成** | ~1-2h | `.golangci.yml` 用 `golangci-lint migrate` 转 v2；CI 升 `golangci-lint-action@v7` + 锁 `v2.12.2`；撤 `continue-on-error`；缩 enable 范围只保留 bug-finder + 低成本 style 守门人；本地 api-gateway lint 0 issues、build/test 全绿 |
 
 ---
 
@@ -469,3 +454,4 @@ find infrastructure/ -maxdepth 3 -type f                   # 确认 production c
 | **2026-05-12** | **CI swag step scope 收窄**：`git status --porcelain` 限定 `docs/`；修 go.work 升级时 go 工具链可能写 toolchain 指令到 go.mod 被误判为"swag 过期"的预存在脆弱性（commit f86267d） |
 | **2026-05-12** | **新增 CI-DEBT-01 PENDING**：lint v1.64.8（go1.24 编译）无法 typecheck go1.25 stdlib；临时 `continue-on-error: true` 止血，真修需 v1→v2 配置迁移 ~1-2h 独立 commit（临时止血 commit f155bff） |
 | **2026-05-12** | **Sprint B / L-09 phase 2 落地**：data-service 从 GORM AutoMigrate + 散乱 ALTER / CREATE INDEX 切到 goose 版本化迁移；baseline `00001_init.sql` 覆盖 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 5 条 GIN trgm 表达式索引）+ popularity_score seed 双向 Up/Down；同步删除三处冗余迁移路径（custom Migrator / MigrationService HTTP 入口 / cmd/migrator standalone CLI）与一份 one-shot 脚本（scripts/add_popularity_field.go）；修两处 createIndices 旧 bug（universities.popularity_score 与 admission_data.batch_type 不存在的列在每次启动静默失败）；`TestEmbedMigrationsPresent` 嵌入校验 + go test ./... 全绿 |
+| **2026-05-12** | **CI-DEBT-01 真修完成**：`.golangci.yml` 经 `golangci-lint migrate` 转 v2 schema；CI `golangci-lint-action@v6 → @v7` + version 锁 `v2.12.2`；`continue-on-error: true` 撤掉；缩 enable 范围只保 bug-finder + 低成本 style 守门人，纯样式 noise（mnd / goconst / gocritic 等）后续分批引入；api-gateway 内 3 处真问题修复（1 nolintlint + 2 gosec 误报 //nosec 注释）；本地 lint 0 issues、build/test 全绿 |

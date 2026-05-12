@@ -115,7 +115,7 @@ func accessLogMiddleware() gin.HandlerFunc { // NEW: access log
 			log.Println(string(b))
 		} else {
 			// fallback plain text
-			log.Printf("access method=%s path=%s status=%d latency=%s reqid=%s", entry["method"], entry["path"], entry["status"], latency.String(), entry["request_id"]) // nolint:forcetypeassert
+			log.Printf("access method=%s path=%s status=%d latency=%s reqid=%s", entry["method"], entry["path"], entry["status"], latency.String(), entry["request_id"]) //nolint:forcetypeassert
 		}
 	}
 }
@@ -584,7 +584,7 @@ func setupRouterWithLimiter(ratePerSec, burst int) *gin.Engine {
 	// JWT 认证中间件
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "gaokao-dev-secret-key-change-in-production"
+		jwtSecret = "gaokao-dev-secret-key-change-in-production" //nolint:gosec // G101: dev-only fallback；生产必须 JWT_SECRET 注入，启动时 release 模式日志已警告
 	}
 	authMiddleware := authPkg.NewAuthMiddleware(jwtSecret)
 
@@ -757,7 +757,7 @@ func (pm *ProxyManager) createProxy(serviceName, externalPrefix, backendPrefix s
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(apiErr.JSON()))
+		_, _ = w.Write([]byte(apiErr.JSON())) //nolint:gosec // G705: apiErr.JSON 是结构化错误对象，已 Content-Type=application/json 序列化，不是用户输入回写
 	}
 
 	// 自定义响应修改
@@ -1021,7 +1021,7 @@ func getEnvAsDuration(key, defaultValue string) time.Duration {
 	}
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		log.Printf("Invalid duration for %s: %s, using default %s", key, value, defaultValue)
+		log.Printf("Invalid duration for %s: %s, using default %s", key, value, defaultValue) //nolint:gosec // G706: 内部启动配置日志，key 来自代码常量、value 是 env 变量内容，不是用户输入
 		duration, _ = time.ParseDuration(defaultValue)
 	}
 	return duration
