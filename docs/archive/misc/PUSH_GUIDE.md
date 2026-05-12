@@ -40,8 +40,8 @@ git push origin master
 # 2. 使用Token推送
 git push https://<TOKEN>@github.com/oktetopython/gaokao.git master
 
-# 示例（替换YOUR_TOKEN）：
-# git push https://ghp_1234567890abcdef@github.com/oktetopython/gaokao.git master
+# 示例（替换YOUR_TOKEN，不要把真实 token 写进命令历史或文档）：
+# git push https://<YOUR_TOKEN>@github.com/oktetopython/gaokao.git master
 ```
 
 ### 方式3：使用Git凭据存储（一次性配置）
