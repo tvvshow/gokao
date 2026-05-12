@@ -1,7 +1,7 @@
 # 技术债务审计与上线路线
 
 **初版**：2026-05-10（全量审计）
-**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service + phase 2 data-service 接入 goose 版本化迁移**；**CI-DEBT-01 lint v1→v2 迁移完成**）
+**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service + phase 2 data-service 接入 goose 版本化迁移**；**CI-DEBT-01 lint v1→v2 迁移完成**；**Sprint UI / UI-01 设计 token 体系建立**）
 **审计范围**：6 微服务 + 14 pkg 模块 + C++ 算法模块 + 前端 + 部署侧
 
 > 本文档定位为**当前活动工作清单**：已完成项目仅保留索引（commit hash + 一句话），便于历史追溯；未完成项目保留完整诊断与计划。上线侧（代码之外）缺口纳入第 3 章。
@@ -17,7 +17,7 @@
 | 重复代码 (A~I) | 9 | **9** | 0 | 0 |
 | 算法 (Phase 4) | 5 | **2** | 0 | **3** |
 | CI / 安全遗留 | 2 | **2** | 0 | 0 |
-| 前端 UI 体验 | 5 | 0 | 0 | **5** |
+| 前端 UI 体验 | 5 | **1** | 0 | **4** |
 | **代码层合计** | **41** | **37** | **1** | **3** |
 | 上线侧 (L-01~L-16) | 16 | **1** | 0 | **15** |
 | CI 工程债 (CI-DEBT-01) | 1 | **1** | 0 | 0 |
@@ -285,7 +285,7 @@
 
 | ID | 缺口 | 当前问题 | 期望产出 |
 |----|------|----------|----------|
-| UI-01 | 视觉系统缺失 | 颜色、间距、卡片、按钮依赖默认 Element Plus 风格 | `frontend/src/styles/theme.css` / token 化 CSS 变量，统一色彩、半径、阴影、间距 |
+| ~~UI-01~~ ✅ **本轮完成** | ~~视觉系统缺失~~ | `frontend/src/styles/theme.css`（300+ 行三级 token：primitive 调色板 / semantic 语义 / Element Plus 桥接）+ `tailwind.config.js` 同步迁移 primary→墨绿 / accent→琥珀 / error→朱砂 / gray→暖灰；main.ts 接入；type-check 通过 |
 | UI-02 | 首页质感不足 | 功能入口堆叠，缺少可信产品门面 | `HomePageModern.vue` 改为“决策流程 + 数据可信 + 冲稳保解释 + 行动入口” |
 | UI-03 | 推荐页不像工作台 | 表单、结果、解释割裂，决策路径不清晰 | `RecommendationPage.vue` 改为“输入区 / 风险分布 / 推荐结果 / 解释面板”四区布局 |
 | UI-04 | 推荐结果表达弱 | 冲稳保、概率、分差、Score/Confidence 缺少可视化层级 | `RecommendationResults.vue` 增加风险标签、概率条、位次/分差摘要、解释折叠 |
@@ -339,7 +339,7 @@
 
 | 任务 | 工时 | 产出 |
 |------|------|------|
-| **UI-01** 设计 token 与主题基础 | ~0.5d | `frontend/src/styles/theme.css`，替换深蓝主视觉为暖灰/墨绿/琥珀体系 |
+| ~~**UI-01** 设计 token 与主题基础~~ ✅ **2026-05-12 完成** | ~0.5d | `frontend/src/styles/theme.css`（300+ 行）三级 token：primitive 调色板（ink/graphite/amber/cinnabar/moss）+ semantic 语义层 + Element Plus CSS 变量桥接；`tailwind.config.js` palette 改写为同套色系；`main.ts` 在 style.css 后导入 theme.css 让 token 优先；预留 dw-card / dw-tier-tag / dw-metric / dw-hint 等"决策工作台"专用 utility 给后续页改造用；vue-tsc 通过 |
 | **UI-02** 首页重构 | ~1d | `HomePageModern.vue` 形成成熟产品门面：流程、可信数据、核心入口 |
 | **UI-03** 推荐页工作台化 | ~1d | `RecommendationPage.vue` 四区布局：输入、风险分布、推荐结果、解释 |
 | **UI-04** 推荐结果卡升级 | ~1d | `RecommendationResults.vue` 概率条、风险标签、分差/位次摘要、解释折叠 |
@@ -455,3 +455,4 @@ find infrastructure/ -maxdepth 3 -type f                   # 确认 production c
 | **2026-05-12** | **新增 CI-DEBT-01 PENDING**：lint v1.64.8（go1.24 编译）无法 typecheck go1.25 stdlib；临时 `continue-on-error: true` 止血，真修需 v1→v2 配置迁移 ~1-2h 独立 commit（临时止血 commit f155bff） |
 | **2026-05-12** | **Sprint B / L-09 phase 2 落地**：data-service 从 GORM AutoMigrate + 散乱 ALTER / CREATE INDEX 切到 goose 版本化迁移；baseline `00001_init.sql` 覆盖 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 5 条 GIN trgm 表达式索引）+ popularity_score seed 双向 Up/Down；同步删除三处冗余迁移路径（custom Migrator / MigrationService HTTP 入口 / cmd/migrator standalone CLI）与一份 one-shot 脚本（scripts/add_popularity_field.go）；修两处 createIndices 旧 bug（universities.popularity_score 与 admission_data.batch_type 不存在的列在每次启动静默失败）；`TestEmbedMigrationsPresent` 嵌入校验 + go test ./... 全绿 |
 | **2026-05-12** | **CI-DEBT-01 真修完成**：`.golangci.yml` 经 `golangci-lint migrate` 转 v2 schema；CI `golangci-lint-action@v6 → @v7` + version 锁 `v2.12.2`；`continue-on-error: true` 撤掉；缩 enable 范围只保 bug-finder + 低成本 style 守门人，纯样式 noise（mnd / goconst / gocritic 等）后续分批引入；api-gateway 内 3 处真问题修复（1 nolintlint + 2 gosec 误报 //nosec 注释）；本地 lint 0 issues、build/test 全绿 |
+| **2026-05-12** | **Sprint UI / UI-01 落地**：`frontend/src/styles/theme.css`（300+ 行）建立三级 token 体系——primitive 调色板（paper / ink-绿 / graphite-石墨 / amber / cinnabar-朱砂 / moss）→ semantic 语义层 → Element Plus CSS 变量桥接；`tailwind.config.js` palette 同步改写（primary→ink 墨绿、accent→amber、error→cinnabar、gray→暖灰），同名键自动接管现有 utility；`main.ts` 接入 theme.css 在 style.css 之后；预留 `dw-card` / `dw-tier-tag` / `dw-metric` / `dw-hint` 决策工作台 utility 给 UI-02 起；`vue-tsc --noEmit` 通过。Build 留给 CI 验证（本地 esbuild 平台 binary 与项目不匹配是 pre-existing）|

@@ -1,0 +1,398 @@
+/**
+ * frontend/src/styles/theme.css
+ *
+ * UI-01 设计系统 token —— "决策工作台" 视觉方向。
+ *
+ * 配色定位（取代旧深蓝主视觉，按 docs/TECHNICAL_DEBT_AUDIT.md §4.1）：
+ *   背景：暖灰纸感 (paper)，避免纯白和深蓝渐变
+ *   主色：墨绿 (ink) + 石墨 (graphite)，稳重而非营销感
+ *   风险/重点：琥珀 (amber)
+ *   警示/危险：朱砂 (cinnabar)
+ *   成功：林木绿 (moss)，与主墨绿区分
+ *
+ * 三级 token 体系：
+ *   1. Primitive  —— 调色板（不要直接在页面用）
+ *   2. Semantic   —— 语义层（页面/组件应该消费这一层）
+ *   3. Component  —— 桥接 Element Plus 与项目内组件
+ *
+ * 文件加载顺序：main.ts 必须把 theme.css 放在 style.css 之前，
+ * 保证 Element Plus 主题变量优先被本文件覆盖。
+ */
+
+:root {
+  /* ===================================================================
+   * 1. Primitive 调色板
+   * ================================================================ */
+
+  /* Paper —— 暖灰纸感背景 */
+  --paper-50:  #fdfaf3;
+  --paper-100: #f8f3e6;
+  --paper-200: #f1eadb;
+  --paper-300: #e6dec9;
+  --paper-400: #d9cfb6;
+
+  /* Ink —— 墨绿主色（决策工作台主色）*/
+  --ink-50:   #eef5f0;
+  --ink-100:  #d8e8de;
+  --ink-200:  #b8d4c2;
+  --ink-300:  #8eb89c;
+  --ink-400:  #5e9476;
+  --ink-500:  #3c7457;
+  --ink-600:  #2a5b43;
+  --ink-700:  #1f4533;
+  --ink-800:  #163224;
+  --ink-900:  #0e2018;
+
+  /* Graphite —— 石墨灰阶（文字 + 边线）*/
+  --graphite-50:  #faf9f7;
+  --graphite-100: #f1efeb;
+  --graphite-200: #e3e0d9;
+  --graphite-300: #c9c5bc;
+  --graphite-400: #a39e93;
+  --graphite-500: #797368;
+  --graphite-600: #58534a;
+  --graphite-700: #3d3934;
+  --graphite-800: #2a2723;
+  --graphite-900: #1a1814;
+
+  /* Amber —— 琥珀风险/重点 */
+  --amber-50:  #fff8eb;
+  --amber-100: #ffeec6;
+  --amber-200: #ffd97f;
+  --amber-300: #fbbf24;
+  --amber-400: #f59e0b;
+  --amber-500: #d97706;
+  --amber-600: #b45309;
+  --amber-700: #92400e;
+
+  /* Cinnabar —— 朱砂警示 */
+  --cinnabar-50:  #fdf2ef;
+  --cinnabar-100: #fbe0d8;
+  --cinnabar-200: #f5b7a4;
+  --cinnabar-300: #ec8769;
+  --cinnabar-400: #d8593a;
+  --cinnabar-500: #b73a1f;
+  --cinnabar-600: #962d17;
+  --cinnabar-700: #72200f;
+
+  /* Moss —— 成功（林木绿，与主墨绿语义区分）*/
+  --moss-50:  #f0f7ee;
+  --moss-100: #d8ebd1;
+  --moss-300: #8cc480;
+  --moss-500: #4e9a44;
+  --moss-600: #3b7c33;
+  --moss-700: #2c5d27;
+
+  /* ===================================================================
+   * 2. Semantic 语义层 —— 页面/组件请优先消费这一层
+   * ================================================================ */
+
+  /* Surfaces */
+  --color-bg-page:     var(--paper-100);  /* 整页背景 */
+  --color-bg-canvas:   var(--paper-50);   /* 内容区底色 */
+  --color-bg-card:     #ffffff;           /* 卡片，承载主信息密度 */
+  --color-bg-elevated: #ffffff;           /* 模态/弹层 */
+  --color-bg-muted:    var(--paper-200);  /* 标签底 / 次要区域 */
+  --color-bg-inset:    var(--graphite-100); /* 表头 / 摘要条 */
+
+  /* Text */
+  --color-text-primary:   var(--graphite-900); /* 标题 */
+  --color-text-body:      var(--graphite-700); /* 正文 */
+  --color-text-muted:     var(--graphite-500); /* 辅助 / 占位 */
+  --color-text-faint:     var(--graphite-400); /* 极弱说明 */
+  --color-text-on-brand:  var(--paper-50);     /* 主色按钮上的字 */
+  --color-text-on-danger: #ffffff;
+  --color-text-link:      var(--ink-600);
+  --color-text-link-hover: var(--ink-800);
+
+  /* Borders / dividers */
+  --color-border:        rgba(26, 24, 20, 0.10);   /* 默认细边 */
+  --color-border-strong: rgba(26, 24, 20, 0.18);   /* 强调边 */
+  --color-border-brand:  var(--ink-300);            /* 主色描边 */
+  --color-divider:       var(--graphite-200);
+
+  /* Brand —— 主色 */
+  --color-brand:         var(--ink-700);
+  --color-brand-hover:   var(--ink-800);
+  --color-brand-active:  var(--ink-900);
+  --color-brand-soft:    var(--ink-500);
+  --color-brand-bg:      var(--ink-50);
+  --color-brand-bg-strong: var(--ink-100);
+
+  /* States */
+  --color-warning:        var(--amber-500);
+  --color-warning-strong: var(--amber-600);
+  --color-warning-bg:     var(--amber-50);
+  --color-warning-border: var(--amber-300);
+
+  --color-danger:         var(--cinnabar-500);
+  --color-danger-strong:  var(--cinnabar-600);
+  --color-danger-bg:      var(--cinnabar-50);
+  --color-danger-border:  var(--cinnabar-300);
+
+  --color-success:        var(--moss-500);
+  --color-success-strong: var(--moss-600);
+  --color-success-bg:     var(--moss-50);
+  --color-success-border: var(--moss-300);
+
+  --color-info:           var(--ink-500);
+  --color-info-bg:        var(--ink-50);
+
+  /* 风险分层 —— "冲稳保" 三档标签色 */
+  --tier-reach:    var(--cinnabar-500);  /* 冲：朱砂强警示 */
+  --tier-reach-bg: var(--cinnabar-50);
+  --tier-match:    var(--ink-600);       /* 稳：墨绿主色 */
+  --tier-match-bg: var(--ink-50);
+  --tier-safety:   var(--amber-500);     /* 保：琥珀稳妥 */
+  --tier-safety-bg: var(--amber-50);
+
+  /* ===================================================================
+   * 3. Typography / Radii / Shadow / Spacing
+   * ================================================================ */
+
+  /* Font stacks —— 决策工作台偏稳重无衬线 */
+  --font-sans:
+    'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-serif-zh:
+    'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'Source Han Serif',
+    'PingFang SC', serif; /* 仅用于报告标题 / 引用 */
+  --font-mono:
+    'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
+
+  /* Font sizes —— 8pt 缩放 */
+  --font-size-xs:    0.75rem;   /* 12 */
+  --font-size-sm:    0.875rem;  /* 14 */
+  --font-size-base:  1rem;      /* 16 */
+  --font-size-lg:    1.125rem;  /* 18 */
+  --font-size-xl:    1.25rem;   /* 20 */
+  --font-size-2xl:   1.5rem;    /* 24 */
+  --font-size-3xl:   1.875rem;  /* 30 */
+  --font-size-4xl:   2.25rem;   /* 36 */
+
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --line-height-tight:   1.25;
+  --line-height-snug:    1.4;
+  --line-height-normal:  1.55;
+  --line-height-relaxed: 1.75;
+
+  /* Radii —— 报告感偏方正，避免大圆角的营销感 */
+  --radius-xs:   2px;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-pill: 9999px;
+
+  /* Shadows —— 低饱和、薄阴影，强调"纸张 + 信息卡"质感 */
+  --shadow-xs:    0 1px 0 rgba(26, 24, 20, 0.04);
+  --shadow-sm:    0 1px 2px rgba(26, 24, 20, 0.06);
+  --shadow-md:    0 2px 6px rgba(26, 24, 20, 0.07), 0 1px 2px rgba(26, 24, 20, 0.04);
+  --shadow-lg:    0 8px 24px rgba(26, 24, 20, 0.08), 0 2px 6px rgba(26, 24, 20, 0.04);
+  --shadow-inset: inset 0 1px 0 rgba(255, 253, 248, 0.5);
+  --shadow-focus: 0 0 0 3px rgba(31, 69, 51, 0.18); /* 主色聚焦光晕 */
+
+  /* Spacing —— 4px base */
+  --space-0:  0;
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* Z-index */
+  --z-dropdown:    1000;
+  --z-sticky:      1020;
+  --z-fixed:       1030;
+  --z-modal-mask:  1040;
+  --z-modal:       1050;
+  --z-popover:     1060;
+  --z-tooltip:     1070;
+  --z-notification: 1080;
+
+  /* Transitions */
+  --transition-fast:    120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-default: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow:    320ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===================================================================
+   * 4. Element Plus 主题桥接
+   * ----
+   * 通过覆盖 EP 提供的 CSS 变量，让所有 EP 组件（按钮、表单、表格、菜单
+   * 等）自动消费本文件定义的语义 token，避免逐组件覆盖。
+   * 旧 style.css 中的 EP 块（深蓝 sky-500 配色）会被本文件覆盖。
+   * ================================================================ */
+  --el-color-primary:           var(--color-brand);
+  --el-color-primary-light-3:   var(--ink-500);
+  --el-color-primary-light-5:   var(--ink-400);
+  --el-color-primary-light-7:   var(--ink-300);
+  --el-color-primary-light-8:   var(--ink-200);
+  --el-color-primary-light-9:   var(--ink-100);
+  --el-color-primary-dark-2:    var(--color-brand-hover);
+
+  --el-color-success:           var(--color-success);
+  --el-color-success-light-3:   var(--moss-300);
+  --el-color-success-light-9:   var(--color-success-bg);
+
+  --el-color-warning:           var(--color-warning);
+  --el-color-warning-light-3:   var(--amber-300);
+  --el-color-warning-light-9:   var(--color-warning-bg);
+
+  --el-color-danger:            var(--color-danger);
+  --el-color-danger-light-3:    var(--cinnabar-300);
+  --el-color-danger-light-9:    var(--color-danger-bg);
+
+  --el-color-error:             var(--color-danger);
+  --el-color-info:              var(--graphite-500);
+
+  --el-bg-color:                var(--color-bg-card);
+  --el-bg-color-page:           var(--color-bg-page);
+  --el-bg-color-overlay:        var(--color-bg-elevated);
+  --el-fill-color-blank:        var(--color-bg-card);
+  --el-fill-color-light:        var(--color-bg-muted);
+  --el-fill-color:              var(--graphite-100);
+  --el-fill-color-dark:         var(--graphite-200);
+
+  --el-text-color-primary:      var(--color-text-primary);
+  --el-text-color-regular:      var(--color-text-body);
+  --el-text-color-secondary:    var(--color-text-muted);
+  --el-text-color-placeholder:  var(--color-text-faint);
+
+  --el-border-color:             var(--graphite-300);
+  --el-border-color-light:       var(--graphite-200);
+  --el-border-color-lighter:     var(--color-border);
+  --el-border-color-extra-light: var(--graphite-100);
+
+  --el-border-radius-base:  var(--radius-md);
+  --el-border-radius-small: var(--radius-sm);
+  --el-border-radius-round: var(--radius-lg);
+
+  --el-box-shadow:        var(--shadow-md);
+  --el-box-shadow-light:  var(--shadow-sm);
+  --el-box-shadow-dark:   var(--shadow-lg);
+
+  --el-disabled-bg-color:   var(--graphite-100);
+  --el-disabled-text-color: var(--graphite-400);
+  --el-disabled-border-color: var(--graphite-200);
+
+  --el-font-size-base:  var(--font-size-base);
+  --el-font-size-small: var(--font-size-sm);
+  --el-font-family:     var(--font-sans);
+}
+
+/* ===================================================================
+ * 5. Body 默认应用语义层
+ *    旧 style.css 仍可继续工作（其变量定义被本文件 :root 块覆盖）；
+ *    本块统一 body / #app 的背景与文字默认值。
+ * ================================================================ */
+html {
+  background: var(--color-bg-page);
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-bg-page);
+  color: var(--color-text-body);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  min-height: 100vh;
+  background: var(--color-bg-page);
+}
+
+/* 移除旧 style.css body 的 bg-gradient-to-br 深蓝渐变，
+   通过 .has-paper-bg 工具类显式开启 paper 纹理（仅决策页面用）。 */
+body.has-paper-bg {
+  background-image:
+    radial-gradient(rgba(58, 53, 45, 0.018) 1px, transparent 1px),
+    linear-gradient(180deg, var(--paper-50) 0%, var(--paper-100) 100%);
+  background-size: 14px 14px, 100% 100%;
+  background-attachment: fixed;
+}
+
+/* ===================================================================
+ * 6. 决策页面通用工具类（与 design-system.css 不重叠的新规范）
+ *    命名前缀 `dw-` ＝ Decision Workbench，便于检索与渐进迁移。
+ * ================================================================ */
+
+/* 卡片：默认纸张感，无阴影抬升，左侧色带可选 */
+.dw-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  transition: box-shadow var(--transition-default), border-color var(--transition-default);
+}
+
+.dw-card--accent-reach   { border-left: 3px solid var(--tier-reach); }
+.dw-card--accent-match   { border-left: 3px solid var(--tier-match); }
+.dw-card--accent-safety  { border-left: 3px solid var(--tier-safety); }
+
+/* 风险标签：圆角方块、轻底色、强对比 */
+.dw-tier-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.dw-tier-tag--reach  { background: var(--tier-reach-bg);  color: var(--cinnabar-700); }
+.dw-tier-tag--match  { background: var(--tier-match-bg);  color: var(--ink-800); }
+.dw-tier-tag--safety { background: var(--tier-safety-bg); color: var(--amber-700); }
+
+/* 数据强调：等宽数字 + 主色深值，用于分数 / 位次 / 概率 */
+.dw-metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* 解释/辅助文本：弱化色 + 较小字号 */
+.dw-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+
+/* 段落分割条（替代灰色背景大块）*/
+.dw-divider {
+  height: 1px;
+  background: var(--color-divider);
+  border: none;
+  margin: var(--space-6) 0;
+}
+
+/* 顶部状态条：用于报告区头部摘要带 */
+.dw-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-inset);
+  color: var(--color-text-body);
+  font-size: var(--font-size-sm);
+}
