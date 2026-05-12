@@ -78,16 +78,18 @@ func main() {
 	algorithmService := services.NewAlgorithmService(db, logger)
 	cacheService := services.NewCacheService(db, logger)
 	performanceService := services.NewPerformanceService(db, logger)
-	migrationService := services.NewMigrationService(db)
 
 	// 初始化处理器
+	// NOTE: 旧版有一个 MigrationService / MigrationHandler 暴露 /api/v1/migrations 路由用于
+	// 手工触发 GORM AutoMigrate 重跑，但与启动时迁移路径重复且 SQL 与真实 schema 漂移。
+	// 现在 schema 演进统一走 goose 版本化迁移文件（services/data-service/internal/database/
+	// migrations/*.sql），二进制启动时自动 Up 到最新版本，HTTP 入口移除。
 	universityHandler := handlers.NewUniversityHandler(universityService, logger)
 	majorHandler := handlers.NewMajorHandler(majorService, logger)
 	admissionHandler := handlers.NewAdmissionHandler(admissionService, logger)
 	searchHandler := handlers.NewSearchHandler(searchService, logger)
 	algorithmHandler := handlers.NewAlgorithmHandler(algorithmService, logger)
 	performanceHandler := handlers.NewPerformanceHandler(performanceService, cacheService, db, logger)
-	migrationHandler := handlers.NewMigrationHandler(db, migrationService, logger)
 	dataHandler := handlers.NewDataHandler(db, logger)
 
 	// 创建Gin引擎
@@ -185,13 +187,9 @@ func main() {
 			performance.POST("/warmup-cache", performanceHandler.WarmupCache)
 		}
 
-		// 数据库迁移路由
-		migrations := apiV1.Group("/migrations")
-		{
-			migrations.POST("/apply", migrationHandler.ApplyMigrations)
-			migrations.GET("/status", migrationHandler.GetMigrationStatus)
-			migrations.POST("/rollback/:version", migrationHandler.RollbackMigration)
-		}
+		// 数据库迁移路由已移除：现在走 goose 版本化迁移在二进制启动时自动应用。
+		// 如需运维手工 inspect 迁移版本，请使用 `goose -dir ... status` CLI 或直接查
+		// goose_db_version 表。
 
 		// 数据处理路由
 		data := apiV1.Group("/data")

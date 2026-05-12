@@ -2,12 +2,12 @@ package database
 
 import (
 	"context"
+	"embed"
 	"fmt"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/olivere/elastic/v7"
+	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -15,6 +15,11 @@ import (
 	"github.com/tvvshow/gokao/services/data-service/internal/config"
 	shareddb "github.com/tvvshow/gokao/pkg/database"
 )
+
+// embedMigrations 把 migrations/*.sql 嵌入二进制，避免运行时依赖文件系统路径。
+//
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 // DB 数据库连接管理器
 type DB struct {
@@ -48,7 +53,7 @@ func NewDB(cfg *config.Config, log *logrus.Logger) (*DB, error) {
 	return db, nil
 }
 
-// initPostgreSQL 初始化 PostgreSQL 连接 + 自动迁移。
+// initPostgreSQL 初始化 PostgreSQL 连接 + 应用版本化迁移。
 func (db *DB) initPostgreSQL() error {
 	conn, err := shareddb.OpenGorm(db.Config.DatabaseConfig, shareddb.GormOpenOptions{
 		Production: db.Config.Environment != "debug",
@@ -57,7 +62,6 @@ func (db *DB) initPostgreSQL() error {
 		return err
 	}
 
-	// 验证连接（OpenGorm 内部已 ping，但这里再做一次以保留原日志语义）
 	sqlDB, err := conn.DB()
 	if err != nil {
 		return fmt.Errorf("获取SQL DB实例失败: %w", err)
@@ -132,160 +136,41 @@ func (db *DB) initElasticsearch() error {
 	return nil
 }
 
-// migrate 执行数据库迁移
+// migrate 应用所有未运行的 goose 迁移到目标 DB。
+//
+// 与旧版 AutoMigrate + 散乱 ALTER / CREATE INDEX 的差异：
+//   - schema 变更走版本化 SQL 文件（migrations/*.sql），可向下回滚；
+//   - goose 在 goose_db_version 表中追踪版本号，二进制启动时自动 Up；
+//   - 弃用 GORM 在迁移路径的 AutoMigrate 行为——模型仅承担运行时 ORM，结构演进权归迁移文件。
 func (db *DB) migrate() error {
-	db.Logger.Info("开始数据库迁移...")
+	db.Logger.Info("开始数据库迁移（goose）...")
 
-	// 执行一个简单的查询来验证连接
-	var result int
-	if err := db.PostgreSQL.Raw("SELECT 1").Scan(&result).Error; err != nil {
-		return fmt.Errorf("数据库连接验证失败: %w", err)
+	sqlDB, err := db.PostgreSQL.DB()
+	if err != nil {
+		return fmt.Errorf("获取 sql.DB: %w", err)
 	}
 
-	// NEW: 确保 pgcrypto 扩展可用以支持 gen_random_uuid()
-	if err := db.PostgreSQL.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;").Error; err != nil {
-		db.Logger.Warnf("创建扩展 pgcrypto 失败（可能权限不足）：%v", err)
+	goose.SetBaseFS(embedMigrations)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("set dialect: %w", err)
 	}
 
-	// pg_trgm 扩展为搜索路径上的 LOWER(col) LIKE '%xxx%' 提供 GIN 三元组索引支持。
-	// 创建失败不阻塞启动，但搜索将退化为全表扫描，必须在日志中明显标记。
-	if err := db.PostgreSQL.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;").Error; err != nil {
-		db.Logger.Warnf("PERFORMANCE_DEGRADED: 创建扩展 pg_trgm 失败，搜索将退化为全表扫描（可能权限不足）：%v", err)
-	}
+	// SetLogger 把 goose 输出接到 logrus，统一日志格式。
+	goose.SetLogger(gooseLogger{db.Logger})
 
-	// 初始化迁移器
-	migrator := NewMigrator(db.PostgreSQL)
-	if err := migrator.SetupMigrationTable(); err != nil {
-		return fmt.Errorf("设置迁移表失败: %w", err)
-	}
-
-	// 定义所有需要迁移的模型
-	models := migratableModels()
-
-	// 对所有模型执行迁移，确保字段更新
-	for _, model := range models {
-		// 获取模型对应的表名
-		modelType := reflect.TypeOf(model)
-		if modelType.Kind() == reflect.Ptr {
-			modelType = modelType.Elem()
-		}
-		typeName := modelType.Name()
-		
-		db.Logger.Infof("正在迁移模型: %s", typeName)
-		if err := db.PostgreSQL.AutoMigrate(model); err != nil {
-			// 如果是约束相关错误，记录警告但继续执行
-			if strings.Contains(err.Error(), "constraint") || strings.Contains(err.Error(), "does not exist") {
-				db.Logger.Warnf("迁移模型 %s 时遇到约束错误，继续执行: %v", typeName, err)
-				continue
-			}
-			return fmt.Errorf("迁移模型 %T 失败: %w", model, err)
-		}
-	}
-
-	// NEW: 为 UUID 主键设置数据库默认值 gen_random_uuid()，避免插入失败
-	uuidDefaultAlters := []string{
-		"ALTER TABLE IF EXISTS universities ALTER COLUMN id SET DEFAULT gen_random_uuid();",
-		"ALTER TABLE IF EXISTS majors ALTER COLUMN id SET DEFAULT gen_random_uuid();",
-		"ALTER TABLE IF EXISTS admission_data ALTER COLUMN id SET DEFAULT gen_random_uuid();",
-		"ALTER TABLE IF EXISTS search_indices ALTER COLUMN id SET DEFAULT gen_random_uuid();",
-		"ALTER TABLE IF EXISTS analysis_results ALTER COLUMN id SET DEFAULT gen_random_uuid();",
-	}
-	for _, q := range uuidDefaultAlters {
-		if err := db.PostgreSQL.Exec(q).Error; err != nil {
-			db.Logger.Warnf("设置UUID默认值失败: %v | SQL: %s", err, q)
-		}
-	}
-
-	// 手动添加 popularity_score 字段到 majors 表
-	db.Logger.Info("检查并添加 popularity_score 字段...")
-	if err := db.PostgreSQL.Exec("ALTER TABLE majors ADD COLUMN IF NOT EXISTS popularity_score INTEGER DEFAULT 0;").Error; err != nil {
-		db.Logger.Warnf("添加 popularity_score 字段失败: %v", err)
-	} else {
-		db.Logger.Info("成功添加 popularity_score 字段")
-		
-		// 更新现有记录的 popularity_score 值
-		updateQueries := []string{
-			`UPDATE majors SET popularity_score = 95 WHERE name LIKE '%计算机%' OR name LIKE '%软件%' OR name LIKE '%人工智能%';`,
-			`UPDATE majors SET popularity_score = 90 WHERE name LIKE '%电子%' OR name LIKE '%通信%' OR name LIKE '%自动化%';`,
-			`UPDATE majors SET popularity_score = 85 WHERE name LIKE '%金融%' OR name LIKE '%经济%' OR name LIKE '%管理%';`,
-			`UPDATE majors SET popularity_score = 80 WHERE name LIKE '%医学%' OR name LIKE '%临床%' OR name LIKE '%护理%';`,
-			`UPDATE majors SET popularity_score = 75 WHERE name LIKE '%机械%' OR name LIKE '%土木%' OR name LIKE '%建筑%';`,
-			`UPDATE majors SET popularity_score = 70 WHERE popularity_score = 0;`,
-		}
-		
-		for i, query := range updateQueries {
-			if err := db.PostgreSQL.Exec(query).Error; err != nil {
-				db.Logger.Warnf("更新专业热度分数失败 (查询 %d): %v", i+1, err)
-			} else {
-				db.Logger.Infof("完成专业热度分数更新 (查询 %d)", i+1)
-			}
-		}
-	}
-
-	// 创建索引
-	if err := db.createIndices(); err != nil {
-		return fmt.Errorf("创建索引失败: %w", err)
+	if err := goose.Up(sqlDB, "migrations"); err != nil {
+		return fmt.Errorf("goose up: %w", err)
 	}
 
 	db.Logger.Info("数据库迁移完成")
 	return nil
 }
 
-// createIndices 创建数据库索引
-func (db *DB) createIndices() error {
-	db.Logger.Info("开始创建数据库索引...")
-	
-	// 创建复合索引 - 基于查询模式优化
-	indices := []string{
-		// 院校表核心查询索引
-		"CREATE INDEX IF NOT EXISTS idx_universities_province_type ON universities(province, type)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_level_nature ON universities(level, nature)", 
-		"CREATE INDEX IF NOT EXISTS idx_universities_province_level ON universities(province, level)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_type_level ON universities(type, level)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_active_recruiting ON universities(is_active, is_recruiting)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_rank_score ON universities(national_rank, popularity_score)",
-		
-		// 专业表查询索引
-		"CREATE INDEX IF NOT EXISTS idx_majors_university_category ON majors(university_id, category)",
-		"CREATE INDEX IF NOT EXISTS idx_majors_discipline_degree ON majors(discipline, degree_type)",
-		"CREATE INDEX IF NOT EXISTS idx_majors_category_active ON majors(category, is_active)",
-		"CREATE INDEX IF NOT EXISTS idx_majors_university_active ON majors(university_id, is_active)",
-		
-		// 录取数据表索引
-		"CREATE INDEX IF NOT EXISTS idx_admission_data_year_province ON admission_data(year, province)",
-		"CREATE INDEX IF NOT EXISTS idx_admission_data_university_year ON admission_data(university_id, year)",
-		"CREATE INDEX IF NOT EXISTS idx_admission_data_score_rank ON admission_data(avg_score, min_rank)",
-		"CREATE INDEX IF NOT EXISTS idx_admission_data_year_batch ON admission_data(year, batch_type)",
-		
-		// 搜索和分析表索引
-		"CREATE INDEX IF NOT EXISTS idx_search_indices_type_province ON search_indices(type, province)",
-		"CREATE INDEX IF NOT EXISTS idx_analysis_results_user_created ON analysis_results(user_id, created_at)",
+// gooseLogger 把 goose 内部日志桥接到项目 logrus 实例。
+type gooseLogger struct{ l *logrus.Logger }
 
-		// pg_trgm 表达式索引：覆盖 services 层 LOWER(col) LIKE '%kw%' 模式。
-		// 必须按 LOWER(col) 建表达式索引，planner 才会用——否则索引按 col 但 WHERE 按 LOWER(col)。
-		// to_tsvector('chinese',...) 的旧方案在 postgres:15-alpine 上根本建不起来（无 chinese 词典）。
-		"CREATE INDEX IF NOT EXISTS idx_universities_name_trgm ON universities USING gin (LOWER(name) gin_trgm_ops)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_code_trgm ON universities USING gin (LOWER(code) gin_trgm_ops)",
-		"CREATE INDEX IF NOT EXISTS idx_universities_alias_trgm ON universities USING gin (LOWER(alias) gin_trgm_ops)",
-		"CREATE INDEX IF NOT EXISTS idx_majors_name_trgm ON majors USING gin (LOWER(name) gin_trgm_ops)",
-		// hot_searches.keyword 走 SearchService.AutoComplete 的高频路径（每次输入触发），
-		// eef5eb7 的 follow-up：keyword 列还在 seq scan。补一条 trgm 表达式索引把它也带进索引扫描。
-		"CREATE INDEX IF NOT EXISTS idx_hot_searches_keyword_trgm ON hot_searches USING gin (LOWER(keyword) gin_trgm_ops)",
-	}
-
-	createdCount := 0
-	for _, indexSQL := range indices {
-		if err := db.PostgreSQL.Exec(indexSQL).Error; err != nil {
-			db.Logger.Warnf("创建索引失败: %s, 错误: %v", indexSQL, err)
-		} else {
-			createdCount++
-			db.Logger.Debugf("成功创建索引: %s", indexSQL)
-		}
-	}
-	
-	db.Logger.Infof("索引创建完成，成功创建 %d/%d 个索引", createdCount, len(indices))
-	return nil
-}
+func (g gooseLogger) Fatalf(format string, v ...interface{}) { g.l.Fatalf(format, v...) }
+func (g gooseLogger) Printf(format string, v ...interface{}) { g.l.Infof(format, v...) }
 
 // initElasticsearchIndices 初始化Elasticsearch索引
 func (db *DB) initElasticsearchIndices() error {

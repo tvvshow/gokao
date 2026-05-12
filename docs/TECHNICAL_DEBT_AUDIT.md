@@ -1,7 +1,7 @@
 # 技术债务审计与上线路线
 
 **初版**：2026-05-10（全量审计）
-**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service 接入 goose 版本化迁移**；记录 CI 工程债 CI-DEBT-01：lint v1→v2 迁移）
+**最近更新**：2026-05-12（CI/PAT 遗留处理完成；新增 Sprint UI 前端视觉改造计划；**Sprint B / L-05 production compose 合并落地**；**L-09 phase 1 payment-service + phase 2 data-service 接入 goose 版本化迁移**；记录 CI 工程债 CI-DEBT-01：lint v1→v2 迁移）
 **审计范围**：6 微服务 + 14 pkg 模块 + C++ 算法模块 + 前端 + 部署侧
 
 > 本文档定位为**当前活动工作清单**：已完成项目仅保留索引（commit hash + 一句话），便于历史追溯；未完成项目保留完整诊断与计划。上线侧（代码之外）缺口纳入第 3 章。
@@ -24,7 +24,7 @@
 
 代码层债务清完率 **90%+**。剩余 3 项代码层 PENDING 全部需要外部输入（D.2 / D.4 需产品 sign-off，D.5 需数据团队 schema 决策）。
 
-**上线侧进度（L-xx）**：1 FIXED（L-05 production compose）+ 1 部分完成（L-04 nginx 反代已配，certbot 待补）+ 1 进行中（L-09 phase 1 已完成 payment-service，data/user 待切）；其余 13 项分属 Sprint B 自主推进 或 Sprint D 外部输入。
+**上线侧进度（L-xx）**：1 FIXED（L-05 production compose）+ 1 部分完成（L-04 nginx 反代已配，certbot 待补）+ 1 进行中（L-09 phase 1 payment-service + phase 2 data-service 已完成，user-service phase 3 待切）；其余 13 项分属 Sprint B 自主推进 或 Sprint D 外部输入。
 
 **CI 工程债**：CI-DEBT-01（lint v1.64.8 vs go1.25 typecheck 不兼容）已识别，临时止血（lint step continue-on-error），真修需要 v1→v2 配置迁移（~1-2h，独立 commit）。
 
@@ -249,7 +249,7 @@
 | L-06 | **监控栈**（部分完成：容器挂入 prod compose；告警接收方未配置） | prometheus/grafana/alertmanager/blackbox-exporter 容器已挂入 `docker/prod/docker-compose.prod.yml` + 引用 `monitoring/{prometheus.yml,alertmanager.yml,alerts/*}` 配置；alertmanager.yml 仅默认 receiver，dingtalk/wechat/email webhook URL 待 Sprint D 提供 |
 | L-07 | **告警通道** | `alert_manager.go` 代码完整（dingtalk/wechat/email/webhook），但**接收方未配置** |
 | L-08 | **日志聚合** | logrus 写 stdout，无 Loki / ELK / Fluent Bit pipeline |
-| L-09 | **versioned DB migration**（phase 1 完成，phase 2/3 进行中） | payment-service 已切 `pressly/goose` + `embed.FS`（ac2b5f5）；baseline `00001_init.sql` 6 表 + 8 index + 3 套餐 seed 双向 Up/Down；data-service / user-service 仍跑启动时 GORM `AutoMigrate`，phase 2/3 待切 |
+| L-09 | **versioned DB migration**（phase 1+2 完成，phase 3 进行中） | payment-service 已切 `pressly/goose` + `embed.FS`（ac2b5f5）；data-service 已切 goose（本轮）：baseline `00001_init.sql` 覆盖 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 GIN trgm 表达式索引）+ popularity_score seed + 双向 Up/Down；同步删除 3 处死代码（custom Migrator / MigrationService HTTP 入口 / cmd/migrator standalone CLI），修复 2 处旧 createIndices 的 column 拼错 bug（universities.popularity_score / admission_data.batch_type 不存在的列在每次启动静默失败）；user-service phase 3 仍跑启动时 GORM `AutoMigrate` + 568 行 init.sql，待切 |
 | L-10 | **secrets 管理** | `config/.env.production` 本地明文（已 gitignore，未泄漏到 repo）；未走 docker secrets / Vault / age-encrypted .env |
 | L-11 | **压力测试** | 项目目标"10 万并发 / 推荐 < 500ms / SLA > 99.9%"**全部未实测**；无 k6 / locust / wrk 脚本 |
 | L-12 | **灾备** | 无 DB 备份策略 / Redis 持久化策略 / 跨可用区方案 |
@@ -341,7 +341,7 @@
 | **L-04** nginx 反代 + Let's Encrypt（部分完成） | ~0.5d（L-05 内已完成 nginx 反代；剩 certbot 自动续期容器） | nginx.conf 已配 TLSv1.2/1.3 + HSTS + 三档 limit_req zone + frontend/api 反代；certbot 容器 + DNS-01 / HTTP-01 challenge + crontab renew 待补 |
 | **L-06** 监控栈（docker 部署） | ~0.5d（L-05 内已挂入 compose，剩告警接收方） | prometheus/grafana/alertmanager/blackbox-exporter 容器化已在 prod compose 内挂 monitoring/* 配置；告警接收方（dingtalk/wechat webhook URL）属 Sprint D 外部输入 |
 | **L-08** 日志聚合（docker 部署） | ~0.5d | Loki + Promtail 容器化 + 配置 docker log driver |
-| ~~**L-09** versioned migration 工具链~~ 🔄 **phase 1 完成（commit ac2b5f5）；phase 2/3 进行中** | ~1.5d 总（phase 1 已花 ~1.5h） | **phase 1**：payment-service 接入 `pressly/goose` + `embed.FS`，baseline migration 6 表 + 8 index + 3 套餐 seed 双向 Up/Down；本地 `TestEmbedMigrationsPresent` 单测验证；CI 全绿（run 25710932254）。**phase 2**：data-service 从 GORM AutoMigrate + 手动 ALTER/CREATE INDEX 迁出到 goose（含 pgcrypto/pg_trgm 扩展、UUID 默认值、popularity_score、20+ index）。**phase 3**：user-service 把 568 行 `init.sql` + AutoMigrate 12 模型迁入 goose。**phase 4**：CI 加 postgres 容器跑 round-trip（up → down → up）验证幂等。 |
+| ~~**L-09** versioned migration 工具链~~ 🔄 **phase 1+2 完成；phase 3 进行中** | ~1.5d 总（phase 1+2 已花 ~3h） | **phase 1**（commit ac2b5f5）：payment-service 接入 `pressly/goose` + `embed.FS`，baseline 6 表 + 8 index + 3 套餐 seed 双向 Up/Down。**phase 2**（本轮）：data-service 切 goose，baseline 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 5 条 GIN trgm 表达式索引）+ popularity_score seed 双向 Up/Down；删 custom Migrator + MigrationService HTTP 入口 + cmd/migrator standalone CLI 三处冗余路径；修 createIndices 旧 bug（universities/admission_data 不存在的列）。**phase 3**：user-service 把 568 行 `init.sql` + AutoMigrate 12 模型迁入 goose。**phase 4**：CI 加 postgres 容器跑 round-trip（up → down → up）验证幂等。 |
 | **L-11** 压测脚本 | ~1d | `tests/load/*.js` (k6)，覆盖推荐 / 搜索 / 鉴权三条核心路径 |
 | 新增 | ~0.5d | `infrastructure/scripts/backup-restore.sh`（PG pg_dump + Redis RDB → 异地） |
 | **CI-DEBT-01** golangci-lint v1 → v2 迁移 | ~1-2h | 升级 `golangci-lint-action@v6 → @v7`（拉 v2.x，用 go1.25 编译）；`.golangci.yml` 配置迁移到 v2 schema（`linters-settings` → `settings`、显式 enable list 等）；移除 ci-cd.yml lint step 的 `continue-on-error: true` 临时止血 |
@@ -468,3 +468,4 @@ find infrastructure/ -maxdepth 3 -type f                   # 确认 production c
 | **2026-05-12** | **Sprint B / L-09 phase 1 落地**：payment-service 接入 `pressly/goose` + `embed.FS`，baseline `00001_init.sql` 6 表 + 8 index + 3 套餐 seed 双向 Up/Down；本地 `TestEmbedMigrationsPresent` 单测验证；CI 全绿（run 25710932254）。phase 2/3（data-service / user-service）待跟进（commit ac2b5f5） |
 | **2026-05-12** | **CI swag step scope 收窄**：`git status --porcelain` 限定 `docs/`；修 go.work 升级时 go 工具链可能写 toolchain 指令到 go.mod 被误判为"swag 过期"的预存在脆弱性（commit f86267d） |
 | **2026-05-12** | **新增 CI-DEBT-01 PENDING**：lint v1.64.8（go1.24 编译）无法 typecheck go1.25 stdlib；临时 `continue-on-error: true` 止血，真修需 v1→v2 配置迁移 ~1-2h 独立 commit（临时止血 commit f155bff） |
+| **2026-05-12** | **Sprint B / L-09 phase 2 落地**：data-service 从 GORM AutoMigrate + 散乱 ALTER / CREATE INDEX 切到 goose 版本化迁移；baseline `00001_init.sql` 覆盖 9 表 + pgcrypto/pg_trgm 扩展 + 41 索引（含 5 条 GIN trgm 表达式索引）+ popularity_score seed 双向 Up/Down；同步删除三处冗余迁移路径（custom Migrator / MigrationService HTTP 入口 / cmd/migrator standalone CLI）与一份 one-shot 脚本（scripts/add_popularity_field.go）；修两处 createIndices 旧 bug（universities.popularity_score 与 admission_data.batch_type 不存在的列在每次启动静默失败）；`TestEmbedMigrationsPresent` 嵌入校验 + go test ./... 全绿 |
