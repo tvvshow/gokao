@@ -87,7 +87,9 @@ jobs:
       with:
         version: v2.12.2
         working-directory: services/api-gateway
-        args: --timeout=5m
+        # v7 在 working-directory 内查找 .golangci.yml，但项目 config 在 repo root，
+        # 必须显式 --config 指向（相对 services/api-gateway 是 ../../.golangci.yml）。
+        args: --timeout=5m --config=../../.golangci.yml
     
     # 上传覆盖率报告
     - name: Upload coverage (artifact)
