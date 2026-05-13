@@ -349,6 +349,11 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_logs:/var/log/nginx
+      # L-04: Let's Encrypt 共享卷。无 letsencrypt profile 时这两个卷为空目录，
+      # nginx 仍走 /run/secrets/tls_{cert,key}；启用 LE 后 operator 改 ssl_certificate
+      # 指向 /etc/letsencrypt/live/$DOMAIN/{fullchain,privkey}.pem（见 SECRETS.md §7）。
+      - letsencrypt_certs:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
     depends_on:
       api-gateway: { condition: service_healthy }
       frontend:    { condition: service_healthy }
@@ -371,6 +376,65 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  # ── Let's Encrypt（profile=letsencrypt 启用） ─────────────────
+  # L-04 (2026-05-13)：opt-in TLS 自动签发 + 续期。
+  #   - 默认部署不启动这两个容器，保持 docker secrets 现有 TLS 流不变。
+  #   - 启用顺序：见 docker/prod/SECRETS.md §7。简言之：
+  #     1) 首签：`docker compose --profile letsencrypt run --rm certbot certonly ...`
+  #     2) 编辑 nginx.conf 把 ssl_certificate 指向 LE 路径，重启 nginx
+  #     3) 常驻：`docker compose --profile letsencrypt up -d certbot-renewer`
+  certbot:
+    image: certbot/certbot:v2.11.0
+    container_name: gaokao-certbot
+    profiles: ["letsencrypt"]
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    # 默认 entrypoint 是 `certbot`；本服务作为一次性命令载体（--rm + 显式参数）。
+    # 用法示例：
+    #   docker compose --profile letsencrypt run --rm certbot \
+    #     certonly --webroot -w /var/www/certbot \
+    #     -d ${DOMAIN_NAME} -m ${LETSENCRYPT_EMAIL} \
+    #     --agree-tos --no-eff-email --non-interactive
+    networks:
+      - gaokao-prod-frontend
+
+  certbot-renewer:
+    image: certbot/certbot:v2.11.0
+    container_name: gaokao-certbot-renewer
+    profiles: ["letsencrypt"]
+    # certbot 自身每 12h 检查一次；只在距过期 < 30 天才真续期。
+    # --deploy-hook 在真续期成功时触发，通过 docker socket 给 nginx 发 SIGHUP（reload 不中断）。
+    # docker-cli 用 apk 临时装；container 重启会重装（~10s 开销），换 dedicated 镜像更省。
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        apk add --no-cache docker-cli >/dev/null 2>&1 || true
+        trap exit TERM
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet \
+            --deploy-hook "docker kill -s HUP gaokao-nginx-prod 2>/dev/null || true" || true
+          sleep 12h
+        done
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+      # docker socket 用于 deploy-hook 给 nginx 发 SIGHUP。
+      # 风险：renewer 容器 → 主机 docker daemon。LE profile 是 opt-in，运维选用。
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - gaokao-prod-frontend
+    deploy:
+      resources:
+        limits: { memory: 128M, cpus: "0.10" }
+    restart: *default-restart
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
   # ── Observability ───────────────────────────────────────────
   prometheus:
@@ -483,6 +547,9 @@ volumes:
   alertmanager_prod_data: { name: gaokao-alertmanager-prod-data }
   grafana_prod_data:      { name: gaokao-grafana-prod-data }
   nginx_logs:             { name: gaokao-nginx-prod-logs }
+  # L-04 LE 共享卷。无 letsencrypt profile 时空目录，挂载零成本。
+  letsencrypt_certs:      { name: gaokao-letsencrypt-certs }
+  certbot_webroot:        { name: gaokao-certbot-webroot }
 
 secrets:
   postgres_password:      { file: ./secrets/postgres_password.txt }
