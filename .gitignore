@@ -325,6 +325,9 @@ config/.env.*
 # Monitoring and deployment
 prometheus/
 grafana/
+# L-08 例外：grafana 配置（datasource/dashboard provisioning）必须入仓，否则 Grafana 启动后无源
+!monitoring/grafana/
+!monitoring/grafana/**
 elasticsearch/
 kibana/
 logstash/

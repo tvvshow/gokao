@@ -51,6 +51,37 @@ docker compose up -d
 - Alertmanager: `http://localhost:9093`
 - Blackbox Exporter: `http://localhost:9115`
 
+## 日志聚合（L-08，docker/prod 编排）
+
+`docker/prod/docker-compose.prod.yml` 接入 Loki + Promtail，链路：
+
+```
+gaokao-* container stdout → docker json-file driver
+                          → /var/lib/docker/containers/*/-json.log
+                          → Promtail (docker_sd_configs 自动发现)
+                          → Loki (filesystem 后端, 14d 保留)
+                          → Grafana (provisioned datasource)
+```
+
+- `monitoring/loki.yml`：Loki 单节点配置；tsdb v13 schema + filesystem chunks + 14d retention + compactor on
+- `monitoring/promtail.yml`：抓 `gaokao-*` 容器，按 `container_name`/`service`/`stream`/`level` 打标
+- `monitoring/grafana/provisioning/datasources/datasources.yml`：Grafana 启动自动注册 Prometheus + Loki 两个数据源
+
+LogQL 示例（Grafana → Explore → Loki）：
+
+```
+# 单服务最近 ERROR
+{container_name="gaokao-api-gateway-prod"} |= "ERROR"
+
+# 全栈 ERROR + WARN
+{container_name=~"gaokao-.*"} | level=~"ERROR|WARN"
+
+# 推荐服务慢请求（结合 level/正则）
+{container_name="gaokao-recommendation-prod"} |~ "took (\\d{4,})ms"
+```
+
+`promtail` 与 `loki` 都接 backend 内网，外部仅经 Grafana 暴露查询面。
+
 ## 当前边界
 
 - `user-service` / `data-service` / `payment-service` / `recommendation-service` 目前仍以健康探测为主，尚未统一暴露 Prometheus 原生业务指标

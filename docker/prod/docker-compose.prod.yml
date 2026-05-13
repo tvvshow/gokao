@@ -515,10 +515,14 @@ services:
       - "127.0.0.1:3001:3000"
     volumes:
       - grafana_prod_data:/var/lib/grafana
+      # L-08: datasource provisioning。Grafana 启动时自动注册 Prometheus + Loki，
+      # 避免运维每次重建容器手动加 datasource。
+      - ../../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - gaokao-prod-backend
     depends_on:
       - prometheus
+      - loki
     secrets:
       - grafana_admin_password
     deploy:
@@ -530,6 +534,63 @@ services:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
     restart: *default-restart
     logging: *default-logging
+
+  # ── 日志聚合 (L-08, 2026-05-13) ──────────────────────────────
+  # Loki + Promtail 完成"应用容器 stdout → Promtail → Loki → Grafana LogQL"链路。
+  # 默认无 auth（仅 backend internal 网络可达）。规模化后切 distributed + S3 后端。
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: gaokao-loki-prod
+    command:
+      - '-config.file=/etc/loki/loki.yml'
+    volumes:
+      - ../../monitoring/loki.yml:/etc/loki/loki.yml:ro
+      - loki_prod_data:/loki
+    networks:
+      - gaokao-prod-backend
+    deploy:
+      resources:
+        limits: { memory: 1G, cpus: "0.5" }
+        reservations: { memory: 512M, cpus: "0.25" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3100/ready || exit 1"]
+    restart: *default-restart
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: gaokao-promtail-prod
+    command:
+      - '-config.file=/etc/promtail/promtail.yml'
+    volumes:
+      - ../../monitoring/promtail.yml:/etc/promtail/promtail.yml:ro
+      # docker socket 用于 docker_sd_configs 自动发现容器（只读）。
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # 容器日志路径，json-file driver 写入这里；promtail 直读文件而非走 docker logs API。
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_prod_data:/tmp
+    networks:
+      - gaokao-prod-backend
+    depends_on:
+      - loki
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.25" }
+        reservations: { memory: 128M, cpus: "0.1" }
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:9080/ready || exit 1"]
+    restart: *default-restart
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
 networks:
   gaokao-prod-frontend:
@@ -550,6 +611,9 @@ volumes:
   # L-04 LE 共享卷。无 letsencrypt profile 时空目录，挂载零成本。
   letsencrypt_certs:      { name: gaokao-letsencrypt-certs }
   certbot_webroot:        { name: gaokao-certbot-webroot }
+  # L-08 Loki + Promtail 持久化。
+  loki_prod_data:         { name: gaokao-loki-prod-data }
+  promtail_prod_data:     { name: gaokao-promtail-prod-data }
 
 secrets:
   postgres_password:      { file: ./secrets/postgres_password.txt }

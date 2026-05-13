@@ -1,0 +1,49 @@
+# Promtail 容器抓 docker 日志（json-file driver 下写到 /var/lib/docker/containers/*/-json.log）。
+# docker_sd_configs 自动发现运行中的容器，按 container_name 打标签。
+# 仅采集 gaokao-* 容器，过滤掉 host 上其他 docker workload。
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+
+scrape_configs:
+  - job_name: gaokao-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        # 只采集 name 以 gaokao- 开头的容器；通过 relabel 过滤
+        filters:
+          - name: name
+            values: ["gaokao-"]
+    relabel_configs:
+      # docker 元数据 → loki 标签
+      - source_labels: ["__meta_docker_container_name"]
+        regex: '/(.*)'
+        target_label: container_name
+      - source_labels: ["__meta_docker_container_log_stream"]
+        target_label: stream
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: service
+      # 二次过滤：只放行 container_name 以 gaokao- 开头的（filters 已过，双保险）
+      - source_labels: ["container_name"]
+        regex: 'gaokao-.*'
+        action: keep
+    pipeline_stages:
+      # 解析 docker json-file driver 的外层 wrapper：{"log":"...","stream":"stdout","time":"..."}
+      - docker: {}
+      # 解析常见 logrus / zap / klog 行内 level=...；失败不阻塞 ingest
+      - regex:
+          expression: '(?P<level>(?i)(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC))'
+      - labels:
+          level:
