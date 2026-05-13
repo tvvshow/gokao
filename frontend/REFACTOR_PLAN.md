@@ -178,7 +178,7 @@ rm src/components/common/VirtualList.vue
 
 ### 阶段0检查项
 - [x] 统一 `auth_token`
-- [ ] 补齐 refresh_token 存储与登出清理（401 无 refresh_token 强制登出）
+- [x] 补齐 refresh_token 存储与登出清理（401 无 refresh_token 强制登出）
 - [x] 修复 `universityApi` 查询参数传递
 - [x] 移除院校分页二次 `slice`（后端分页）
 - [ ] 分页参数对齐 `page_size`（院校/专业）

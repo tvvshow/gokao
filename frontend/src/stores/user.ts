@@ -1,7 +1,14 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { ElMessage } from 'element-plus';
 import type { User, LoginForm, RegisterForm } from '@/types/user';
 import { userApi } from '@/api/user';
+import { authEvents, type ForceLogoutDetail } from '@/utils/auth-events';
+import router from '@/router';
+
+const TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+const USER_KEY = 'user';
 
 export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null);
@@ -10,14 +17,49 @@ export const useUserStore = defineStore('user', () => {
 
   const isLoggedIn = computed(() => !!token.value);
 
-  // 初始化，从localStorage恢复登录状态
+  // 单一清理入口：内存 state + localStorage 三件套同时清，避免任一侧滞留。
+  const clearAuthState = () => {
+    user.value = null;
+    token.value = null;
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  };
+
+  // 被动下线（api-client 401 + 刷新失败时由事件触发）。
+  // 主动退出（用户点按钮）走 logout()；两者共用 clearAuthState。
+  const handleForceLogout = (detail: ForceLogoutDetail) => {
+    clearAuthState();
+    ElMessage.error('登录已过期，请重新登录');
+    const currentPath = router.currentRoute.value.fullPath;
+    if (currentPath !== '/login') {
+      router.push({
+        path: '/login',
+        query: detail.redirect ? { redirect: detail.redirect } : {},
+      });
+    }
+  };
+
+  let unsubscribeForceLogout: (() => void) | null = null;
+
+  // 初始化，从localStorage恢复登录状态，并订阅强制下线事件
   const init = () => {
-    const savedToken = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedUser = localStorage.getItem(USER_KEY);
 
     if (savedToken && savedUser) {
       token.value = savedToken;
-      user.value = JSON.parse(savedUser);
+      try {
+        user.value = JSON.parse(savedUser);
+      } catch {
+        // 持久化数据损坏：直接清理，避免半状态。
+        clearAuthState();
+      }
+    }
+
+    // 幂等订阅，防止热更新/重复 init 重复挂监听。
+    if (!unsubscribeForceLogout) {
+      unsubscribeForceLogout = authEvents.on('force-logout', handleForceLogout);
     }
   };
 
@@ -31,13 +73,11 @@ export const useUserStore = defineStore('user', () => {
         token.value = response.data.token;
         user.value = response.data.user;
 
-        // 保存到localStorage
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem(TOKEN_KEY, response.data.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
 
-        // 保存refreshToken（如果后端返回）
         if (response.data.refreshToken) {
-          localStorage.setItem('refresh_token', response.data.refreshToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
         }
 
         return { success: true };
@@ -79,20 +119,14 @@ export const useUserStore = defineStore('user', () => {
     }
   };
 
-  // 退出登录
+  // 主动退出登录：先尝试通知后端撤销 refresh_token，再清本地。
   const logout = async () => {
-    // 调用后端登出接口（清除服务端session/token）
     try {
       await userApi.logout();
     } catch {
-      // 后端登出失败也继续清理本地状态
+      // 后端失败不阻塞本地清理；refresh_token 已过期是预期路径之一。
     }
-
-    user.value = null;
-    token.value = null;
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
+    clearAuthState();
   };
 
   // 更新用户信息
@@ -103,7 +137,7 @@ export const useUserStore = defineStore('user', () => {
 
       if (response.success && user.value) {
         user.value = { ...user.value, ...response.data };
-        localStorage.setItem('user', JSON.stringify(user.value));
+        localStorage.setItem(USER_KEY, JSON.stringify(user.value));
         return { success: true };
       } else {
         return { success: false, message: response.message };

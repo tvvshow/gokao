@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
+import { useUserStore } from '@/stores/user';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -90,14 +91,14 @@ const router = createRouter({
 });
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   // 设置页面标题
   document.title = `${to.meta.title} - 高考志愿填报助手`;
 
-  // 检查是否需要登录
+  // 检查是否需要登录：以 Pinia store 为单一信源，避免 store 内存与 localStorage 不一致。
   if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    const userStore = useUserStore();
+    if (!userStore.isLoggedIn) {
       next({
         path: '/login',
         query: { redirect: to.fullPath },

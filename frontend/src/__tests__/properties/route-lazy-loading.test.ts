@@ -134,9 +134,11 @@ describe('Property 8: Route Lazy Loading', () => {
     const hasRequiresAuth = /requiresAuth/.test(content);
     expect(hasRequiresAuth).toBe(true);
 
-    // Check for auth token check
-    const hasTokenCheck = /localStorage\.getItem.*token/i.test(content);
-    expect(hasTokenCheck).toBe(true);
+    // 认证判定单一信源：必须通过 user store（isLoggedIn）；
+    // 历史实现裸读 localStorage，会与 Pinia 内存状态分裂，已废弃。
+    const usesStore =
+      /useUserStore/.test(content) && /isLoggedIn/.test(content);
+    expect(usesStore).toBe(true);
   });
 
   it('should have proper scroll behavior', () => {

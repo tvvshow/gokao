@@ -16,6 +16,7 @@ import type {
   AdmissionListParams,
 } from '@/types/api';
 import { isWrappedResponse, type WrappedResponse } from '@/utils/api-response';
+import { authEvents } from '@/utils/auth-events';
 
 // API基础配置 - 生产环境使用相对路径，开发环境使用localhost
 // 使用 ?? 空值合并运算符，只有undefined/null时才使用默认值，空字符串不会被替换
@@ -187,20 +188,15 @@ class ApiClient {
     this.refreshSubscribers = [];
   }
 
-  // 处理认证失败 - 清除Token并跳转登录页
+  // 认证失败：仅 emit 事件，由 user store 统一清理 state + localStorage + 路由跳转。
+  // api-client 不再直接操作业务状态，避免 store 内存与 localStorage 不一致。
   private handleAuthFailure() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    ElMessage.error('登录已过期，请重新登录');
-
-    // 跳转到登录页，保存当前路径用于登录后跳回
     const currentPath = router.currentRoute.value.fullPath;
-    if (currentPath !== '/login') {
-      router.push({
-        path: '/login',
-        query: { redirect: currentPath },
-      });
-    }
+    authEvents.emit('force-logout', {
+      reason: 'refresh-failed',
+      redirect:
+        currentPath && currentPath !== '/login' ? currentPath : undefined,
+    });
   }
 
   private async request<T>(
