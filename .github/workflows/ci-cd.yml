@@ -282,10 +282,59 @@ jobs:
           cpp-modules/${{ matrix.module }}/build/*.a
         retention-days: 7
 
+  # 迁移真 SQL round-trip
+  # L-09 phase 4 (2026-05-13):
+  #   - 三服务（payment / data / user）均已落地 goose embed.FS 迁移。
+  #   - 早前 *_test.go 只校 .sql 文件结构，不验证 SQL 语法 / 索引列存在性 / Down 路径。
+  #   - 本 job 起 postgres:15 容器，对每个 service 跑 `go test -tags=migration_roundtrip`，
+  #     真 Up → 校版本 → Reset → 校版本归零。任一服务的 SQL bug 在此暴露，
+  #     不再等运行时 panic（如 data-service phase 2 修过的 universities.popularity_score 类问题）。
+  #   - 三个 matrix 各自独立 postgres，零状态污染。
+  migration-roundtrip:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [payment-service, data-service, user-service]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: gokao
+          POSTGRES_PASSWORD: gokao
+          POSTGRES_DB: gokao_migrate_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Run migration round-trip
+      env:
+        GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
+        TEST_DATABASE_URL: postgres://gokao:gokao@localhost:5432/gokao_migrate_test?sslmode=disable
+      run: |
+        cd services/${{ matrix.service }}
+        go test -tags=migration_roundtrip -v -count=1 -run TestMigrationRoundTrip ./internal/database/...
+
   # 构建镜像
   build:
     runs-on: ubuntu-latest
-    needs: [unit-tests, cpp-build]
+    needs: [unit-tests, cpp-build, migration-roundtrip]
     if: github.event_name == 'push'
     
     strategy:
